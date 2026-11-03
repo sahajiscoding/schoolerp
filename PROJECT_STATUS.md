@@ -1,8 +1,8 @@
 # Project Status — Pacific World School ERP
 
 **Last updated:** 2026-11-03
-**Current milestone:** Admin app build fixed — Vercel preview was failing because `tsc -b` blocked `vite build` due to pre-existing TypeScript errors; blank-screen bug fixed (Supabase client creation no longer crashes at import time when env vars are missing; AuthProvider handles null client and session-load errors so login page renders). All typecheck/lint/build errors resolved. Milestone 0 (Foundation) and Milestone 1 (Schema + RLS) complete; code exists uncommitted.
-**Next milestone:** Milestone 2 — Auth + roster
+**Current milestone:** Milestone 2 — Auth + roster (in progress). Admin login page rebuilt to match the school's existing login design; Milestone 0 (Foundation) and Milestone 1 (Schema + RLS) complete.
+**Next milestone:** Milestone 3 — Assignments (after Milestone 2 completes)
 
 This file is the single source of truth for project state. Every agent must read it before starting work and update it before finishing. Keep it short, factual, and linked to files. Do not record intentions as completed work.
 
@@ -24,6 +24,8 @@ This file is the single source of truth for project state. Every agent must read
 | CI workflow with secret guard | `.github/workflows/ci.yml` | Added |
 | .env.example files | `apps/admin/.env.example`, `apps/mobile/.env.example` | Added |
 | Admin app shell + homepage | `apps/admin/src/App.tsx` | Router shell (AuthProvider + Layout); /home = Dashboard, /login, protected /dashboard, /classes, /people |
+| Admin login page | `apps/admin/src/pages/Login.tsx` | Rebuilt to match the school's existing login: split layout, school logo, glass mission card over campus photo, remembered-account picker, Remember Me, password visibility |
+| Login brand assets | `apps/admin/public/brand/` | School logo and two campus photos downloaded from the school's current PWS login page |
 | Admin dependencies | `apps/admin/package.json` | Added react-router-dom, clsx, date-fns, tailwind-merge, react-icons |
 | ESLint flat config | `apps/admin/eslint.config.js` | TypeScript parser, React globals, node_modules/dist ignored |
 | Admin build | `apps/admin/dist/` | `npm run build` (tsc -b + vite build) passes |
@@ -33,7 +35,7 @@ This file is the single source of truth for project state. Every agent must read
 
 ## In progress
 
-Milestone 0 — Foundation complete. Milestone 1 — Schema + RLS complete (migration + pgTAP RLS matrix exist, uncommitted). Admin app shell + homepage complete.
+Milestone 0 — Foundation complete. Milestone 1 — Schema + RLS complete. Milestone 2 — Auth + roster in progress: admin login UI rebuilt and manually verified at 1440×900 in both the form and remembered-account states. `npm run build --workspace=apps/admin` passes; lint passes with one pre-existing `react-refresh` warning in `AuthContext.tsx`. Remaining: apply migration/seed, mobile login, forced password change, roster flows.
 
 ## Next up
 

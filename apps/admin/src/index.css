@@ -1,3 +1,28 @@
 ﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes campus-crossfade {
+  0%,
+  40% {
+    opacity: 0;
+  }
+  50%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.campus-crossfade {
+  animation: campus-crossfade 16s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campus-crossfade {
+    animation: none;
+    opacity: 0;
+  }
+}
