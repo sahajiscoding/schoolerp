@@ -1,0 +1,1 @@
+module.exports = { content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}', '../../packages/shared/src/**/*.{js,ts,jsx,tsx}'], theme: { extend: { colors: { olive: '#4B5D2A', terracotta: '#D2691E', sand: '#F5F1EC', ink: '#1A1A1A', muted: '#6B6B6B', cream: '#FAF7F2' } } }, plugins: [] }
