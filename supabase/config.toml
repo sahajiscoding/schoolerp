@@ -1,0 +1,1 @@
+project_id = "schoolerp"\n\n[api]\nenabled = true\nport = 54321\nschemas = ["public"]\nextra_search_path = ["public", "extensions"]\nmax_rows = 1000\n\n[db]\nport = 54322\nshadow_port = 54320\nmajor_version = 15\n

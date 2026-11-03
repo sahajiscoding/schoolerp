@@ -1,0 +1,1 @@
+export const theme = { colors: { olive: "#4B5D2A", terracotta: "#D2691E", sand: "#F5F1EC", ink: "#1A1A1A", muted: "#6B6B6B", cream: "#FAF7F2", accent: "#D2691E" }, spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 }, radius: { sm: 8, md: 12, lg: 16 } } as const;

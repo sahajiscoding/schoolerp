@@ -15,12 +15,18 @@ This file is the single source of truth for project state. Every agent must read
 | Approved v1 design | `docs/superpowers/specs/2026-11-03-school-erp-design.md` | Written, awaiting owner review |
 | Agent contract | `AGENTS.md` | Written |
 | Status document | `PROJECT_STATUS.md` | This file |
-
-No application code, database migrations, or configuration exist yet.
+| npm workspaces monorepo | `package.json` | Initialized (apps/*, packages/*) |
+| Shared package (theme, types foundation) | `packages/shared/` | Initialized |
+| Admin app (React + Vite + Tailwind) | `apps/admin/` | Scaffolded |
+| Mobile app (Expo + TypeScript) | `apps/mobile/` | Scaffolded |
+| Supabase config | `supabase/config.toml` | Initialized |
+| Environment variable docs | `docs/security/environment-variables.md` | Written |
+| CI workflow with secret guard | `.github/workflows/ci.yml` | Added |
+| .env.example files | `apps/admin/.env.example`, `apps/mobile/.env.example` | Added |
 
 ## In progress
 
-Nothing. Awaiting spec review.
+Milestone 0 — Foundation complete. Next: Milestone 1 — schema and RLS.
 
 ## Next up
 
@@ -55,14 +61,20 @@ Fees and payments · attendance · report cards and grades · library · gallery
 
 **Public (expected in clients):**
 - `EXPO_PUBLIC_SUPABASE_URL`
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (legacy alias: `EXPO_PUBLIC_SUPABASE_ANON_KEY`)
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_PUBLISHABLE_KEY` (legacy alias: `VITE_SUPABASE_ANON_KEY`)
 
 **Secret (Supabase Edge Functions only):**
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` and/or `SUPABASE_SECRET_KEY`
+- `SUPABASE_JWT_SECRET` (never used manually; highest severity if leaked)
+- All `POSTGRES_*` connection values
 - `EXPO_ACCESS_TOKEN`
 - Future payment, SMS, email, and AI provider keys
+
+**Ignored in this stack:** `NEXT_PUBLIC_SUPABASE_*` (Next.js-only naming; Vite and Expo will not read it).
+
+Full classification: `docs/security/environment-variables.md`.
 
 No secret has been created or stored yet.
 

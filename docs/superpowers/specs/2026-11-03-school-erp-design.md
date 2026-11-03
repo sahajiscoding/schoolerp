@@ -152,19 +152,24 @@ These rules are implemented as pure functions in `packages/shared/src/targeting.
 ### Public by design (safe in an APK/IPA)
 
 - `EXPO_PUBLIC_SUPABASE_URL`
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY` (or `sb_publishable_…` on newer Supabase projects)
+- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (preferred) or `EXPO_PUBLIC_SUPABASE_ANON_KEY` (legacy)
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_PUBLISHABLE_KEY` (preferred) or `VITE_SUPABASE_ANON_KEY` (legacy)
 
-The anon/publishable key is not a credential. It grants the `anon` Postgres role and is only safe because RLS denies by default.
+The publishable/anon key is not a credential. It grants the `anon` Postgres role and is only safe because RLS denies by default.
 
 ### Server-side only
 
-- `SUPABASE_SERVICE_ROLE_KEY` (or `sb_secret_…`) — bypasses RLS; total database compromise if leaked
+- `SUPABASE_SERVICE_ROLE_KEY` — legacy JWT that bypasses RLS; total database compromise if leaked
+- `SUPABASE_SECRET_KEY` — new-format secret that bypasses RLS; same severity
+- `SUPABASE_JWT_SECRET` — signs access tokens; leakage permits forged tokens for any role
+- `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`, `POSTGRES_USER`, `POSTGRES_HOST`, `POSTGRES_PASSWORD`, `POSTGRES_DATABASE` — direct database credentials
 - `EXPO_ACCESS_TOKEN` — push sending
 - Future: payment, SMS, email, AI provider keys
 
 These exist only in Supabase Edge Function secrets and local `supabase/.env.local` (gitignored). They are never referenced in `apps/`, never prefixed `EXPO_PUBLIC_`/`VITE_`, and never committed.
+
+The Vercel Supabase integration injects an additional Next.js-specific set (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`). Vite and Expo ignore these names, so they must not be used in this repository. Full variable-by-variable classification and rotation procedure: `docs/security/environment-variables.md`.
 
 ### Edge Functions
 

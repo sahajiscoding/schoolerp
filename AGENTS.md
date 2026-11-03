@@ -14,8 +14,8 @@ A single-school ERP for Pacific World School. Expo (React Native) app for teache
 
 ## Non-negotiable rules
 
-1. **No secrets in clients.** The mobile app and admin SPA may contain only `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY`. The service role key and all third-party keys live only in Supabase Edge Function secrets and are read with `Deno.env.get()`.
-2. **Never add an `EXPO_PUBLIC_` or `VITE_` variable whose name contains SECRET, SERVICE, PRIVATE, or TOKEN** (the anon/publishable key is the sole exception).
+1. **No secrets in clients.** The mobile app and admin SPA may contain only a public Supabase URL and a publishable key, under these names: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`. `..._ANON_KEY` is an accepted legacy alias; use one key family, not both. Full classification of every Vercel/Supabase variable: `docs/security/environment-variables.md`. `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET`, and all `POSTGRES_*` values are server-side only.
+2. **Never add an `EXPO_PUBLIC_` or `VITE_` variable whose name contains SECRET, SERVICE, PRIVATE, JWT, POSTGRES, DATABASE, PASSWORD, or TOKEN** (the publishable/anon key is the sole exception).
 3. **RLS is the authorization boundary.** Every new table gets RLS enabled with default-deny and policies. A migration without RLS tests is incomplete.
 4. **Admins never write academic content.** Admin access to assignments, submissions, threads, and messages is read-only and audited.
 5. **No student-to-student channel.** Messaging is teacher↔student only, with admin read access.
