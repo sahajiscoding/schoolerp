@@ -1,7 +1,7 @@
 # Project Status — Pacific World School ERP
 
 **Last updated:** 2026-11-03
-**Current milestone:** Admin app build fixed — Vercel preview was failing because `tsc -b` blocked `vite build` due to pre-existing TypeScript errors; blank-screen bug fixed (AuthProvider now handles session-load errors so login page renders instead of hanging). All typecheck/lint/build errors resolved. Milestone 0 (Foundation) and Milestone 1 (Schema + RLS) complete; code exists uncommitted.
+**Current milestone:** Admin app build fixed — Vercel preview was failing because `tsc -b` blocked `vite build` due to pre-existing TypeScript errors; blank-screen bug fixed (Supabase client creation no longer crashes at import time when env vars are missing; AuthProvider handles null client and session-load errors so login page renders). All typecheck/lint/build errors resolved. Milestone 0 (Foundation) and Milestone 1 (Schema + RLS) complete; code exists uncommitted.
 **Next milestone:** Milestone 2 — Auth + roster
 
 This file is the single source of truth for project state. Every agent must read it before starting work and update it before finishing. Keep it short, factual, and linked to files. Do not record intentions as completed work.

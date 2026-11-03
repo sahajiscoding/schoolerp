@@ -29,7 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(async ({ data, error }) => {
+    const client = supabase;
+    if (!client) {
+      setLoading(false);
+      return undefined;
+    }
+
+    client.auth.getSession().then(async ({ data, error }) => {
       if (!mounted) return;
       if (error) {
         setLoading(false);
@@ -37,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setSessionUserId(data.session?.user.id ?? null);
       if (data.session?.user) {
-        const { data: prof } = await supabase
+        const { data: prof } = await client
           .from('profiles')
           .select('*')
           .eq('id', data.session.user.id)
@@ -49,11 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (mounted) setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: sub } = client.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
       setSessionUserId(session?.user.id ?? null);
       if (session?.user) {
-        const { data: prof } = await supabase
+        const { data: prof } = await client
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
@@ -71,12 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (loginId: string, password: string) => {
+    if (!supabase) return { error: 'Supabase not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.' };
     const email = `${loginId.toLowerCase()}@pws.local`;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error?.message ?? null };
   };
 
   const signOut = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     setProfile(null);
     setSessionUserId(null);
