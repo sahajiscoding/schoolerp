@@ -1,8 +1,8 @@
 # Project Status — Pacific World School ERP
 
 **Last updated:** 2026-11-03
-**Current milestone:** Design complete. Implementation not started.
-**Next milestone:** 0 — Foundation
+**Current milestone:** Implementation started — admin app shell + homepage wired (Dashboard as home, /login, protected /dashboard, /classes, /people). Milestone 0 (Foundation) and Milestone 1 (Schema + RLS) complete; code exists uncommitted.
+**Next milestone:** Milestone 2 — Auth + roster
 
 This file is the single source of truth for project state. Every agent must read it before starting work and update it before finishing. Keep it short, factual, and linked to files. Do not record intentions as completed work.
 
@@ -23,24 +23,27 @@ This file is the single source of truth for project state. Every agent must read
 | Environment variable docs | `docs/security/environment-variables.md` | Written |
 | CI workflow with secret guard | `.github/workflows/ci.yml` | Added |
 | .env.example files | `apps/admin/.env.example`, `apps/mobile/.env.example` | Added |
+| Admin app shell + homepage | `apps/admin/src/App.tsx` | Router shell (AuthProvider + Layout); /home = Dashboard, /login, protected /dashboard, /classes, /people |
+| Admin dependencies | `apps/admin/package.json` | Added react-router-dom, clsx, date-fns, tailwind-merge, react-icons |
+| Shared package | `packages/shared/src/{theme,database.types,supabase,targeting}.ts` | Types, theme, Supabase client factory, targeting logic |
+| Supabase initial schema + RLS | `supabase/migrations/0001_initial_schema.sql` | All tables, RLS policies, helper functions, views (uncommitted) |
+| RLS matrix tests | `supabase/tests/rls_matrix.sql` | 24 pgTAP assertions (uncommitted) |
 
 ## In progress
 
-Milestone 0 — Foundation complete. Next: Milestone 1 — schema and RLS.
+Milestone 0 — Foundation complete. Milestone 1 — Schema + RLS complete (migration + pgTAP RLS matrix exist, uncommitted). Admin app shell + homepage complete.
 
 ## Next up
 
-Milestone 0 — Foundation:
+Milestone 2 — Auth + roster:
 
-1. Initialize npm workspaces monorepo (`apps/mobile`, `apps/admin`, `packages/shared`).
-2. Scaffold Expo app with expo-router and NativeWind.
-3. Scaffold React + Vite + Tailwind admin app.
-4. Initialize Supabase locally; add `supabase/config.toml`.
-5. Add lint, format, typecheck, and CI.
-6. Add `.env.example` files for both apps and document the public/secret split.
-7. Add the CI guard against `EXPO_PUBLIC_.*(SECRET|SERVICE|PRIVATE)`.
+1. Apply `supabase/migrations/0001_initial_schema.sql` to local Supabase and seed data.
+2. Fix pre-existing typecheck errors (unused imports in `Layout`/`People`, `ReactNode` type-only import + `unsubscribe` in `AuthContext`, `process.env` in shared `supabase.ts`, insert typing in `Classes`/`People`).
+3. Add ESLint flat config (`eslint.config.js`) so `npm run lint` runs.
+4. Wire mobile app (expo-router + NativeWind) login + dashboard screens.
+5. Forced password change on first login.
 
-Then Milestone 1 — schema and RLS, whose definition of done is the RLS test matrix passing.
+Then Milestone 3 — Assignments.
 
 ## Deferred (explicitly out of v1)
 
