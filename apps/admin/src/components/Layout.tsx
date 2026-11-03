@@ -1,9 +1,9 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FiLogOut, FiUsers, FiGrid, FiBookOpen, FiSend, FiEye, FiClipboard, FiLock } from 'react-icons/fi';
+import { FiLogOut, FiUsers, FiGrid, FiBookOpen, FiSend, FiEye, FiClipboard } from 'react-icons/fi';
 
 export default function Layout() {
-  const { signOut, profile, isAdmin, isTeacher } = useAuth();
+  const { signOut, profile, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const navItems = [

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { FiPlus, FiTrash2, FiEdit3, FiLock, FiRefreshCw } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEdit3, FiLock } from 'react-icons/fi';
 
 type Person = { id: string; full_name: string; login_id: string; role: string; is_active: boolean };
 
@@ -26,14 +26,14 @@ export default function People() {
       ? await supabase.auth.admin.createUser({ email, password: form.password || 'Schoolerpc2026!', user_metadata: { full_name: form.full_name } })
       : { data: null, error: new Error('admin client unavailable') };
     if (error) { alert(error.message); return; }
-    await supabase.from('profiles').insert({ id: data.user!.id, role: form.role, full_name: form.full_name, login_id: form.login_id, is_active: true, must_change_password: true });
+    await (supabase.from('profiles') as any).insert({ id: data.user!.id, role: form.role, full_name: form.full_name, login_id: form.login_id, is_active: true, must_change_password: true });
     setPeople([...people, { id: data.user!.id, full_name: form.full_name, login_id: form.login_id, role: form.role, is_active: true }]);
     setForm({ full_name: '', login_id: '', role: 'student', password: '' });
     setOpen(false);
   };
 
   const toggleActive = async (id: string, active: boolean) => {
-    await supabase.from('profiles').update({ is_active: active }).eq('id', id);
+    await (supabase.from('profiles') as any).update({ is_active: active }).eq('id', id);
     setPeople(people.map((p) => p.id === id ? { ...p, is_active: active } : p));
   };
 

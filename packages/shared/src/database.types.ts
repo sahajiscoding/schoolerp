@@ -149,34 +149,36 @@ export interface AuditLog {
 export interface Database {
   public: {
     Tables: {
-      profiles: { Row: Profile; Insert: Partial<Profile>; Update: Partial<Profile> };
-      classes: { Row: Class; Insert: Partial<Class>; Update: Partial<Class> };
-      sections: { Row: Section; Insert: Partial<Section>; Update: Partial<Section> };
-      subjects: { Row: Subject; Insert: Partial<Subject>; Update: Partial<Subject> };
-      teaching_assignments: { Row: TeachingAssignment; Insert: Partial<TeachingAssignment>; Update: Partial<TeachingAssignment> };
-      enrollments: { Row: Enrollment; Insert: Partial<Enrollment>; Update: Partial<Enrollment> };
-      assignments: { Row: Assignment; Insert: Partial<Assignment>; Update: Partial<Assignment> };
-      assignment_sections: { Row: AssignmentSection; Insert: Partial<AssignmentSection>; Update: Partial<AssignmentSection> };
-      assignment_students: { Row: AssignmentStudent; Insert: Partial<AssignmentStudent>; Update: Partial<AssignmentStudent> };
-      submissions: { Row: Submission; Insert: Partial<Submission>; Update: Partial<Submission> };
-      threads: { Row: Thread; Insert: Partial<Thread>; Update: Partial<Thread> };
-      messages: { Row: Message; Insert: Partial<Message>; Update: Partial<Message> };
-      notices: { Row: Notice; Insert: Partial<Notice>; Update: Partial<Notice> };
-      notice_recipients: { Row: NoticeRecipient; Insert: Partial<NoticeRecipient>; Update: Partial<NoticeRecipient> };
-      push_tokens: { Row: PushToken; Insert: Partial<PushToken>; Update: Partial<PushToken> };
-      notification_jobs: { Row: NotificationJob; Insert: Partial<NotificationJob>; Update: Partial<NotificationJob> };
-      audit_log: { Row: AuditLog; Insert: Partial<AuditLog>; Update: Partial<AuditLog> };
+      profiles: { Row: Profile; Insert: Partial<Profile>; Update: Partial<Profile>; Relationships: [] };
+      classes: { Row: Class; Insert: Partial<Class>; Update: Partial<Class>; Relationships: [] };
+      sections: { Row: Section; Insert: Partial<Section>; Update: Partial<Section>; Relationships: [] };
+      subjects: { Row: Subject; Insert: Partial<Subject>; Update: Partial<Subject>; Relationships: [] };
+      teaching_assignments: { Row: TeachingAssignment; Insert: Partial<TeachingAssignment>; Update: Partial<TeachingAssignment>; Relationships: [] };
+      enrollments: { Row: Enrollment; Insert: Partial<Enrollment>; Update: Partial<Enrollment>; Relationships: [] };
+      assignments: { Row: Assignment; Insert: Partial<Assignment>; Update: Partial<Assignment>; Relationships: [] };
+      assignment_sections: { Row: AssignmentSection; Insert: Partial<AssignmentSection>; Update: Partial<AssignmentSection>; Relationships: [] };
+      assignment_students: { Row: AssignmentStudent; Insert: Partial<AssignmentStudent>; Update: Partial<AssignmentStudent>; Relationships: [] };
+      submissions: { Row: Submission; Insert: Partial<Submission>; Update: Partial<Submission>; Relationships: [] };
+      threads: { Row: Thread; Insert: Partial<Thread>; Update: Partial<Thread>; Relationships: [] };
+      messages: { Row: Message; Insert: Partial<Message>; Update: Partial<Message>; Relationships: [] };
+      notices: { Row: Notice; Insert: Partial<Notice>; Update: Partial<Notice>; Relationships: [] };
+      notice_recipients: { Row: NoticeRecipient; Insert: Partial<NoticeRecipient>; Update: Partial<NoticeRecipient>; Relationships: [] };
+      push_tokens: { Row: PushToken; Insert: Partial<PushToken>; Update: Partial<PushToken>; Relationships: [] };
+      notification_jobs: { Row: NotificationJob; Insert: Partial<NotificationJob>; Update: Partial<NotificationJob>; Relationships: [] };
+      audit_log: { Row: AuditLog; Insert: Partial<AuditLog>; Update: Partial<AuditLog>; Relationships: [] };
     };
     Views: {
-      assignment_recipients: { Row: { student_id: string } };
-      unread_counts: { Row: { user_id: string; unread_notices: number; unread_messages: number } };
+      assignment_recipients: { Row: { student_id: string }; Relationships: [] };
+      unread_counts: { Row: { user_id: string; unread_notices: number; unread_messages: number }; Relationships: [] };
     };
     Functions: {
-      current_role: { Returns: string };
-      is_admin: { Returns: boolean };
+      current_role: { Args: never; Returns: string };
+      is_admin: { Args: never; Returns: boolean };
       teaches_section: { Args: { section_id: string }; Returns: boolean };
       is_enrolled: { Args: { student_id: string }; Returns: boolean };
       is_thread_participant: { Args: { thread_id: string }; Returns: boolean };
     };
+    CompositeTypes: Record<string, unknown>;
+    Enums: Record<string, unknown>;
   };
 }

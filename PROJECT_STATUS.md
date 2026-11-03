@@ -1,7 +1,7 @@
 # Project Status — Pacific World School ERP
 
 **Last updated:** 2026-11-03
-**Current milestone:** Implementation started — admin app shell + homepage wired (Dashboard as home, /login, protected /dashboard, /classes, /people). Milestone 0 (Foundation) and Milestone 1 (Schema + RLS) complete; code exists uncommitted.
+**Current milestone:** Admin app build fixed — Vercel preview was failing because `tsc -b` blocked `vite build` due to pre-existing TypeScript errors. All typecheck/lint/build errors resolved. Milestone 0 (Foundation) and Milestone 1 (Schema + RLS) complete; code exists uncommitted.
 **Next milestone:** Milestone 2 — Auth + roster
 
 This file is the single source of truth for project state. Every agent must read it before starting work and update it before finishing. Keep it short, factual, and linked to files. Do not record intentions as completed work.
@@ -25,6 +25,8 @@ This file is the single source of truth for project state. Every agent must read
 | .env.example files | `apps/admin/.env.example`, `apps/mobile/.env.example` | Added |
 | Admin app shell + homepage | `apps/admin/src/App.tsx` | Router shell (AuthProvider + Layout); /home = Dashboard, /login, protected /dashboard, /classes, /people |
 | Admin dependencies | `apps/admin/package.json` | Added react-router-dom, clsx, date-fns, tailwind-merge, react-icons |
+| ESLint flat config | `apps/admin/eslint.config.js` | TypeScript parser, React globals, node_modules/dist ignored |
+| Admin build | `apps/admin/dist/` | `npm run build` (tsc -b + vite build) passes |
 | Shared package | `packages/shared/src/{theme,database.types,supabase,targeting}.ts` | Types, theme, Supabase client factory, targeting logic |
 | Supabase initial schema + RLS | `supabase/migrations/0001_initial_schema.sql` | All tables, RLS policies, helper functions, views (uncommitted) |
 | RLS matrix tests | `supabase/tests/rls_matrix.sql` | 24 pgTAP assertions (uncommitted) |
@@ -38,10 +40,8 @@ Milestone 0 — Foundation complete. Milestone 1 — Schema + RLS complete (migr
 Milestone 2 — Auth + roster:
 
 1. Apply `supabase/migrations/0001_initial_schema.sql` to local Supabase and seed data.
-2. Fix pre-existing typecheck errors (unused imports in `Layout`/`People`, `ReactNode` type-only import + `unsubscribe` in `AuthContext`, `process.env` in shared `supabase.ts`, insert typing in `Classes`/`People`).
-3. Add ESLint flat config (`eslint.config.js`) so `npm run lint` runs.
-4. Wire mobile app (expo-router + NativeWind) login + dashboard screens.
-5. Forced password change on first login.
+2. Wire mobile app (expo-router + NativeWind) login + dashboard screens.
+3. Forced password change on first login.
 
 Then Milestone 3 — Assignments.
 

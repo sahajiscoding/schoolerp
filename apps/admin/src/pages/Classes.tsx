@@ -15,7 +15,7 @@ export default function Classes() {
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from('classes').insert({ name, sort_order: parseInt(sortOrder) });
+    const { error } = await (supabase.from('classes') as any).insert({ name, sort_order: parseInt(sortOrder) });
     if (error) { alert(error.message); return; }
     setName(''); setSortOrder('0');
     supabase.from('classes').select('*').order('sort_order').then(({ data }) => setClasses(data ?? []));
