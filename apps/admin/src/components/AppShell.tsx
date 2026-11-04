@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type ReactNode } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../lib/appData';
@@ -125,31 +125,9 @@ const GROUP_LABEL: Record<string, string> = {
   admin: 'Administration',
 };
 
-export default function AppShell({ children }: { children?: ReactNode }) {
-  const { profile, viewAsRole, viewingRole, demoMode, configError, signOut, isAdmin } = useAuth();
-  const data = useAppData();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
-
-  const role: Role = viewingRole ?? profile?.role ?? 'student';
-
-  useEffect(() => {
-    setSidebarOpen(false);
-    setNotifOpen(false);
-  }, [location.pathname]);
-
-  const mainNav = useMemo(
-    () => NAV.filter((item) => item.roles.includes(role) && !item.to.match(/^\/(people|classes|subjects|teaching-assignments|enrollments|audit-log)$/)),
-    [role],
-  );
-  const adminNav = useMemo(
-    () => NAV.filter((item) => item.roles.includes(role) && item.to.match(/^\/(people|classes|subjects|teaching-assignments|enrollments|audit-log)$/)),
-    [role],
-  );
-
-  const routeLabels: Record<string, string> = {
+/** Breadcrumb/sidebar labels for a role. Extracted so the memo can depend on it. */
+function labelFor(role: Role): Record<string, string> {
+  return {
     '/dashboard': 'Dashboard',
     '/approvals': role === 'student' ? 'My Leaves' : 'Leave Approvals',
     '/course-progress': role === 'student' ? 'My Progress' : 'Course Progress',
@@ -169,6 +147,32 @@ export default function AppShell({ children }: { children?: ReactNode }) {
     '/enrollments': 'Enrollments',
     '/audit-log': 'Audit Log',
   };
+}
+
+export default function AppShell({ children }: { children?: ReactNode }) {
+  const { profile, viewAsRole, viewingRole, demoMode, configError, signOut, isAdmin } = useAuth();
+  const data = useAppData();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const role: Role = viewingRole ?? profile?.role ?? 'student';
+
+  // Closing the mobile drawer / notification popover on navigation is handled by
+  // keying this component on the pathname in its parent (a state reset), which
+  // avoids a synchronous setState inside an effect.
+
+  const mainNav = useMemo(
+    () => NAV.filter((item) => item.roles.includes(role) && !item.to.match(/^\/(people|classes|subjects|teaching-assignments|enrollments|audit-log)$/)),
+    [role],
+  );
+  const adminNav = useMemo(
+    () => NAV.filter((item) => item.roles.includes(role) && item.to.match(/^\/(people|classes|subjects|teaching-assignments|enrollments|audit-log)$/)),
+    [role],
+  );
+
+  const routeLabels = labelFor(role);
 
   const breadcrumbItems = useMemo(() => {
     const segments = location.pathname.split('/').filter(Boolean);
@@ -182,7 +186,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
       });
     }
     return parts;
-  }, [location.pathname, role]);
+  }, [location.pathname, routeLabels]);
 
   const handleLogout = async () => {
     await signOut();

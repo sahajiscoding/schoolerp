@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppDataProvider } from './lib/appData';
 import AppShell from './components/AppShell';
@@ -47,6 +47,12 @@ function AdminOnly({ children }: { children: ReactNode }) {
   return isAdmin() ? <>{children}</> : <Navigate to="/dashboard" replace />;
 }
 
+/** Resets the shell's local UI state (mobile drawer, popover) on navigation. */
+function ShellRoute() {
+  const { pathname } = useLocation();
+  return <AppShell key={pathname} />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -65,7 +71,7 @@ export default function App() {
               path="/"
               element={
                 <RequireAuth>
-                  <AppShell />
+                  <ShellRoute />
                 </RequireAuth>
               }
             >
