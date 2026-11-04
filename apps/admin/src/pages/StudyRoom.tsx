@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData as useData } from '../lib/appData';
+import type { StudyMaterial } from '../lib/types';
 import {
   Card,
   Button,
@@ -14,6 +15,23 @@ import {
 import { FiPlus, FiDownload } from 'react-icons/fi';
 
 const SUBJECTS = ['Artificial Intelligence', 'Mathematics', 'English', 'Science', 'Social Science', 'Hindi'];
+
+/** Materials are demo records, so "Open" renders the note the teacher attached. */
+function openMaterial(material: StudyMaterial) {
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${material.title}</title>
+    <style>body{font-family:Georgia,serif;max-width:720px;margin:48px auto;padding:0 24px;color:#1f2937;line-height:1.6}
+    h1{color:#4B5D2A;border-bottom:2px solid #4B5D2A;padding-bottom:8px}
+    .meta{font-size:12px;color:#6b7280;margin-bottom:24px}</style></head><body>
+    <h1>${material.title}</h1>
+    <div class="meta">${material.subject} · ${material.section_label} · filed as ${material.file_name}</div>
+    <p>${(material.description || 'No notes attached to this material.').replace(/\n/g, '<br/>')}</p>
+    </body></html>`;
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  }
+}
 
 export default function StudyRoom() {
   const { profile, isAdmin, isTeacher } = useAuth();
@@ -97,8 +115,12 @@ export default function StudyRoom() {
                     </TableCell>
                     <TableCell className="text-sm text-muted">{uploader?.full_name ?? '—'}</TableCell>
                     <TableCell>
-                      <Button variant="outline" size="sm" onClick={() => {}}>
-                        <FiDownload size={14} /> Download
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openMaterial(mat)}
+                      >
+                        <FiDownload size={14} /> Open
                       </Button>
                     </TableCell>
                   </TableRow>
