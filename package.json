@@ -10,8 +10,9 @@
     "dev:mobile": "npm run dev --workspace=apps/mobile",
     "dev:admin": "npm run dev --workspace=apps/admin",
     "build:admin": "npm run build --workspace=apps/admin",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "typecheck": "node scripts/typecheck-all.mjs",
+    "lint": "npm run lint --workspaces --if-present",
+    "verify:rls": "python3 supabase/tests/verify_rls_local.py"
   },
   "engines": {
     "node": ">=18.0.0"
