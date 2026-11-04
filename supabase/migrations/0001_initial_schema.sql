@@ -180,7 +180,10 @@ ALTER TABLE notification_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Helper functions
-CREATE OR REPLACE FUNCTION current_role() RETURNS text
+-- NOTE: `current_role` is a reserved SQL keyword; a function with that name
+-- cannot be created or called, so the helper is `app_role()`. Migration 0002
+-- also relies on this name.
+CREATE OR REPLACE FUNCTION app_role() RETURNS text
 LANGUAGE sql STABLE SECURITY DEFINER
 AS $$
   SELECT p.role FROM profiles p WHERE p.id = auth.uid();

@@ -330,9 +330,13 @@ CREATE POLICY "course_goals_teacher_write" ON course_goals
 CREATE POLICY "course_goals_teacher_update" ON course_goals
   FOR UPDATE USING (auth.uid() = teacher_id) WITH CHECK (auth.uid() = teacher_id);
 
--- declarations: visible to the targeted audience, signed by the student
+-- declarations: students see forms aimed at them; staff see the ones they wrote
 CREATE POLICY "declaration_forms_read" ON declaration_forms
-  FOR SELECT USING (is_admin() OR true);
+  FOR SELECT USING (
+    is_admin()
+    OR created_by = auth.uid()
+    OR audience IN ('students', 'both')
+  );
 CREATE POLICY "declaration_forms_admin_insert" ON declaration_forms
   FOR INSERT WITH CHECK (is_admin());
 CREATE POLICY "declaration_signatures_own" ON declaration_signatures
@@ -343,7 +347,7 @@ CREATE POLICY "declaration_signatures_student_insert" ON declaration_signatures
 -- polls: everyone reads, teachers/admins create, students vote once
 CREATE POLICY "polls_read" ON polls FOR SELECT USING (true);
 CREATE POLICY "polls_teacher_insert" ON polls
-  FOR INSERT WITH CHECK (auth.uid() = created_by AND (current_role() = 'teacher' OR is_admin()));
+  FOR INSERT WITH CHECK (auth.uid() = created_by AND (app_role() = 'teacher' OR is_admin()));
 CREATE POLICY "poll_options_read" ON poll_options FOR SELECT USING (true);
 CREATE POLICY "poll_options_owner_insert" ON poll_options
   FOR INSERT WITH CHECK (
@@ -361,7 +365,7 @@ CREATE POLICY "school_events_admin_insert" ON school_events
 CREATE POLICY "school_events_teacher_insert" ON school_events
   FOR INSERT WITH CHECK (
     auth.uid() = created_by
-    AND current_role() = 'teacher'
+    AND app_role() = 'teacher'
     AND cardinality(section_ids) > 0
     AND section_ids <@ ARRAY(
       SELECT ta.section_id FROM teaching_assignments ta WHERE ta.teacher_id = auth.uid()
@@ -374,13 +378,13 @@ CREATE POLICY "school_events_owner_update" ON school_events
 -- library: read all, teachers/admins manage circulation
 CREATE POLICY "books_read" ON books FOR SELECT USING (true);
 CREATE POLICY "books_staff_write" ON books
-  FOR ALL USING (current_role() IN ('teacher', 'admin'))
-  WITH CHECK (current_role() IN ('teacher', 'admin'));
+  FOR ALL USING (app_role() IN ('teacher', 'admin'))
+  WITH CHECK (app_role() IN ('teacher', 'admin'));
 CREATE POLICY "book_issues_read" ON book_issues
-  FOR SELECT USING (auth.uid() = student_id OR current_role() IN ('teacher', 'admin'));
+  FOR SELECT USING (auth.uid() = student_id OR app_role() IN ('teacher', 'admin'));
 CREATE POLICY "book_issues_staff_write" ON book_issues
-  FOR ALL USING (current_role() IN ('teacher', 'admin'))
-  WITH CHECK (current_role() IN ('teacher', 'admin'));
+  FOR ALL USING (app_role() IN ('teacher', 'admin'))
+  WITH CHECK (app_role() IN ('teacher', 'admin'));
 
 -- report cards: student reads own published card; staff of the section manage
 CREATE POLICY "report_cards_read" ON report_cards
@@ -391,7 +395,7 @@ CREATE POLICY "report_cards_read" ON report_cards
   );
 CREATE POLICY "report_cards_teacher_write" ON report_cards
   FOR INSERT WITH CHECK (
-    auth.uid() = created_by AND (current_role() = 'teacher' OR is_admin())
+    auth.uid() = created_by AND (app_role() = 'teacher' OR is_admin())
   );
 CREATE POLICY "report_cards_teacher_update" ON report_cards
   FOR UPDATE USING (auth.uid() = created_by OR is_admin())

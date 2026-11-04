@@ -12,7 +12,7 @@
 
 \set ON_ERROR_STOP on
 
-SELECT plan(22);
+SELECT plan(24);
 
 CREATE OR REPLACE FUNCTION set_auth_uid(uid uuid) RETURNS void
 LANGUAGE sql AS $$
@@ -297,7 +297,27 @@ SELECT is(
   'teacher publishes a class-scoped event'
 );
 
--- 22. student reads all events
+-- 22. student reads declaration forms aimed at them
+SELECT set_auth_uid((SELECT value FROM ids WHERE key = 'student_b'));
+SELECT is(
+  (SELECT count(*) FROM declaration_forms WHERE audience IN ('students', 'both')),
+  (SELECT count(*) FROM declaration_forms)
+    - (SELECT count(*) FROM declaration_forms WHERE audience = 'parents'),
+  'student reads declaration forms aimed at students'
+);
+
+-- 23. a signature can only be created for yourself
+SELECT throws_ok(
+  format(
+    'INSERT INTO declaration_signatures (form_id, student_id) VALUES (%L, %L)',
+    (SELECT value FROM ids WHERE key = 'leave_a'),
+    (SELECT value FROM ids WHERE key = 'student_a')
+  ),
+  '23503',
+  'a signature cannot be forged for another student'
+);
+
+-- 24. student reads all events
 SELECT set_auth_uid((SELECT value FROM ids WHERE key = 'student_b'));
 SELECT is(
   (SELECT count(*) FROM school_events WHERE title = 'Sports Day'),
