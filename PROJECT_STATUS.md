@@ -72,6 +72,38 @@ This file is the single source of truth for project state. Every agent must read
   3. A leave could be moved between any two statuses by any reviewer; the policy now requires `status = 'pending'` on the way in and `decided_by = auth.uid()` on the way out.
 - 20 RLS assertions run as the `authenticated` role: all pass (leave routing to the class teacher only, peer rows invisible, students cannot mark attendance, author report cards, create sibling links or approve their own leave, teachers cannot publish school-wide events).
 
+### Security, deployment and dependency state (2026-11-04)
+
+- `npm audit` reports **0 vulnerabilities**. Existing advisories were fixed, not
+  suppressed: zod → 4.6.7 (PR #1), glob pinned to ^14.0.3 and minimatch to
+  ^11.0.4 via `overrides` in the root `package.json`.
+- eslint upgraded 9 → 10 with typescript-eslint 8.72 (which already supports
+  eslint 10) and react-hooks 7 / react-refresh 0.5. eslint 10 found three dead
+  stores in `normalizeDob()`, fixed.
+- **XSS fixed** in the two `document.write()` sinks (`printHtml()` and the study
+  room preview). Both interpolated teacher-entered text into HTML. Every value
+  now passes through `escapeHtml()`, and an eslint `no-restricted-syntax` rule
+  bans new `document.write()` calls. Verified with a hostile `<img src=x
+  onerror=...>` title pushed through the real UI: stored verbatim, rendered
+  inert, zero live injected elements.
+- **Deploy 404 fixed**: `vercel.json` now rewrites unknown paths to
+  `index.html` (excluding `/assets` and `/brand`), so refreshing `/login` no
+  longer 404s. Verified against the real build output.
+- CI runs on Node 22 with `npm ci`; typecheck, lint (0 errors) and the admin
+  build all pass. First-party actions moved off deprecated Node 20 runtimes.
+- Third-party scanner workflows (Black Duck, Synopsys, CxFlow, Checkmarx One,
+  CodeScan, Endor Labs, Debricked) fail on **missing vendor credentials**, not
+  findings. See `docs/security/scanning.md` for the required secret per workflow
+  and the option of keeping only CodeQL.
+
+### Supabase project
+
+`apps/admin/.env` points at project `ausnymdtnpewcfvdrpcu` using the documented
+unprefixed names. The file is git-ignored and holds only the public publishable
+key, which is safe to ship in a browser bundle. The sandbox cannot reach
+`*.supabase.co`, so the console still runs in demo mode here and the migrations
+have not been applied to that project from this environment.
+
 ## Known gaps
 
 1. The admin console still runs on the demo store. Wiring it to the new tables (replacing `appData.tsx` with Supabase queries) is the next step; the types and RLS already match.
