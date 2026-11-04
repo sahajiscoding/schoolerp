@@ -20,6 +20,8 @@ export default [
         ...globals.browser,
         ...globals.node,
         React: 'readonly',
+        // Build-time constant from vite.config.ts (see src/vite-env.d.ts).
+        __DEMO_MODE__: 'readonly',
       },
     },
     plugins: {
