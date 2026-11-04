@@ -15,7 +15,7 @@
     "verify:rls": "python3 supabase/tests/verify_rls_local.py"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.19.0"
   },
   "overrides": {
     "glob": "^14.0.3",
