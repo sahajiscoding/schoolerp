@@ -19,13 +19,31 @@ import { FiDownload, FiInfo, FiPlus, FiUpload } from 'react-icons/fi';
  * both `admission_no` and `Admission No.` work.
  */
 const HEADER_ALIASES: Record<string, string[]> = {
-  full_name: ['full_name', 'student_name', 'name', 'student'],
-  admission_no: ['admission_no', 'admission_number', 'admission', 'adm_no', 'login_id'],
-  dob: ['dob', 'date_of_birth', 'birth_date', 'birthdate'],
-  class_label: ['class', 'class_label', 'grade'],
-  section_label: ['section', 'section_label'],
-  guardian_name: ['guardian', 'guardian_name', 'parent', 'parent_name'],
+  full_name: ['full_name', 'student_name', 'name', 'student', 'pupil_name'],
+  admission_no: [
+    'admission_no',
+    'admission_number',
+    'admission_no_',
+    'admission',
+    'adm_no',
+    'admno',
+    'login_id',
+    'student_id',
+  ],
+  dob: ['dob', 'date_of_birth', 'date_of_birth_', 'birth_date', 'birthdate', 'd_o_b'],
+  class_label: ['class', 'class_label', 'grade', 'std', 'standard'],
+  section_label: ['section', 'section_label', 'sec'],
+  guardian_name: ['guardian', 'guardian_name', 'parent', 'parent_name', 'father_name'],
 };
+
+/** `Admission No.` → `admission_no`; also used for every lookup below. */
+function normaliseHeader(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
 
 type PreviewRow = {
   full_name: string;
@@ -37,6 +55,15 @@ type PreviewRow = {
   password: string;
   error?: string;
 };
+
+/** Never throws — a bad cell becomes an error on that row, not a dead preview. */
+function safeDob(value: string): string | null {
+  try {
+    return normalizeDob(value).iso;
+  } catch {
+    return null;
+  }
+}
 
 function pick(row: Record<string, string>, field: string): string {
   for (const alias of HEADER_ALIASES[field]) {
@@ -65,7 +92,7 @@ export default function People() {
       data.notify('Full name and admission number are required.');
       return;
     }
-    const isoDob = form.dob ? normalizeDob(form.dob)?.iso ?? null : null;
+    const isoDob = form.dob ? safeDob(form.dob) : null;
     data.addPerson({
       full_name: form.full_name.trim(),
       login_id: form.login_id.trim(),
@@ -85,9 +112,21 @@ export default function People() {
       setPreview([]);
       return;
     }
-    const rows = parseCsv(text);
-    if (rows.length === 0) {
+    const rawRows = parseCsv(text);
+    if (rawRows.length === 0) {
       setParseError('No data rows found. The first line must be a header row.');
+      setPreview([]);
+      return;
+    }
+    const rows = rawRows.map((raw) => {
+      const out: Record<string, string> = {};
+      for (const [key, value] of Object.entries(raw)) out[normaliseHeader(key)] = value;
+      return out;
+    });
+    if (rows.every((row) => !pick(row, 'full_name') && !pick(row, 'admission_no'))) {
+      setParseError(
+        'No recognisable columns. The header row needs at least “Student Name” and “Admission No.”.',
+      );
       setPreview([]);
       return;
     }
@@ -98,13 +137,13 @@ export default function People() {
       const dob = pick(row, 'dob');
       const class_label = pick(row, 'class_label');
       const section_label = pick(row, 'section_label');
-      const isoDob = dob ? (normalizeDob(dob)?.iso ?? null) : null;
+      const isoDob = dob ? safeDob(dob) : null;
 
       let error: string | undefined;
       if (!full_name) error = 'Missing student name';
       else if (!admission_no) error = 'Missing admission number';
       else if (!dob) error = 'Missing date of birth';
-      else if (!isoDob) error = `Unreadable date "${dob}"`;
+      else if (!isoDob) error = `"${dob}" is not a valid date (use DD/MM/YYYY)`;
       else if (seen.has(admission_no.toLowerCase())) error = 'Duplicate admission number';
 
       if (admission_no) seen.add(admission_no.toLowerCase());
@@ -287,8 +326,8 @@ export default function People() {
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
                 <p className="mt-1 text-xs text-muted">
-                  {form.dob && normalizeDob(form.dob)
-                    ? `Password will be ${passwordFromDob(normalizeDob(form.dob)!.iso)}`
+                  {form.dob && safeDob(form.dob)
+                    ? `Password will be ${passwordFromDob(safeDob(form.dob)!)}`
                     : 'Password is generated as Student@DDMMYYYY'}
                 </p>
               </div>

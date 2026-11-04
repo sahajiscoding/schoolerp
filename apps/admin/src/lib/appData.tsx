@@ -120,13 +120,29 @@ function initialData(): AppState {
 }
 
 function loadData(): AppState {
+  const fresh = initialData();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return initialData();
+    if (!raw) return fresh;
     const parsed = JSON.parse(raw) as Partial<AppState>;
-    return { ...initialData(), ...parsed };
+    // Any collection that is empty in storage but seeded by a newer build is
+    // back-filled, so a stale demo never hides new modules.
+    const merged: AppState = { ...fresh, ...parsed };
+    for (const key of Object.keys(fresh) as (keyof AppState)[]) {
+      const stored = parsed[key];
+      const seeded = fresh[key];
+      if (
+        Array.isArray(stored) &&
+        stored.length === 0 &&
+        Array.isArray(seeded) &&
+        seeded.length > 0
+      ) {
+        (merged as unknown as Record<string, unknown>)[key] = seeded;
+      }
+    }
+    return merged;
   } catch {
-    return initialData();
+    return fresh;
   }
 }
 
@@ -151,11 +167,12 @@ interface AppDataContextValue extends AppState {
   returnBook: (issueId: string) => void;
   reserveBook: (bookId: string, studentId: string) => void;
   addReportCard: (input: Omit<ReportCard, 'id' | 'generated_at'>) => void;
-  saveAttendance: (records: Omit<AttendanceRecord, 'id'>[]) => void;
+  saveAttendance: (records: Array<Omit<AttendanceRecord, 'id' | 'note'> & { note?: string }>) => void;
   recordPayment: (invoiceId: string, amount: number) => void;
   linkSibling: (studentId: string, siblingId: string, discount: number) => void;
   unlinkSibling: (linkId: string) => void;
   removeReportCard: (id: string) => void;
+  removeBook: (id: string) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   sendMessage: (threadId: string, senderId: string, body: string) => void;
@@ -557,6 +574,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     notify('Report card withdrawn.');
   }, [notify]);
 
+  const removeBook: AppDataContextValue['removeBook'] = useCallback((id) => {
+    setState((current) => ({
+      ...current,
+      books: current.books.filter((book) => book.id !== id),
+      bookIssues: current.bookIssues.filter((issue) => issue.book_id !== id),
+    }));
+    notify('Book removed from the catalogue.');
+  }, [notify]);
+
   const markNotificationRead: AppDataContextValue['markNotificationRead'] = useCallback((id) => {
     setState((current) => ({
       ...current,
@@ -756,6 +782,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       linkSibling,
       unlinkSibling,
       removeReportCard,
+      removeBook,
       markNotificationRead,
       markAllNotificationsRead,
       sendMessage,
@@ -798,6 +825,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       linkSibling,
       unlinkSibling,
       removeReportCard,
+      removeBook,
       markNotificationRead,
       markAllNotificationsRead,
       sendMessage,

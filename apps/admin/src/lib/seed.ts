@@ -364,7 +364,22 @@ export const seedDeclarations: DeclarationForm[] = [
   },
 ];
 
-export const seedPolls: Poll[] = [];
+export const seedPolls: Poll[] = [
+  {
+    id: 'poll-1',
+    question: 'Which topic should we revise first for the half-yearly?',
+    audience: 'Section E',
+    created_by: 'p-teacher-2',
+    created_at: '2026-11-02T05:00:00.000Z',
+    closes_at: '2026-11-09',
+    options: [
+      { id: 'opt-1', label: 'Quadratic equations' },
+      { id: 'opt-2', label: 'Polynomials' },
+      { id: 'opt-3', label: 'Coordinate geometry' },
+    ],
+    votes: { 'p-student-2': 'opt-1', 'p-student-3': 'opt-1', 'p-student-4': 'opt-2' },
+  },
+];
 
 export const seedEvents: SchoolEvent[] = [
   {
@@ -429,7 +444,46 @@ export const seedEvents: SchoolEvent[] = [
   },
 ];
 
-export const seedStudyMaterials: StudyMaterial[] = [];
+export const seedStudyMaterials: StudyMaterial[] = [
+  {
+    id: 'mat-1',
+    title: 'AI Practical 2 — System Map',
+    description:
+      'Work through the system map example from class, then build the flowchart for your own project idea. Print and bring it to the next lab.',
+    subject: 'Artificial Intelligence',
+    section_label: 'IX - E',
+    file_name: 'System-Map-Practical-2.pdf',
+    file_size: '302.28 KB',
+    type: 'PDF',
+    uploaded_by: 'p-teacher-1',
+    created_at: '2026-11-01T04:30:00.000Z',
+  },
+  {
+    id: 'mat-2',
+    title: 'Quadratic Equations — Formula Sheet',
+    description:
+      'One-page summary of the discriminant, the quadratic formula and the three forms of a quadratic expression.',
+    subject: 'Mathematics',
+    section_label: 'IX - E',
+    file_name: 'Quadratic-Formula-Sheet.pdf',
+    file_size: '184.10 KB',
+    type: 'PDF',
+    uploaded_by: 'p-teacher-2',
+    created_at: '2026-10-30T06:00:00.000Z',
+  },
+  {
+    id: 'mat-3',
+    title: 'Anne Frank — Chapter Notes',
+    description: 'Character list and the diary timeline for the half-yearly revision.',
+    subject: 'English',
+    section_label: 'IX - E',
+    file_name: 'Anne-Frank-Notes.pdf',
+    file_size: '96.44 KB',
+    type: 'PDF',
+    uploaded_by: 'p-teacher-2',
+    created_at: '2026-10-29T09:15:00.000Z',
+  },
+];
 
 export const seedBooks: Book[] = [
   {

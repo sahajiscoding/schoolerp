@@ -11,7 +11,7 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
-import { FiBookOpen, FiPlus, FiSend, FiRotateCcw } from 'react-icons/fi';
+import { FiBookOpen, FiPlus, FiSend, FiRotateCcw, FiTrash2 } from 'react-icons/fi';
 
 export default function Library() {
   const { profile, isAdmin, isTeacher } = useAuth();
@@ -105,23 +105,47 @@ export default function Library() {
                 Copies: {book.available_copies} / {book.total_copies} available
               </div>
             </div>
-            {canManage && book.available_copies > 0 ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIssueForm({ book_id: book.id, student_id: '', due_at: '' });
-                  setOpenIssue(true);
-                }}
-                className="w-full text-sm"
-              >
-                <FiSend size={14} /> Issue
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" disabled className="w-full text-sm">
-                All issued
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {canManage ? (
+                book.available_copies > 0 ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIssueForm({ book_id: book.id, student_id: '', due_at: '' });
+                      setOpenIssue(true);
+                    }}
+                    className="flex-1 text-sm"
+                  >
+                    <FiSend size={14} /> Issue
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" disabled className="flex-1 text-sm">
+                    All issued
+                  </Button>
+                )
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={book.available_copies === 0}
+                  onClick={() => profile && data.reserveBook(book.id, profile.id)}
+                  className="flex-1 text-sm"
+                >
+                  <FiBookOpen size={14} /> {book.available_copies === 0 ? 'All issued' : 'Reserve'}
+                </Button>
+              )}
+              {isAdmin() && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => data.removeBook(book.id)}
+                  aria-label={`Remove ${book.title}`}
+                >
+                  <FiTrash2 size={14} />
+                </Button>
+              )}
+            </div>
           </Card>
         ))}
         {data.books.length === 0 && (
