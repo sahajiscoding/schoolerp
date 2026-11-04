@@ -241,16 +241,6 @@ export interface ChatThread {
   created_at: string;
 }
 
-export interface Circular {
-  id: string;
-  title: string;
-  type: string;
-  number: string;
-  date: string;
-  recipients: string;
-  body?: string;
-}
-
 export interface ImportRow {
   full_name: string;
   admission_no: string;

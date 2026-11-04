@@ -6,7 +6,6 @@ import type {
   Book,
   BookIssue,
   ChatThread,
-  Circular,
   CourseProgressEntry,
   DeclarationForm,
   FeeInvoice,
@@ -668,8 +667,6 @@ export const seedThreads: ChatThread[] = [
     ],
   },
 ];
-
-export const seedCirculars: Circular[] = [];
 
 export const seedGallery: GalleryAlbum[] = [
   {

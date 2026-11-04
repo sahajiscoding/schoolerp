@@ -51,6 +51,7 @@ This file is the single source of truth for project state. Every agent must read
 | Dashboard schema + RLS | `supabase/migrations/0002_dashboard_modules.sql` | 15 tables, class-teacher helpers, sibling links, admin-only fees; 82 statements, parses clean |
 | Base RLS matrix | `supabase/tests/rls_matrix.sql` | 24 assertions |
 | Dashboard RLS matrix | `supabase/tests/rls_matrix_dashboard.sql` | 24 assertions (leave routing, self-approval guard, events scoping, fees/siblings, cards) |
+| Local RLS verifier | `supabase/tests/verify_rls_local.py` | Boots a throwaway Postgres, applies both migrations, asserts 20 rules as `authenticated` — **all pass** |
 | Admin provisioning function | `supabase/functions/admin-users/index.ts` | `create-admin`, `import-students` (`Student@DDMMYYYY`); verifies JWT + admin role, writes audit log |
 | Shared CORS | `supabase/functions/_shared/cors.ts` | — |
 | Admin bootstrap | `scripts/create-admin.mjs` | Local-only, service role from environment |
@@ -63,12 +64,17 @@ This file is the single source of truth for project state. Every agent must read
 - `npm run lint --workspace=apps/admin` — 0 errors, 6 pre-existing fast-refresh/exhaustive-deps warnings.
 - Runtime smoke test (jsdom + esbuild bundle, 2026-11-04): booted the real app, signed in as each demo user, visited all 19 routes — no runtime errors; student menu excludes administration; teacher is redirected off admin routes.
 - CSV import smoke test: 4-row file with `Student Name, Admission No., Date of Birth` headers → 2 valid / 2 flagged, correct `Student@DDMMYYYY` passwords, bad date rejected, import writes rows to the table.
-- All three SQL files parse with `pglast`. **Not yet applied to a live database** — no Supabase project is attached to this environment.
+- All three SQL files parse with `pglast`.
+- **Both migrations applied to a real Postgres 14 instance** (via `pgserver`) on 2026-11-04. This caught three genuine defects that a parser cannot see:
+  1. `class_teacher_id` was added *after* the helper functions that read it — every call raised `column s.class_teacher_id does not exist`. The `ALTER TABLE` now runs first.
+  2. `section_ids <@ ARRAY(SELECT …)` in the teacher-event policy compared an array against a single row, so teachers could never publish a class event. Replaced with `NOT EXISTS (… NOT teaches_section(…))`.
+  3. A leave could be moved between any two statuses by any reviewer; the policy now requires `status = 'pending'` on the way in and `decided_by = auth.uid()` on the way out.
+- 20 RLS assertions run as the `authenticated` role: all pass (leave routing to the class teacher only, peer rows invisible, students cannot mark attendance, author report cards, create sibling links or approve their own leave, teachers cannot publish school-wide events).
 
 ## Known gaps
 
 1. The admin console still runs on the demo store. Wiring it to the new tables (replacing `appData.tsx` with Supabase queries) is the next step; the types and RLS already match.
-2. `0002` has not been executed against Postgres. pgTAP suites have not been run (`supabase test db` requires a local stack).
+2. The pgTAP suites themselves have not been run through `supabase test db` (no Docker here); their rules are covered by `supabase/tests/verify_rls_local.py`, which passes against real Postgres 14.
 3. Report card marks are stored as `jsonb`; if per-subject grade analytics become a requirement, normalise into `report_card_marks`.
 4. Mobile app screens are still scaffold-only.
 5. Design review against the owner's reference screenshots is pending — the sandbox cannot run a browser, so visual QA is by code and build.

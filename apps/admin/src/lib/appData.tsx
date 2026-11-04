@@ -4,7 +4,6 @@ import {
   seedAttendance,
   seedBookIssues,
   seedBooks,
-  seedCirculars,
   seedCourseProgress,
   seedDeclarations,
   seedEvents,
@@ -31,7 +30,6 @@ import type {
   Book,
   BookIssue,
   ChatThread,
-  Circular,
   CourseProgressEntry,
   DeclarationForm,
   FeeInvoice,
@@ -73,7 +71,6 @@ interface AppState {
   gallery: GalleryAlbum[];
   notifications: AppNotification[];
   threads: ChatThread[];
-  circulars: Circular[];
   subjects: Subject[];
   classes: SchoolClass[];
   audit: AuditEntry[];
@@ -112,7 +109,6 @@ function initialData(): AppState {
     gallery: seedGallery,
     notifications: seedNotifications,
     threads: seedThreads,
-    circulars: seedCirculars,
     subjects: seedSubjects,
     classes: seedClasses,
     audit: seedAudit,
@@ -177,7 +173,6 @@ interface AppDataContextValue extends AppState {
   markAllNotificationsRead: () => void;
   sendMessage: (threadId: string, senderId: string, body: string) => void;
   createThread: (input: { subject: string; participant_ids: string[]; sender_id: string; body: string }) => void;
-  addCircular: (input: Omit<Circular, 'id'>) => void;
   addSubject: (input: Omit<Subject, 'id'>) => void;
   removeSubject: (id: string) => void;
   addClass: (input: { name: string; sections: string[] }) => void;
@@ -636,14 +631,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     notify('Message sent.');
   }, [notify]);
 
-  const addCircular: AppDataContextValue['addCircular'] = useCallback((input) => {
-    setState((current) => ({
-      ...current,
-      circulars: [{ ...input, id: uid('circular') }, ...current.circulars],
-    }));
-    notify('Circular published.');
-  }, [notify]);
-
   const addSubject: AppDataContextValue['addSubject'] = useCallback((input) => {
     setState((current) => ({
       ...current,
@@ -787,7 +774,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       markAllNotificationsRead,
       sendMessage,
       createThread,
-      addCircular,
       addSubject,
       removeSubject,
       addClass,
@@ -830,7 +816,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       markAllNotificationsRead,
       sendMessage,
       createThread,
-      addCircular,
       addSubject,
       removeSubject,
       addClass,
