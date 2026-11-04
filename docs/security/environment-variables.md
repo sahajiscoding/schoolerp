@@ -26,6 +26,13 @@ lookup order is: exact Vercel name → `VITE_` alias → legacy `ANON` alias.
 `apps/admin/src/lib/supabase.ts` reads the same names, so a `.env` written with
 either family works without touching source.
 
+Vite only puts `VITE_`-prefixed variables into `process.env` and only exposes
+`VITE_`-prefixed variables to client code, so the config reads `.env*` files
+through `loadEnv(mode, process.cwd(), '')`. Without that, a plain
+`SUPABASE_URL=` line in `apps/admin/.env` was ignored and the console fell back
+to demo mode, reporting "Supabase not configured" even though the value was set.
+Shell/Vercel values still win over `.env` file values.
+
 ### Why the names matter
 
 The admin app is deployed on Vercel with `SUPABASE_URL` and
