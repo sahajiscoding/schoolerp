@@ -357,9 +357,15 @@ CREATE POLICY "polls_read" ON polls FOR SELECT USING (true);
 CREATE POLICY "polls_teacher_insert" ON polls
   FOR INSERT WITH CHECK (auth.uid() = created_by AND (app_role() = 'teacher' OR is_admin()));
 CREATE POLICY "poll_options_read" ON poll_options FOR SELECT USING (true);
+-- `poll_id` binds to the outer poll_options row. Spelled out as
+-- poll_options.poll_id so it can never be mistaken for (or shadowed by) a
+-- column of `polls`.
 CREATE POLICY "poll_options_owner_insert" ON poll_options
   FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM polls p WHERE p.id = poll_id AND p.created_by = auth.uid())
+    EXISTS (
+      SELECT 1 FROM polls p
+      WHERE p.id = poll_options.poll_id AND p.created_by = auth.uid()
+    )
   );
 CREATE POLICY "poll_votes_read" ON poll_votes
   FOR SELECT USING (auth.uid() = student_id OR is_admin());
