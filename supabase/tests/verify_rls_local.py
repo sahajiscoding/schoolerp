@@ -141,6 +141,10 @@ neg = [
  ("student creates sibling link", attempt(ids['sa'], f"insert into sibling_links (student_id,sibling_id,discount_percent) values ('{ids['sb']}','{ids['sa']}',50)")),
  ("student approves own leave", attempt(ids['sb'], f"update leave_requests set status='approved' where student_id='{ids['sb']}'")),
  ("teacher creates school-wide event", attempt(ids['cteach'], f"insert into school_events (title,kind,start_date,end_date,section_ids,created_by) values ('Fake','Holiday','2026-12-01','2026-12-01','{{}}','{ids['cteach']}')")),
+ # Regression: the threads INSERT policy compared `e.student_id = student_id`,
+ # which collapsed to a tautology and let a teacher open a thread with ANY
+ # student. 'sa' sits in a section this teacher does not teach.
+ ("teacher opens thread with foreign student", attempt(ids['oteach'], f"insert into threads (teacher_id,student_id,subject) values ('{ids['oteach']}','{ids['sa']}','Extra classes')")),
 ]
 for name, res in neg:
     ok = res.startswith("DENIED") or res.startswith("NO-ROWS"); fails += 0 if ok else 1
@@ -151,6 +155,7 @@ pos = [
  ("class teacher approves leave", attempt(ids['cteach'], f"update leave_requests set status='approved', decided_by='{ids['cteach']}' where student_id='{ids['sa']}'")),
  ("teacher creates class event", attempt(ids['oteach'], f"insert into school_events (title,kind,start_date,end_date,section_ids,created_by) values ('Unit test','Exam','2026-12-02','2026-12-02',ARRAY['{osec}']::uuid[],'{ids['oteach']}')")),
  ("admin applies sibling discount", attempt(ids['admin'], f"update fee_records set sibling_discount_percent=50 where student_id='{ids['sb']}'")),
+ ("teacher opens thread with own student", attempt(ids['oteach'], f"insert into threads (teacher_id,student_id,subject) values ('{ids['oteach']}','{ids['sb']}','Revision plan')")),
 ]
 for name, res in pos:
     ok = res == "ALLOWED"; fails += 0 if ok else 1

@@ -363,13 +363,17 @@ CREATE POLICY "submissions_admin_read_only" ON submissions
 CREATE POLICY "threads_participant" ON threads
   FOR SELECT USING (is_thread_participant(id) OR is_admin());
 
+-- NOTE: `student_id` here must be qualified with the outer table. Bare, it
+-- resolves to nothing usable inside the subquery's scope and the predicate
+-- degenerates to `e.student_id = e.student_id`, letting a teacher open a thread
+-- with any student in the school. `threads.student_id` is the outer reference.
 CREATE POLICY "threads_teacher_insert" ON threads
   FOR INSERT WITH CHECK (
     auth.uid() = teacher_id
     AND EXISTS (
       SELECT 1 FROM teaching_assignments ta
       JOIN enrollments e ON e.section_id = ta.section_id
-      WHERE ta.teacher_id = auth.uid() AND e.student_id = student_id
+      WHERE ta.teacher_id = auth.uid() AND e.student_id = threads.student_id
     )
   );
 
