@@ -10,6 +10,12 @@
 --   * Fees and sibling links are admin-owned.
 
 -- ---------------------------------------------------------------------------
+-- sections: class teacher (must exist before the helpers below reference it)
+-- ---------------------------------------------------------------------------
+ALTER TABLE sections
+  ADD COLUMN IF NOT EXISTS class_teacher_id uuid REFERENCES profiles(id) ON DELETE SET NULL;
+
+-- ---------------------------------------------------------------------------
 -- helpers
 -- ---------------------------------------------------------------------------
 
@@ -48,12 +54,6 @@ AS $$
       AND ta.teacher_id = auth.uid()
   );
 $$;
-
--- ---------------------------------------------------------------------------
--- sections: class teacher
--- ---------------------------------------------------------------------------
-ALTER TABLE sections
-  ADD COLUMN IF NOT EXISTS class_teacher_id uuid REFERENCES profiles(id) ON DELETE SET NULL;
 
 -- ---------------------------------------------------------------------------
 -- students: admission number, date of birth, sibling link
@@ -315,8 +315,13 @@ CREATE POLICY "leave_requests_student_read" ON leave_requests
 CREATE POLICY "leave_requests_student_insert" ON leave_requests
   FOR INSERT WITH CHECK (auth.uid() = student_id AND status = 'pending');
 CREATE POLICY "leave_requests_teacher_decide" ON leave_requests
-  FOR UPDATE USING (is_class_teacher_of(student_id) OR is_admin())
-  WITH CHECK (is_class_teacher_of(student_id) OR is_admin());
+  FOR UPDATE
+  USING ((is_class_teacher_of(student_id) OR is_admin()) AND status = 'pending')
+  WITH CHECK (
+    (is_class_teacher_of(student_id) OR is_admin())
+    AND status IN ('approved', 'rejected')
+    AND decided_by = auth.uid()
+  );
 CREATE POLICY "leave_requests_student_withdraw" ON leave_requests
   FOR DELETE USING (auth.uid() = student_id AND status = 'pending');
 
@@ -367,8 +372,10 @@ CREATE POLICY "school_events_teacher_insert" ON school_events
     auth.uid() = created_by
     AND app_role() = 'teacher'
     AND cardinality(section_ids) > 0
-    AND section_ids <@ ARRAY(
-      SELECT ta.section_id FROM teaching_assignments ta WHERE ta.teacher_id = auth.uid()
+    AND NOT EXISTS (
+      SELECT 1
+      FROM unnest(section_ids) AS s(section_id)
+      WHERE NOT teaches_section(s.section_id)
     )
   );
 CREATE POLICY "school_events_owner_update" ON school_events
