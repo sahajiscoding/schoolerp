@@ -6,7 +6,7 @@ Two suites, same rules.
 |---|---|---|
 | `rls_matrix.sql` | pgTAP (`supabase test db`) | Canonical. Runs in CI with a local Supabase stack. |
 | `rls_matrix_dashboard.sql` | pgTAP | Canonical, for `0002_dashboard_modules.sql`. |
-| `verify_rls_local.py` | plain Python + `pgserver` | Fallback when Docker/Supabase CLI is unavailable. Boots a throwaway Postgres, applies both migrations and asserts 20 rules as the `authenticated` role. |
+| `verify_rls_local.py` | plain Python + `pgserver` | Fallback when Docker/Supabase CLI is unavailable. Boots a throwaway Postgres, applies all three migrations and asserts 25 rules as the `authenticated` role. |
 
 What is covered:
 
