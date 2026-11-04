@@ -235,6 +235,10 @@ export default function Login() {
                   </p>
                 )}
 
+                <p className="text-xs text-slate-400 text-center mt-2">
+                  Demo: ADMIN001 / REDACTED · TCH001 / REDACTED · 0185/18 / Student@14052010
+                </p>
+
                 <button
                   type="submit"
                   disabled={loading}
