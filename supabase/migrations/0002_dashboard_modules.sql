@@ -23,34 +23,37 @@ ALTER TABLE sections
 CREATE OR REPLACE FUNCTION class_teacher_of_section(target_section uuid)
 RETURNS uuid
 LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
 AS $$
-  SELECT s.class_teacher_id FROM sections s WHERE s.id = target_section;
+  SELECT s.class_teacher_id FROM public.sections s WHERE s.id = target_section;
 $$;
 
 -- True when the caller is the class teacher for the student's current section.
-CREATE OR REPLACE FUNCTION is_class_teacher_of(student uuid)
+CREATE OR REPLACE FUNCTION is_class_teacher_of(p_student uuid)
 RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM enrollments e
-    LEFT JOIN sections s ON s.id = e.section_id
-    WHERE e.student_id = student
+    FROM public.enrollments e
+    LEFT JOIN public.sections s ON s.id = e.section_id
+    WHERE e.student_id = p_student
       AND s.class_teacher_id = auth.uid()
   );
 $$;
 
 -- True when caller teaches any subject in the student's section.
-CREATE OR REPLACE FUNCTION teaches_student(student uuid)
+CREATE OR REPLACE FUNCTION teaches_student(p_student uuid)
 RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM enrollments e
-    JOIN teaching_assignments ta ON ta.section_id = e.section_id
-    WHERE e.student_id = student
+    FROM public.enrollments e
+    JOIN public.teaching_assignments ta ON ta.section_id = e.section_id
+    WHERE e.student_id = p_student
       AND ta.teacher_id = auth.uid()
   );
 $$;
