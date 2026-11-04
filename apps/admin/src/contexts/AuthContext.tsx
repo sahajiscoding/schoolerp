@@ -1,18 +1,58 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import { supabase, configHint, missingSupabaseConfig } from '../lib/supabase';
+import { toAuthEmail } from '../lib/utils';
 import type { Profile, Role } from '@schoolerp/shared';
+import { useAppData } from '../lib/appData';
+
+const DEMO_LOGINS: Record<
+  string,
+  { password: string; role: Role; full_name: string; login_id: string }
+> = {
+  ADMIN001: {
+    password: 'Admin@1234',
+    role: 'admin',
+    full_name: 'School Administrator',
+    login_id: 'ADMIN001',
+  },
+  TCH001: {
+    password: 'Teacher@1234',
+    role: 'teacher',
+    full_name: 'Anuradha Gupta',
+    login_id: 'TCH001',
+  },
+  '0185/18': {
+    password: 'Student@14052010',
+    role: 'student',
+    full_name: 'Sahaj Chugh',
+    login_id: '0185/18',
+  },
+};
 
 interface AuthContextType {
   profile: Profile | null;
   sessionUserId: string | null;
   loading: boolean;
+  demoMode: boolean;
+  configError: string | null;
   signIn: (loginId: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   requireRole: (roles: Role[]) => boolean;
   isAdmin: () => boolean;
   isTeacher: () => boolean;
   isStudent: () => boolean;
+  viewAsRole: (role: Role | null) => void;
+  viewingRole: Role | null;
 }
+
+export { useAppData };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -26,6 +66,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewingRole, setViewingRole] = useState<Role | null>(null);
+
+  const demoMode = missingSupabaseConfig();
+  const configError = demoMode ? configHint() : null;
+
+  // Resolve the "effective" role for display/authorisation: explicit view-as
+  // override wins, then the real profile role.
+  const effectiveRole = useMemo(() => {
+    if (viewingRole) return viewingRole;
+    return profile?.role ?? null;
+  }, [viewingRole, profile]);
+
+  const isAdmin = () => effectiveRole === 'admin';
+  const isTeacher = () => effectiveRole === 'teacher';
+  const isStudent = () => effectiveRole === 'student';
+  const requireRole = (roles: Role[]) => !!effectiveRole && roles.includes(effectiveRole);
 
   useEffect(() => {
     let mounted = true;
@@ -76,27 +132,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (loginId: string, password: string) => {
-    if (!supabase) return { error: 'Supabase not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.' };
-    const email = `${loginId.toLowerCase()}@pws.local`;
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
-  };
+  const signIn = useCallback(
+    async (loginId: string, password: string) => {
+      // Demo path: exact credentials without hitting Supabase.
+      const demo = DEMO_LOGINS[loginId];
+      if (demo && demo.password === password) {
+        setSessionUserId(`demo-${demo.login_id}`);
+        setProfile({
+          id: `demo-${demo.login_id}`,
+          role: demo.role,
+          full_name: demo.full_name,
+          login_id: demo.login_id,
+          must_change_password: false,
+          is_active: true,
+          avatar_path: null,
+          created_at: new Date().toISOString(),
+        });
+        return { error: null };
+      }
 
-  const signOut = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
+      if (!supabase) {
+        return { error: 'Supabase not configured. Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY.' };
+      }
+
+      const email = toAuthEmail(loginId);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error: error?.message ?? null };
+    },
+    [supabase],
+  );
+
+  const signOut = useCallback(async () => {
+    if (supabase) await supabase.auth.signOut();
     setProfile(null);
     setSessionUserId(null);
-  };
+    setViewingRole(null);
+  }, [supabase]);
 
-  const requireRole = (roles: Role[]) => !!profile && roles.includes(profile.role);
-  const isAdmin = () => profile?.role === 'admin';
-  const isTeacher = () => profile?.role === 'teacher';
-  const isStudent = () => profile?.role === 'student';
+  const viewAsRole = useCallback((role: Role | null) => {
+    setViewingRole(role);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ profile, sessionUserId, loading, signIn, signOut, requireRole, isAdmin, isTeacher, isStudent }}>
+    <AuthContext.Provider
+      value={{
+        profile,
+        sessionUserId,
+        loading,
+        demoMode,
+        configError,
+        signIn,
+        signOut,
+        requireRole,
+        isAdmin,
+        isTeacher,
+        isStudent,
+        viewAsRole,
+        viewingRole,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
