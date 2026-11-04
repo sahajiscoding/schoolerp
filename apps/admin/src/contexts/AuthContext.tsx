@@ -25,11 +25,11 @@ import { useAppData } from '../lib/appData';
 type DemoLogin = { password: string; role: Role; full_name: string; login_id: string; id: string };
 
 /**
- * Demo credentials, defined inside a development-only branch so Rollup can fold
- * the whole object away in a production build. Verify with:
+ * Demo credentials, defined inside a compile-time-false branch so the bundler
+ * folds the whole object away in a production build. Verify with:
  *   npm run build && grep -c 'REDACTED' apps/admin/dist/assets/*.js   # 0
  */
-const DEMO_LOGINS: Record<string, DemoLogin> = import.meta.env.DEV
+const DEMO_LOGINS: Record<string, DemoLogin> = __DEMO_MODE__
   ? {
       ADMIN001: {
         password: 'REDACTED',

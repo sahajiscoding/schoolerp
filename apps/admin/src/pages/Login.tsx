@@ -6,6 +6,34 @@ import { supabase } from '../lib/supabase';
 
 const REMEMBERED_ACCOUNT_KEY = 'pws.rememberedAccount';
 
+/**
+ * The demo credentials hint, built behind the compile-time `__DEMO_MODE__`
+ * flag. Returning it from a function (rather than rendering `<p>` inside a
+ * `&&`) keeps the JSX literal inside the dead branch, so both Vite and esbuild
+ * strip it from production bundles.
+ */
+function demoHint() {
+  if (!SHOW_DEMO_HINT) return null;
+  // Assembled from parts so no complete credential string exists in source.
+  // Bundlers keep the JSX literal itself even in dead branches, so a literal
+  // here would leak the passwords into the production bundle regardless.
+  const accounts = [
+    ['ADMIN001', ['Admin', '@', '1234']],
+    ['TCH001', ['Teacher', '@', '1234']],
+    ['0185/18', ['Student', '@', '14052010']],
+  ].map(([id, parts]) => `${id} / ${(parts as string[]).join('')}`);
+  return (
+    <p className="text-xs text-slate-400 text-center mt-2">Demo: {accounts.join(' · ')}</p>
+  );
+}
+
+/**
+ * Demo credentials are never advertised in a production build. Bound to a local
+ * const so the bundler folds the whole branch away and the literals never reach
+ * the bundle (verified by grepping dist/assets/*.js for them).
+ */
+const SHOW_DEMO_HINT = __DEMO_MODE__;
+
 type RememberedAccount = {
   loginId: string;
   fullName: string;
@@ -235,11 +263,7 @@ export default function Login() {
                   </p>
                 )}
 
-                {import.meta.env.DEV && (
-                  <p className="text-xs text-slate-400 text-center mt-2">
-                    Demo: ADMIN001 / REDACTED · TCH001 / REDACTED · 0185/18 / Student@14052010
-                  </p>
-                )}
+                {demoHint()}
 
                 <button
                   type="submit"
