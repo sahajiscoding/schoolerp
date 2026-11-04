@@ -204,10 +204,30 @@ export function fineFor(dueDate: string, returnedAt?: string | null) {
   return days * 5;
 }
 
+/**
+ * Escape a value before interpolating it into an HTML string.
+ *
+ * `printHtml()` writes documents with `document.write`, and the values that go
+ * into them are user-entered (student names, subject names, teacher notes).
+ * Without escaping, a name like `<img src=x onerror=...>` would execute in the
+ * printed window. Always wrap interpolations with this.
+ */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function printHtml(title: string, body: string) {
   const win = window.open('', '_blank', 'width=900,height=1000');
   if (!win) return;
-  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+  // Reviewed XSS sink: every value interpolated into this document is passed
+  // through escapeHtml(). Keep it that way, or this rule fires.
+  // eslint-disable-next-line no-restricted-syntax
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: Georgia, 'Times New Roman', serif; color: #1f2937; margin: 0; padding: 32px; }

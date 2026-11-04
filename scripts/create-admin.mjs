@@ -35,10 +35,9 @@ function loadEnvFile(path) {
   return out;
 }
 
-const fileEnv = {
-  ...loadEnvFile('.env.local'),
-  ...loadEnvFile('.env'),
-};
+// Fixed, repo-local filenames — never derived from user input.
+const ENV_FILES = ['.env.local', '.env'];
+const fileEnv = Object.assign({}, ...ENV_FILES.map((name) => loadEnvFile(name)));
 
 const url =
   process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || fileEnv.SUPABASE_URL || fileEnv.VITE_SUPABASE_URL;
