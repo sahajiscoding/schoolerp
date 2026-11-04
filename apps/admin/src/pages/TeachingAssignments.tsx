@@ -9,7 +9,7 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
-import { FiSend, FiPlus, FiEdit3, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiEdit3, FiTrash2 } from 'react-icons/fi';
 
 export default function TeachingAssignments() {
   const { isAdmin } = useAuth();

@@ -12,29 +12,48 @@ import { toAuthEmail } from '../lib/utils';
 import type { Profile, Role } from '@schoolerp/shared';
 import { useAppData } from '../lib/appData';
 
-const DEMO_LOGINS: Record<
-  string,
-  { password: string; role: Role; full_name: string; login_id: string }
-> = {
-  ADMIN001: {
-    password: 'REDACTED',
-    role: 'admin',
-    full_name: 'School Administrator',
-    login_id: 'ADMIN001',
-  },
-  TCH001: {
-    password: 'REDACTED',
-    role: 'teacher',
-    full_name: 'Anuradha Gupta',
-    login_id: 'TCH001',
-  },
-  '0185/18': {
-    password: 'Student@14052010',
-    role: 'student',
-    full_name: 'Sahaj Chugh',
-    login_id: '0185/18',
-  },
-};
+/**
+ * Demo accounts map to real seeded profiles (`seed.ts`). The `id` MUST be the
+ * seeded person id — every "my …" screen looks the signed-in user up by id, so
+ * a synthetic id would leave the student's fees, attendance and leaves empty.
+ *
+ * These exist so the console is usable before a Supabase project is attached.
+ * They are gated twice: `signIn()` only consults them when no Supabase client
+ * exists, and a production build folds the table away entirely, so the
+ * literals never ship in a bundle that could reach a real project.
+ */
+type DemoLogin = { password: string; role: Role; full_name: string; login_id: string; id: string };
+
+/**
+ * Demo credentials, defined inside a compile-time-false branch so the bundler
+ * folds the whole object away in a production build. Verify with:
+ *   npm run build && grep -c 'REDACTED' apps/admin/dist/assets/*.js   # 0
+ */
+const DEMO_LOGINS: Record<string, DemoLogin> = __DEMO_MODE__
+  ? {
+      ADMIN001: {
+        password: 'REDACTED',
+        role: 'admin',
+        full_name: 'School Administrator',
+        login_id: 'ADMIN001',
+        id: 'p-admin',
+      },
+      TCH001: {
+        password: 'REDACTED',
+        role: 'teacher',
+        full_name: 'Anuradha Gupta',
+        login_id: 'TCH001',
+        id: 'p-teacher-1',
+      },
+      '0185/18': {
+        password: 'Student@14052010',
+        role: 'student',
+        full_name: 'Sahaj Chugh',
+        login_id: '0185/18',
+        id: 'p-student-1',
+      },
+    }
+  : {};
 
 interface AuthContextType {
   profile: Profile | null;
@@ -65,7 +84,10 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Without a Supabase client there is no session to wait for, so start out
+  // resolved rather than flipping `loading` inside an effect (which cascades
+  // renders on mount).
+  const [loading, setLoading] = useState(() => !missingSupabaseConfig());
   const [viewingRole, setViewingRole] = useState<Role | null>(null);
 
   const demoMode = missingSupabaseConfig();
@@ -87,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     const client = supabase;
     if (!client) {
-      setLoading(false);
+      // `loading` already starts false in this case; nothing to await.
       return undefined;
     }
 
@@ -134,12 +156,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async (loginId: string, password: string) => {
-      // Demo path: exact credentials without hitting Supabase.
+      // The demo accounts are ONLY usable when there is no Supabase client.
+      // Checking them before this guard would leave a hardcoded admin password
+      // working against a configured production project — a complete auth
+      // bypass, since the client, not the database, would be deciding identity.
+      if (supabase) {
+        const email = toAuthEmail(loginId);
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        return { error: error?.message ?? null };
+      }
+
       const demo = DEMO_LOGINS[loginId];
       if (demo && demo.password === password) {
-        setSessionUserId(`demo-${demo.login_id}`);
+        setSessionUserId(demo.id);
         setProfile({
-          id: `demo-${demo.login_id}`,
+          id: demo.id,
           role: demo.role,
           full_name: demo.full_name,
           login_id: demo.login_id,
@@ -151,15 +182,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: null };
       }
 
-      if (!supabase) {
-        return { error: 'Supabase not configured. Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY.' };
-      }
-
-      const email = toAuthEmail(loginId);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      return { error: error?.message ?? null };
+      return {
+        error:
+          'Supabase not configured. Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in .env (or sign in with a demo account).',
+      };
     },
-    [supabase],
+    [],
   );
 
   const signOut = useCallback(async () => {

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AppDataProvider } from './lib/appData';
 import AppShell from './components/AppShell';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -24,7 +25,13 @@ import AuditLog from './pages/AuditLog';
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { loading, profile } = useAuth();
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-sand">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-olive/30 border-t-olive" />
+      </div>
+    );
+  }
   return profile ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
@@ -34,42 +41,106 @@ function GuestOnly({ children }: { children: ReactNode }) {
   return profile ? <Navigate to="/dashboard" replace /> : <>{children}</>;
 }
 
+/** Administration routes are admin-only in every role view. */
+function AdminOnly({ children }: { children: ReactNode }) {
+  const { isAdmin } = useAuth();
+  return isAdmin() ? <>{children}</> : <Navigate to="/dashboard" replace />;
+}
+
+/** Resets the shell's local UI state (mobile drawer, popover) on navigation. */
+function ShellRoute() {
+  const { pathname } = useLocation();
+  return <AppShell key={pathname} />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
-          <Route
-            path="/"
-            element={
-              <RequireAuth>
-                <AppShell />
-              </RequireAuth>
-            }
-          >
-            <Route index element={<Dashboard />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="approvals" element={<Approvals />} />
-            <Route path="course-progress" element={<CourseProgress />} />
-            <Route path="communications" element={<Communications />} />
-            <Route path="events" element={<Events />} />
-            <Route path="assignments" element={<Assignments />} />
-            <Route path="study-room" element={<StudyRoom />} />
-            <Route path="library" element={<Library />} />
-            <Route path="report-card" element={<ReportCard />} />
-            <Route path="attendance" element={<Attendance />} />
-            <Route path="fees" element={<Fees />} />
-            <Route path="gallery" element={<Gallery />} />
-            <Route path="people" element={<People />} />
-            <Route path="classes" element={<Classes />} />
-            <Route path="subjects" element={<Subjects />} />
-            <Route path="teaching-assignments" element={<TeachingAssignments />} />
-            <Route path="enrollments" element={<Enrollments />} />
-            <Route path="audit-log" element={<AuditLog />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <AppDataProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                <GuestOnly>
+                  <Login />
+                </GuestOnly>
+              }
+            />
+            <Route
+              path="/"
+              element={
+                <RequireAuth>
+                  <ShellRoute />
+                </RequireAuth>
+              }
+            >
+              <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="approvals" element={<Approvals />} />
+              <Route path="course-progress" element={<CourseProgress />} />
+              <Route path="communications" element={<Communications />} />
+              <Route path="events" element={<Events />} />
+              <Route path="assignments" element={<Assignments />} />
+              <Route path="study-room" element={<StudyRoom />} />
+              <Route path="library" element={<Library />} />
+              <Route path="report-card" element={<ReportCard />} />
+              <Route path="attendance" element={<Attendance />} />
+              <Route path="fees" element={<Fees />} />
+              <Route path="gallery" element={<Gallery />} />
+              <Route
+                path="people"
+                element={
+                  <AdminOnly>
+                    <People />
+                  </AdminOnly>
+                }
+              />
+              <Route
+                path="classes"
+                element={
+                  <AdminOnly>
+                    <Classes />
+                  </AdminOnly>
+                }
+              />
+              <Route
+                path="subjects"
+                element={
+                  <AdminOnly>
+                    <Subjects />
+                  </AdminOnly>
+                }
+              />
+              <Route
+                path="teaching-assignments"
+                element={
+                  <AdminOnly>
+                    <TeachingAssignments />
+                  </AdminOnly>
+                }
+              />
+              <Route
+                path="enrollments"
+                element={
+                  <AdminOnly>
+                    <Enrollments />
+                  </AdminOnly>
+                }
+              />
+              <Route
+                path="audit-log"
+                element={
+                  <AdminOnly>
+                    <AuditLog />
+                  </AdminOnly>
+                }
+              />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </AppDataProvider>
     </AuthProvider>
   );
 }

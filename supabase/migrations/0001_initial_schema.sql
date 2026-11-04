@@ -180,44 +180,56 @@ ALTER TABLE notification_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Helper functions
-CREATE OR REPLACE FUNCTION current_role() RETURNS text
+-- NOTE: `current_role` is a reserved SQL keyword; a function with that name
+-- cannot be created or called, so the helper is `app_role()`. Migration 0002
+-- also relies on this name.
+CREATE OR REPLACE FUNCTION app_role() RETURNS text
 LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
 AS $$
-  SELECT p.role FROM profiles p WHERE p.id = auth.uid();
+  SELECT p.role FROM public.profiles p WHERE p.id = auth.uid();
 $$;
 
 CREATE OR REPLACE FUNCTION is_admin() RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
 AS $$
-  SELECT p.role = 'admin' AND p.is_active FROM profiles p WHERE p.id = auth.uid();
+  SELECT p.role = 'admin' AND p.is_active FROM public.profiles p WHERE p.id = auth.uid();
 $$;
 
-CREATE OR REPLACE FUNCTION teaches_section(section_id uuid) RETURNS boolean
+-- NOTE: the parameter must NOT be named `section_id`. Inside the body a bare
+-- `section_id` resolves to the parameter, so `ta.section_id = section_id` is a
+-- tautology that returns true for every caller and every section. Verified on
+-- Postgres 14. Parameters are prefixed p_ for this reason.
+CREATE OR REPLACE FUNCTION teaches_section(p_section_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
 AS $$
   SELECT EXISTS (
-    SELECT 1 FROM teaching_assignments ta
+    SELECT 1 FROM public.teaching_assignments ta
     WHERE ta.teacher_id = auth.uid()
-      AND ta.section_id = section_id
+      AND ta.section_id = p_section_id
   );
 $$;
 
-CREATE OR REPLACE FUNCTION is_enrolled(student_id uuid) RETURNS boolean
+CREATE OR REPLACE FUNCTION is_enrolled(p_student_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
 AS $$
   SELECT EXISTS (
-    SELECT 1 FROM enrollments e
-    WHERE e.student_id = student_id
+    SELECT 1 FROM public.enrollments e
+    WHERE e.student_id = p_student_id
       AND e.academic_year IS NOT NULL
   );
 $$;
 
-CREATE OR REPLACE FUNCTION is_thread_participant(thread_id uuid) RETURNS boolean
+CREATE OR REPLACE FUNCTION is_thread_participant(p_thread_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
 AS $$
   SELECT EXISTS (
-    SELECT 1 FROM threads t
-    WHERE t.id = thread_id
+    SELECT 1 FROM public.threads t
+    WHERE t.id = p_thread_id
       AND (t.teacher_id = auth.uid() OR t.student_id = auth.uid())
   );
 $$;
@@ -351,13 +363,17 @@ CREATE POLICY "submissions_admin_read_only" ON submissions
 CREATE POLICY "threads_participant" ON threads
   FOR SELECT USING (is_thread_participant(id) OR is_admin());
 
+-- NOTE: `student_id` here must be qualified with the outer table. Bare, it
+-- resolves to nothing usable inside the subquery's scope and the predicate
+-- degenerates to `e.student_id = e.student_id`, letting a teacher open a thread
+-- with any student in the school. `threads.student_id` is the outer reference.
 CREATE POLICY "threads_teacher_insert" ON threads
   FOR INSERT WITH CHECK (
     auth.uid() = teacher_id
     AND EXISTS (
       SELECT 1 FROM teaching_assignments ta
       JOIN enrollments e ON e.section_id = ta.section_id
-      WHERE ta.teacher_id = auth.uid() AND e.student_id = student_id
+      WHERE ta.teacher_id = auth.uid() AND e.student_id = threads.student_id
     )
   );
 

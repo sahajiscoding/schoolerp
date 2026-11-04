@@ -1,56 +1,151 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-import { FiPlus, FiTrash2 } from 'react-icons/fi';
+import { useState } from 'react';
+import { useAppData as useData } from '../lib/appData';
+import {
+  Card,
+  Button,
+  Badge,
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui';
+import { FiPlus, FiTrash2, FiUsers } from 'react-icons/fi';
 
 export default function Classes() {
-  const { isAdmin } = useAuth();
-  const [classes, setClasses] = useState<any[]>([]);
-  const [name, setName] = useState('');
-  const [sortOrder, setSortOrder] = useState('0');
+  const data = useData();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: '', sections: 'A' });
 
-  useEffect(() => {
-    supabase.from('classes').select('*').order('sort_order').then(({ data }) => setClasses(data ?? []));
-  }, []);
-
-  const add = async (e: React.FormEvent) => {
+  const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await (supabase.from('classes') as any).insert({ name, sort_order: parseInt(sortOrder) });
-    if (error) { alert(error.message); return; }
-    setName(''); setSortOrder('0');
-    supabase.from('classes').select('*').order('sort_order').then(({ data }) => setClasses(data ?? []));
+    const name = form.name.trim();
+    if (!name) {
+      data.notify('Give the class a name, for example “XI”.');
+      return;
+    }
+    if (data.classes.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+      data.notify(`${name} already exists.`);
+      return;
+    }
+    const sections = form.sections
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    data.addClass({ name, sections });
+    setForm({ name: '', sections: 'A' });
+    setOpen(false);
   };
 
-  if (!isAdmin()) return <div className="p-4 text-terracotta">Admin only</div>;
+  const countStudents = (className: string) =>
+    data.people.filter((p) => p.role === 'student' && p.class_label === className).length;
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-ink">Classes</h1>
-      <form onSubmit={add} className="flex gap-2 items-end">
-        <input className="px-3 py-2 border rounded-lg flex-1" placeholder="Class name (e.g. Grade 8)" value={name} onChange={(e) => setName(e.target.value)} />
-        <input type="number" className="px-3 py-2 border rounded-lg w-20" placeholder="Order" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
-        <button className="bg-terracotta text-white px-4 py-2 rounded-lg text-sm"><FiPlus size={16} /></button>
-      </form>
-      <div className="bg-white rounded-xl border border-sand/30 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-sand/20 bg-sand/20">
-              <th className="text-left p-3 text-sm font-medium text-muted">Name</th>
-              <th className="text-left p-3 text-sm font-medium text-muted">Sort order</th>
-              <th className="text-right p-3 text-sm font-medium text-muted">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {classes.map((c) => (
-              <tr key={c.id} className="border-b border-sand/10 hover:bg-cream/50">
-                <td className="p-3 text-sm">{c.name}</td>
-                <td className="p-3 text-sm text-muted">{c.sort_order}</td>
-                <td className="p-3 text-sm text-right"><button className="text-terracotta hover:text-terracotta/80"><FiTrash2 size={14} /></button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-ink">Classes &amp; Sections</h1>
+          <p className="text-muted">
+            {data.classes.length} classes ·{' '}
+            {data.classes.reduce((sum, c) => sum + c.sections.length, 0)} sections
+          </p>
+        </div>
+        <Button onClick={() => setOpen(true)}>
+          <FiPlus size={16} /> Add class
+        </Button>
       </div>
+
+      <Card>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Class</TableHead>
+                <TableHead>Sections</TableHead>
+                <TableHead>Students</TableHead>
+                <TableHead>Class teacher</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <tbody>
+              {data.classes.map((cls) => {
+                const teacher = data.people.find(
+                  (p) => p.role === 'teacher' && p.class_teacher_of?.startsWith(`${cls.name} `),
+                );
+                return (
+                  <TableRow key={cls.id}>
+                    <TableCell className="font-medium">{cls.name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {cls.sections.map((section) => (
+                          <Badge key={section} variant="olive">
+                            {section}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1.5 text-sm">
+                        <FiUsers size={13} className="text-muted" />
+                        {countStudents(cls.name)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {teacher?.full_name ?? <span className="text-muted">Not assigned</span>}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => data.removeClass(cls.id)}
+                        aria-label={`Remove ${cls.name}`}
+                      >
+                        <FiTrash2 size={14} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </tbody>
+          </Table>
+        </div>
+      </Card>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="mb-4 text-lg font-bold text-ink">Add class</h2>
+            <form onSubmit={handleAdd} className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">Class name</label>
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="XI"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">
+                  Sections (comma separated)
+                </label>
+                <input
+                  value={form.sections}
+                  onChange={(e) => setForm({ ...form, sections: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="A, B, C"
+                />
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Add class</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

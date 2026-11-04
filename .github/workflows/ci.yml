@@ -1,1 +1,79 @@
-name: CI\n\non:\n  push:\n    branches: [main]\n  pull_request:\n\njobs:\n  lint-and-typecheck:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "18"\n          cache: "npm"\n      - run: npm ci\n      - run: npm run typecheck\n      - run: npm run lint\n      - name: Guard against public secrets\n        run: |\n          if grep -r "EXPO_PUBLIC_.*\\(SECRET\\|SERVICE\\|PRIVATE\\|JWT\\|POSTGRES\\|PASSWORD\\|TOKEN\\)" apps/ 2>/dev/null | grep -v "PUBLISHABLE_KEY\\|ANON_KEY"; then\n            echo "Found secret-like EXPO_PUBLIC_ var"\n            exit 1\n          fi\n          if grep -r "VITE_.*\\(SECRET\\|SERVICE\\|PRIVATE\\|JWT\\|POSTGRES\\|PASSWORD\\|TOKEN\\)" apps/ 2>/dev/null | grep -v "PUBLISHABLE_KEY\\|ANON_KEY"; then\n            echo "Found secret-like VITE_ var"\n            exit 1\n          fi\n      - name: Warn if PROJECT_STATUS not updated\n        run: |\n          if git diff --name-only HEAD~1 2>/dev/null | grep -E "^(apps|supabase)/" && ! git diff --name-only HEAD~1 2>/dev/null | grep -q "PROJECT_STATUS.md"; then\n            echo "::warning::Consider updating PROJECT_STATUS.md"\n          fi\n
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - name: Build admin console
+        run: npm run build --workspace=apps/admin
+
+      - name: Guard against public secrets
+        run: |
+          failed=0
+
+          # A client-side variable may name a public key and nothing else.
+          # PUBLISHABLE_KEY / ANON_KEY are the allowed exceptions.
+          if grep -rIn --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' \
+              --include='.env.example' -E '(EXPO_PUBLIC|VITE)_[A-Z_]*(SECRET|SERVICE|PRIVATE|JWT|POSTGRES|PASSWORD|TOKEN)' \
+              apps/ scripts/ 2>/dev/null \
+             | grep -v -E 'PUBLISHABLE_KEY|ANON_KEY' ; then
+            echo "::error::Found a secret-like public (EXPO_PUBLIC_/VITE_) variable."
+            failed=1
+          fi
+
+          # The service role / secret key must never be referenced by a web app.
+          if grep -rIn --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' \
+              'SUPABASE_SERVICE_ROLE_KEY' apps/ 2>/dev/null ; then
+            echo "::error::Service role key referenced inside apps/."
+            failed=1
+          fi
+
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
+          echo "No secret-like public variables found."
+
+      - name: Check env var names are the Vercel ones
+        run: |
+          # The admin console is documented to read SUPABASE_URL and
+          # SUPABASE_PUBLISHABLE_KEY. Keep that contract visible in CI.
+          grep -q 'SUPABASE_PUBLISHABLE_KEY' apps/admin/.env.example || {
+            echo "::error::apps/admin/.env.example must document SUPABASE_PUBLISHABLE_KEY"
+            exit 1
+          }
+          grep -q 'SUPABASE_URL' apps/admin/.env.example || {
+            echo "::error::apps/admin/.env.example must document SUPABASE_URL"
+            exit 1
+          }
+
+      - name: Warn if PROJECT_STATUS not updated
+        run: |
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" 2>/dev/null || git diff --name-only HEAD~1 2>/dev/null || true)
+          if echo "$changed" | grep -qE '^(apps|supabase)/' && ! echo "$changed" | grep -q 'PROJECT_STATUS.md'; then
+            echo "::warning::Source changed without updating PROJECT_STATUS.md"
+          fi

@@ -1,4 +1,6 @@
 import * as React from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { Role } from '../lib/types';
 import { cn } from '../lib/utils';
 import {
@@ -151,7 +153,7 @@ interface StatCardProps extends React.HTMLAttributes<HTMLDivElement> {
   value: string | number;
   delta?: string;
   icon?: React.ElementType;
-  variant?: 'olive' | 'terracotta' | 'neutral';
+  variant?: 'olive' | 'terracotta' | 'neutral' | 'warning';
 }
 
 export function StatCard({
@@ -167,6 +169,7 @@ export function StatCard({
     olive: 'text-olive bg-olive/5 border-olive/10',
     terracotta: 'text-terracotta bg-terracotta/5 border-terracotta/10',
     neutral: 'text-ink bg-slate-50 border-slate-200',
+    warning: 'text-amber-700 bg-amber-50 border-amber-100',
   };
   return (
     <div className={cn('rounded-xl border p-5 flex flex-col', colorMap[variant], className)} {...props}>
@@ -191,28 +194,19 @@ interface BreadcrumbsProps {
 
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
   return (
-    <nav className="flex items-center gap-1 text-xs text-muted mb-4" aria-label="Breadcrumb">
+    <nav className="mb-1 flex items-center gap-1 text-xs text-muted" aria-label="Breadcrumb">
       {items.map((item, i) => {
         const last = i === items.length - 1;
         return (
-          <React.Fragment key={item.label}>
-            {!last ? (
-              <a
-                href={item.to ?? '#'}
-                className="hover:text-ink transition-colors"
-                onClick={(e) => {
-                  if (item.to) {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('navigate', { detail: { to: item.to } }));
-                  }
-                }}
-              >
-                {item.label}
-              </a>
+          <React.Fragment key={`${item.label}-${i}`}>
+            {last || !item.to ? (
+              <span className={last ? 'font-medium text-ink' : 'text-muted'}>{item.label}</span>
             ) : (
-              <span className="text-ink font-medium">{item.label}</span>
+              <Link to={item.to} className="transition-colors hover:text-olive">
+                {item.label}
+              </Link>
             )}
-            {!last && <span className="mx-1">/</span>}
+            {!last && <span className="mx-1 text-slate-300">/</span>}
           </React.Fragment>
         );
       })}
@@ -220,7 +214,7 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
   );
 }
 
-interface NotificationItem {
+export interface NotificationItem {
   id: string;
   title: string;
   body: string;
@@ -233,13 +227,20 @@ interface NotificationsDropdownProps {
   notifications: NotificationItem[];
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
+  open?: boolean;
+  onToggle?: () => void;
 }
 
 export function NotificationsDropdown({
   notifications,
   onMarkRead,
   onMarkAllRead,
+  open,
+  onToggle,
 }: NotificationsDropdownProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = open ?? internalOpen;
+  const toggle = onToggle ?? (() => setInternalOpen((v) => !v));
   const unread = notifications.filter((n) => !n.read).length;
   const kindColor: Record<string, string> = {
     notice: 'bg-slate-100 text-slate-700',
@@ -251,17 +252,20 @@ export function NotificationsDropdown({
   return (
     <div className="relative">
       <button
-        className="relative shrink-0 text-slate-500 hover:text-ink transition-colors"
+        onClick={toggle}
+        className="relative shrink-0 rounded-lg p-2 text-slate-500 transition-colors hover:bg-sand hover:text-ink"
         aria-label="Notifications"
+        aria-expanded={isOpen}
       >
-        <FiBell size={20} />
+        <FiBell size={18} />
         {unread > 0 && (
           <span className="absolute top-1 right-1 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
-      <div className="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-xl p-2 z-50">
+      {isOpen && (
+      <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
         <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
           <span className="text-xs font-semibold text-ink uppercase">Notifications</span>
           {unread > 0 && (
@@ -300,6 +304,7 @@ export function NotificationsDropdown({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -311,6 +316,7 @@ interface RoleSwitcherProps {
 }
 
 export function RoleSwitcher({ roles, current, onChange }: RoleSwitcherProps) {
+  const [open, setOpen] = useState(false);
   const labels: Record<Role, string> = {
     admin: 'Admin',
     teacher: 'Teacher',
@@ -319,24 +325,47 @@ export function RoleSwitcher({ roles, current, onChange }: RoleSwitcherProps) {
   return (
     <div className="relative inline-block">
       <button
-        onClick={() => onChange(null)}
-        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-ink hover:bg-sand transition-colors"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-ink transition-colors hover:bg-sand"
+        aria-expanded={open}
       >
         <FiUser size={14} />
         <span>{current ? labels[current] : 'View as'}</span>
-        <FiChevronDown size={12} className="ml-auto text-slate-400" />
+        <FiChevronDown size={12} className="text-slate-400" />
       </button>
-      <div className="absolute top-full left-0 mt-1 w-32 rounded-xl border border-slate-200 bg-white shadow-xl py-1 z-50">
-        {roles.map((role) => (
-          <button
-            key={role}
-            onClick={() => onChange(role)}
-            className={cn('flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left transition-colors', current === role ? 'bg-sand text-ink font-medium' : 'text-slate-600 hover:bg-slate-50')}
-          >
-            {labels[role]}
-          </button>
-        ))}
-      </div>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
+          <div className="px-3 pb-1 pt-1 text-[10px] uppercase tracking-wider text-slate-400">
+            Preview as
+          </div>
+          {roles.map((role) => (
+            <button
+              key={role}
+              onClick={() => {
+                onChange(role);
+                setOpen(false);
+              }}
+              className={cn(
+                'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors',
+                current === role ? 'bg-sand font-medium text-ink' : 'text-slate-600 hover:bg-slate-50',
+              )}
+            >
+              {labels[role]}
+            </button>
+          ))}
+          {current && (
+            <button
+              onClick={() => {
+                onChange(null);
+                setOpen(false);
+              }}
+              className="mt-1 w-full border-t border-slate-100 px-3 py-1.5 text-left text-xs text-terracotta hover:bg-terracotta/5"
+            >
+              Back to my role
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

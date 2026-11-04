@@ -34,13 +34,26 @@ export function passwordFromDob(dob: string) {
   return `Student@${parts.day}${parts.month}${parts.year}`;
 }
 
+/** True only for real calendar dates (rejects 31 Feb, month 13, year 0000). */
+function isRealDate(year: number, month: number, day: number) {
+  if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  return (
+    probe.getUTCFullYear() === year &&
+    probe.getUTCMonth() === month - 1 &&
+    probe.getUTCDate() === day
+  );
+}
+
 export function normalizeDob(input: string): { day: string; month: string; year: string; iso: string } {
   const value = input.trim();
   const isoMatch = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   const dmyMatch = value.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-  let year = '';
-  let month = '';
-  let day = '';
+  // Declared without an initial value: the three branches below always assign
+  // all of them before they are read, so placeholder '' values were dead stores.
+  let year: string;
+  let month: string;
+  let day: string;
   if (isoMatch) {
     year = isoMatch[1];
     month = isoMatch[2].padStart(2, '0');
@@ -51,6 +64,9 @@ export function normalizeDob(input: string): { day: string; month: string; year:
     year = dmyMatch[3];
   } else {
     throw new Error(`Invalid date of birth "${input}". Use YYYY-MM-DD or DD/MM/YYYY.`);
+  }
+  if (!isRealDate(Number(year), Number(month), Number(day))) {
+    throw new Error(`"${input}" is not a real calendar date.`);
   }
   return { day, month, year, iso: `${year}-${month}-${day}` };
 }
@@ -71,9 +87,20 @@ export function formatDateTime(value?: string | null) {
   return isValid(parsed) ? format(parsed, 'dd-MM-yyyy hh:mm a') : value;
 }
 
-export function formatRange(start: string, end: string) {
+export function monthLabel(start: string, end: string) {
   if (start === end) return formatDateLong(start);
   return `${formatDateLong(start)} - ${formatDateLong(end)}`;
+}
+
+export function formatRange(start: string, end: string) {
+  if (start === end) return formatDateLong(start);
+  return `${formatDateLong(start)} – ${formatDateLong(end)}`;
+}
+
+export function daysBetween(from: string, to: string) {
+  const a = new Date(from);
+  const b = new Date(to);
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
 }
 
 export function daysUntil(date: string) {
@@ -144,6 +171,21 @@ export function downloadCsv(filename: string, rows: Record<string, string | numb
   URL.revokeObjectURL(url);
 }
 
+export function inr(amount: number) {
+  return `₹${Math.round(amount).toLocaleString('en-IN')}`;
+}
+
+export function relativeToToday(value: string) {
+  const today = new Date(2026, 10, 4);
+  const target = new Date(value);
+  const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  if (diff > 1) return `In ${diff} days`;
+  return `${Math.abs(diff)} days ago`;
+}
+
 export function gradeFor(percentage: number) {
   if (percentage >= 91) return 'A1';
   if (percentage >= 81) return 'A2';
@@ -162,10 +204,30 @@ export function fineFor(dueDate: string, returnedAt?: string | null) {
   return days * 5;
 }
 
+/**
+ * Escape a value before interpolating it into an HTML string.
+ *
+ * `printHtml()` writes documents with `document.write`, and the values that go
+ * into them are user-entered (student names, subject names, teacher notes).
+ * Without escaping, a name like `<img src=x onerror=...>` would execute in the
+ * printed window. Always wrap interpolations with this.
+ */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function printHtml(title: string, body: string) {
   const win = window.open('', '_blank', 'width=900,height=1000');
   if (!win) return;
-  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+  // Reviewed XSS sink: every value interpolated into this document is passed
+  // through escapeHtml(). Keep it that way, or this rule fires.
+  // eslint-disable-next-line no-restricted-syntax
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: Georgia, 'Times New Roman', serif; color: #1f2937; margin: 0; padding: 32px; }

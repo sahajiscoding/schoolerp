@@ -1,8 +1,8 @@
 # Project Status — Pacific World School ERP
 
-**Last updated:** 2026-11-03
-**Current milestone:** Milestone 2 — Auth + roster (in progress). Admin login page rebuilt to match the school's existing login design; Milestone 0 (Foundation) and Milestone 1 (Schema + RLS) complete.
-**Next milestone:** Milestone 3 — Assignments (after Milestone 2 completes)
+**Last updated:** 2026-11-04
+**Current milestone:** Milestone 3 — Dashboard modules (admin console complete, backend schema written, mobile pending).
+**Next milestone:** Wire the admin console to Supabase (replace demo store), then Milestone 4 — Messaging.
 
 This file is the single source of truth for project state. Every agent must read it before starting work and update it before finishing. Keep it short, factual, and linked to files. Do not record intentions as completed work.
 
@@ -10,96 +10,115 @@ This file is the single source of truth for project state. Every agent must read
 
 ## What exists
 
+### Admin console (`apps/admin`)
+
 | Item | Path | State |
 |---|---|---|
-| Approved v1 design | `docs/superpowers/specs/2026-11-03-school-erp-design.md` | Written, awaiting owner review |
-| Agent contract | `AGENTS.md` | Written |
-| Status document | `PROJECT_STATUS.md` | This file |
-| npm workspaces monorepo | `package.json` | Initialized (apps/*, packages/*) |
-| Shared package (theme, types foundation) | `packages/shared/` | Initialized |
-| Admin app (React + Vite + Tailwind) | `apps/admin/` | Scaffolded |
-| Mobile app (Expo + TypeScript) | `apps/mobile/` | Scaffolded |
-| Supabase config | `supabase/config.toml` | Initialized |
-| Environment variable docs | `docs/security/environment-variables.md` | Written |
-| CI workflow with secret guard | `.github/workflows/ci.yml` | Added |
-| .env.example files | `apps/admin/.env.example`, `apps/mobile/.env.example` | Added |
-| Admin app shell + homepage | `apps/admin/src/App.tsx` | Router shell (AuthProvider + Layout); /home = Dashboard, /login, protected /dashboard, /classes, /people |
-| Admin login page | `apps/admin/src/pages/Login.tsx` | Rebuilt to match the school's existing login: split layout, school logo, glass mission card over campus photo, remembered-account picker, Remember Me, password visibility |
-| Login brand assets | `apps/admin/public/brand/` | School logo and two campus photos downloaded from the school's current PWS login page |
-| Admin dependencies | `apps/admin/package.json` | Added react-router-dom, clsx, date-fns, tailwind-merge, react-icons |
-| ESLint flat config | `apps/admin/eslint.config.js` | TypeScript parser, React globals, node_modules/dist ignored |
-| Admin build | `apps/admin/dist/` | `npm run build` (tsc -b + vite build) passes |
-| Shared package | `packages/shared/src/{theme,database.types,supabase,targeting}.ts` | Types, theme, Supabase client factory, targeting logic |
-| Supabase initial schema + RLS | `supabase/migrations/0001_initial_schema.sql` | All tables, RLS policies, helper functions, views (uncommitted) |
-| RLS matrix tests | `supabase/tests/rls_matrix.sql` | 24 pgTAP assertions (uncommitted) |
+| Routes + role guards | `src/App.tsx` | 19 routes; admin-only routes redirect non-admins; `AppDataProvider` mounted |
+| Shell, sidebar, notifications | `src/components/AppShell.tsx` | Role-aware nav (student view hides administration and relabels pages), badges, mobile drawer |
+| UI kit | `src/components/ui.tsx` | Button, Card, Badge, Table, StatCard, Breadcrumbs, NotificationsDropdown, RoleSwitcher |
+| Demo domain types | `src/lib/types.ts` | Students, leave, goals, declarations, polls, events, library, report cards, attendance, fees |
+| Demo store + actions | `src/lib/appData.tsx` | `localStorage`-backed, versioned key, back-fills newly seeded collections |
+| Seed data | `src/lib/seed.ts` | 1 admin, 2 teachers, 9 students, 3 study materials, 1 poll, events, fees, siblings |
+| Helpers | `src/lib/utils.ts` | Dates, INR, CSV parser, `normalizeDob` (rejects 31 Feb), `passwordFromDob`, `gradeFor`, `printHtml` |
+| Supabase client | `src/lib/supabase.ts` | Reads `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`; `configHint()` names the missing pair |
+| Build config | `vite.config.ts` | `loadEnv(mode, cwd, '')` so **unprefixed** `SUPABASE_URL` works from `.env`; inlines both names via `define` |
+| Login | `src/pages/Login.tsx` | School design; demo credentials hint; remembered account |
 
-## In progress
+### Dashboard modules
 
-Milestone 0 — Foundation complete. Milestone 1 — Schema + RLS complete. Milestone 2 — Auth + roster in progress: admin login UI rebuilt and manually verified at 1440×900 in both the form and remembered-account states. `npm run build --workspace=apps/admin` passes; lint passes with one pre-existing `react-refresh` warning in `AuthContext.tsx`. Remaining: apply migration/seed, mobile login, forced password change, roster flows.
+| Page | Path | Behaviour |
+|---|---|---|
+| Dashboard | `src/pages/Dashboard.tsx` | Distinct admin / teacher / student layouts, fee collection bar, quick links |
+| Approvals | `src/pages/Approvals.tsx` | Student applies; **class teacher of the section** approves/rejects; history + filters |
+| Course Progress | `src/pages/CourseProgress.tsx` | Teacher/admin add goals per student; student sees own goals |
+| Communications | `src/pages/Communications.tsx` | Declaration forms (compose + sign), message broadcast, polls (create + vote) |
+| Events & Calendar | `src/pages/Events.tsx` | Month calendar; admins publish school-wide, teachers publish class-only |
+| Assignments | `src/pages/Assignments.tsx` | Teacher name on every card, attachments, submit flow, submissions review tab |
+| Study Room | `src/pages/StudyRoom.tsx` | **Share PDF** for teachers/admin; students open shared material |
+| My Library | `src/pages/Library.tsx` | Add/remove books, issue to a student, return, reserve |
+| My Report Card | `src/pages/ReportCard.tsx` | Teacher enters student + class + subjects + marks → card generated, printable, assigned |
+| My Attendance | `src/pages/Attendance.tsx` | Day grid; teacher marks present/absent per student; student reads own |
+| My Fee | `src/pages/Fees.tsx` | Invoices, payments, **50% sibling discount on the second child**, sibling link/unlink |
+| People | `src/pages/People.tsx` | Add student, **CSV import** with validation, template + credentials export |
+| Classes / Enrollments / Subjects / Audit | `src/pages/*` | Class + section management, placement, subject list, read-only audit trail |
+| Gallery | `src/pages/Gallery.tsx` | Album grid from seed |
+
+### Backend
+
+| Item | Path | State |
+|---|---|---|
+| Initial schema + RLS | `supabase/migrations/0001_initial_schema.sql` | 77 statements, parses clean; `current_role()` renamed to `app_role()` (was a reserved-keyword bug) |
+| Dashboard schema + RLS | `supabase/migrations/0002_dashboard_modules.sql` | 15 tables, class-teacher helpers, sibling links, admin-only fees; 82 statements, parses clean |
+| Base RLS matrix | `supabase/tests/rls_matrix.sql` | 24 assertions |
+| Dashboard RLS matrix | `supabase/tests/rls_matrix_dashboard.sql` | 24 assertions (leave routing, self-approval guard, events scoping, fees/siblings, cards) |
+| Local RLS verifier | `supabase/tests/verify_rls_local.py` | Boots a throwaway Postgres, applies both migrations, asserts 20 rules as `authenticated` — **all pass** |
+| Admin provisioning function | `supabase/functions/admin-users/index.ts` | `create-admin`, `import-students` (`Student@DDMMYYYY`); verifies JWT + admin role, writes audit log |
+| Shared CORS | `supabase/functions/_shared/cors.ts` | — |
+| Admin bootstrap | `scripts/create-admin.mjs` | Local-only, service role from environment |
+| CI | `.github/workflows/ci.yml` | Rewritten (the committed file was a single line of literal `\n`): typecheck, lint, build, secret guard, env-name guard |
+
+### Verification done
+
+- `npm run typecheck --workspace=apps/admin` — clean.
+- `npm run build --workspace=apps/admin` — passes (tsc -b + vite build).
+- `npm run lint --workspace=apps/admin` — 0 errors, 6 pre-existing fast-refresh/exhaustive-deps warnings.
+- Runtime smoke test (jsdom + esbuild bundle, 2026-11-04): booted the real app, signed in as each demo user, visited all 19 routes — no runtime errors; student menu excludes administration; teacher is redirected off admin routes.
+- CSV import smoke test: 4-row file with `Student Name, Admission No., Date of Birth` headers → 2 valid / 2 flagged, correct `Student@DDMMYYYY` passwords, bad date rejected, import writes rows to the table.
+- All three SQL files parse with `pglast`.
+- **Both migrations applied to a real Postgres 14 instance** (via `pgserver`) on 2026-11-04. This caught three genuine defects that a parser cannot see:
+  1. `class_teacher_id` was added *after* the helper functions that read it — every call raised `column s.class_teacher_id does not exist`. The `ALTER TABLE` now runs first.
+  2. `section_ids <@ ARRAY(SELECT …)` in the teacher-event policy compared an array against a single row, so teachers could never publish a class event. Replaced with `NOT EXISTS (… NOT teaches_section(…))`.
+  3. A leave could be moved between any two statuses by any reviewer; the policy now requires `status = 'pending'` on the way in and `decided_by = auth.uid()` on the way out.
+- 25 RLS assertions run as the `authenticated` role: all pass (leave routing to the class teacher only, peer rows invisible, students cannot mark attendance, author report cards, create sibling links or approve their own leave, teachers cannot publish school-wide events).
+- **Two SQL shadowing defects found on 2026-11-04**, by testing the helper functions directly on Postgres:
+  1. `teaches_section(section_id uuid)` compared the column to *itself* (the parameter shadowed it), so it returned true for every caller and every section, widening every policy built on it.
+  2. The `threads` INSERT policy had `e.student_id = student_id`, degenerating to `e.student_id = e.student_id` and letting any teacher open a thread with any student.
+  Both fixed (parameters prefixed `p_`, outer references qualified) with regression assertions that fail if the bug is restored. Migration `0003` narrows EXECUTE on the `SECURITY DEFINER` helpers to `authenticated`. All helpers pin `search_path = ''`.
+
+### Security, deployment and dependency state (2026-11-04)
+
+- `npm audit` reports **0 vulnerabilities**. Existing advisories were fixed, not
+  suppressed: zod → 4.6.7 (PR #1), glob pinned to ^14.0.3 and minimatch to
+  ^11.0.4 via `overrides` in the root `package.json`.
+- eslint upgraded 9 → 10 with typescript-eslint 8.72 (which already supports
+  eslint 10) and react-hooks 7 / react-refresh 0.5. eslint 10 found three dead
+  stores in `normalizeDob()`, fixed.
+- **XSS fixed** in the two `document.write()` sinks (`printHtml()` and the study
+  room preview). Both interpolated teacher-entered text into HTML. Every value
+  now passes through `escapeHtml()`, and an eslint `no-restricted-syntax` rule
+  bans new `document.write()` calls. Verified with a hostile `<img src=x
+  onerror=...>` title pushed through the real UI: stored verbatim, rendered
+  inert, zero live injected elements.
+- **Deploy 404 fixed**: `vercel.json` now rewrites unknown paths to
+  `index.html` (excluding `/assets` and `/brand`), so refreshing `/login` no
+  longer 404s. Verified against the real build output.
+- CI runs on Node 22 with `npm ci`; typecheck, lint (0 errors) and the admin
+  build all pass. First-party actions moved off deprecated Node 20 runtimes.
+- Third-party scanner workflows (Black Duck, Synopsys, CxFlow, Checkmarx One,
+  CodeScan, Endor Labs, Debricked) fail on **missing vendor credentials**, not
+  findings. See `docs/security/scanning.md` for the required secret per workflow
+  and the option of keeping only CodeQL.
+
+### Supabase project
+
+`apps/admin/.env` points at project `ausnymdtnpewcfvdrpcu` using the documented
+unprefixed names. The file is git-ignored and holds only the public publishable
+key, which is safe to ship in a browser bundle. The sandbox cannot reach
+`*.supabase.co`, so the console still runs in demo mode here and the migrations
+have not been applied to that project from this environment.
+
+## Known gaps
+
+1. The admin console still runs on the demo store. Wiring it to the new tables (replacing `appData.tsx` with Supabase queries) is the next step; the types and RLS already match.
+2. The pgTAP suites themselves have not been run through `supabase test db` (no Docker here); their rules are covered by `supabase/tests/verify_rls_local.py`, which passes against real Postgres 14.
+3. Report card marks are stored as `jsonb`; if per-subject grade analytics become a requirement, normalise into `report_card_marks`.
+4. Mobile app screens are still scaffold-only.
+5. Design review against the owner's reference screenshots is pending — the sandbox cannot run a browser, so visual QA is by code and build.
 
 ## Next up
 
-Milestone 2 — Auth + roster:
-
-1. Apply `supabase/migrations/0001_initial_schema.sql` to local Supabase and seed data.
-2. Wire mobile app (expo-router + NativeWind) login + dashboard screens.
-3. Forced password change on first login.
-
-Then Milestone 3 — Assignments.
-
-## Deferred (explicitly out of v1)
-
-Fees and payments · attendance · report cards and grades · library · gallery · events · course progress · parent accounts · student-to-student chat · multi-school tenancy · offline write queue · web version of student/teacher app · public signup.
-
-## Known risks
-
-| Risk | Impact | Mitigation |
-|---|---|---|
-| RLS is the only authorization wall | One bad policy exposes student data | RLS matrix tests required for every migration |
-| Teacher↔minor private messaging | Safeguarding and legal exposure | Admin read access, audit log, no student-to-student channel, no admin posting inside threads |
-| Service role key accidentally shipped | Full database compromise | Never referenced in `apps/`; CI grep; secrets only via `supabase secrets set` |
-| Expo `EXPO_PUBLIC_*` is public | Silent secret leak in APK | Only URL and anon key allowed; documented ban list |
-| Apple review of school apps | Rejection for thin functionality or missing account deletion | Native features, privacy policy, deletion request flow, reviewer demo account |
-| Solo build alongside school | Schedule slip | Milestones with definitions of done; no dates |
-
-## Secrets manifest
-
-**Public (expected in clients):**
-- `EXPO_PUBLIC_SUPABASE_URL`
-- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (legacy alias: `EXPO_PUBLIC_SUPABASE_ANON_KEY`)
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY` (legacy alias: `VITE_SUPABASE_ANON_KEY`)
-
-**Secret (Supabase Edge Functions only):**
-- `SUPABASE_SERVICE_ROLE_KEY` and/or `SUPABASE_SECRET_KEY`
-- `SUPABASE_JWT_SECRET` (never used manually; highest severity if leaked)
-- All `POSTGRES_*` connection values
-- `EXPO_ACCESS_TOKEN`
-- Future payment, SMS, email, and AI provider keys
-
-**Ignored in this stack:** `NEXT_PUBLIC_SUPABASE_*` (Next.js-only naming; Vite and Expo will not read it).
-
-Full classification: `docs/security/environment-variables.md`.
-
-No secret has been created or stored yet.
-
-## Decisions log
-
-See section 18 of the design document. Add new decisions there and summarize here only if they change scope.
-
-## Open questions
-
-- Which school staff member owns messaging moderation and the privacy policy?
-- Academic year dates.
-- Class/section/subject list and teacher mapping.
-- Roster CSV format and source system.
-
-## Agent update protocol
-
-Before finishing any task:
-
-1. Move completed items from "Next up" / "In progress" to "What exists" with file paths.
-2. Record anything newly deferred.
-3. Add new risks or open questions.
-4. Update "Last updated".
-5. Never mark something done without a test or manual verification note.
+1. Apply `0001` + `0002`, run both pgTAP suites, fix any policy fallout.
+2. Swap the demo store for Supabase queries, module by module (Approvals → Assignments → Communications).
+3. Deploy `admin-users`; run `scripts/create-admin.mjs` for the first admin.
+4. Mobile: login, assignments, approvals.

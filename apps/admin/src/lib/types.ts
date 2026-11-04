@@ -12,6 +12,19 @@ export interface Person {
   admission_no?: string;
   class_label?: string;
   section_label?: string;
+  /** Students only: initial password (`Student@DDMMYYYY`). */
+  password?: string;
+  /** Teachers only: owns leave approvals for this section. */
+  class_teacher_of?: string;
+  /** Sibling profile id, when the family has two children in school. */
+  sibling_id?: string;
+}
+
+export interface Subject {
+  id: string;
+  name: string;
+  code: string;
+  color: string;
 }
 
 export interface Attachment {
@@ -228,16 +241,6 @@ export interface ChatThread {
   created_at: string;
 }
 
-export interface Circular {
-  id: string;
-  title: string;
-  type: string;
-  number: string;
-  date: string;
-  recipients: string;
-  body?: string;
-}
-
 export interface ImportRow {
   full_name: string;
   admission_no: string;
@@ -245,4 +248,28 @@ export interface ImportRow {
   class_label?: string;
   section_label?: string;
   password: string;
+}
+
+export interface SchoolClass {
+  id: string;
+  name: string;
+  sortOrder: number;
+  sections: string[];
+}
+
+export interface AuditEntry {
+  id: string;
+  actorId: string;
+  action: string;
+  target: string;
+  at: string;
+}
+
+export interface BroadcastMessage {
+  id: string;
+  title: string;
+  body: string;
+  section_label: string;
+  created_by: string;
+  created_at: string;
 }

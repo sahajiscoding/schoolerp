@@ -45,11 +45,24 @@ export default function CourseProgress() {
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+    if (!form.student_id) {
+      data.notify('Choose the student this goal belongs to.');
+      return;
+    }
+    if (!form.title.trim() || !form.subject.trim()) {
+      data.notify('A subject and a goal title are required.');
+      return;
+    }
+    const percent = Number(form.percent);
+    if (form.percent === '' || Number.isNaN(percent) || percent < 0 || percent > 100) {
+      data.notify('Progress must be a number between 0 and 100.');
+      return;
+    }
     data.addProgress({
-      student_id: form.student_id || profile.id,
+      student_id: form.student_id,
       subject: form.subject,
       title: form.title,
-      percent: Number(form.percent) || 0,
+      percent,
       grade: form.grade,
       remarks: form.remarks,
       teacher_id: profile.id,

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData as useData } from '../lib/appData';
+import type { StudyMaterial } from '../lib/types';
+import { escapeHtml } from '../lib/utils';
 import {
   Card,
   Button,
@@ -11,9 +13,32 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
-import { FiFolder, FiPlus, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiDownload } from 'react-icons/fi';
 
 const SUBJECTS = ['Artificial Intelligence', 'Mathematics', 'English', 'Science', 'Social Science', 'Hindi'];
+
+/** Materials are demo records, so "Open" renders the note the teacher attached. */
+function openMaterial(material: StudyMaterial) {
+  // Everything below is teacher-entered text. Escape it before it becomes HTML,
+  // otherwise a title or note could inject markup into the preview window.
+  const notes = escapeHtml(material.description || 'No notes attached to this material.')
+    .replace(/\r?\n/g, '<br/>');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(material.title)}</title>
+    <style>body{font-family:Georgia,serif;max-width:720px;margin:48px auto;padding:0 24px;color:#1f2937;line-height:1.6}
+    h1{color:#4B5D2A;border-bottom:2px solid #4B5D2A;padding-bottom:8px}
+    .meta{font-size:12px;color:#6b7280;margin-bottom:24px}</style></head><body>
+    <h1>${escapeHtml(material.title)}</h1>
+    <div class="meta">${escapeHtml(material.subject)} · ${escapeHtml(material.section_label)} · filed as ${escapeHtml(material.file_name)}</div>
+    <p>${notes}</p>
+    </body></html>`;
+  const win = window.open('', '_blank');
+  if (win) {
+    // Reviewed XSS sink: `html` is assembled from escapeHtml()-wrapped values.
+    // eslint-disable-next-line no-restricted-syntax
+    win.document.write(html);
+    win.document.close();
+  }
+}
 
 export default function StudyRoom() {
   const { profile, isAdmin, isTeacher } = useAuth();
@@ -97,8 +122,12 @@ export default function StudyRoom() {
                     </TableCell>
                     <TableCell className="text-sm text-muted">{uploader?.full_name ?? '—'}</TableCell>
                     <TableCell>
-                      <Button variant="outline" size="sm" onClick={() => {}}>
-                        <FiDownload size={14} /> Download
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openMaterial(mat)}
+                      >
+                        <FiDownload size={14} /> Open
                       </Button>
                     </TableCell>
                   </TableRow>

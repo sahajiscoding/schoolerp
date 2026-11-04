@@ -327,3 +327,11 @@ No calendar estimates. A status document that lies is worse than none.
 | 2026-11-03 | Admin broadcasts are one-way | Avoids a second moderation queue |
 | 2026-11-03 | RLS-first authorization | Speed and simplicity; offset by mandatory RLS tests |
 | 2026-11-03 | Monorepo | Shared types and migrations must not drift |
+| 2026-11-04 | Dashboard modules enter scope (approvals, goals, communications, events, assignments, library, report cards, attendance, fees) | Owner asked for the full dashboard in one milestone; supersedes the earlier "deferred" list below section 5 |
+| 2026-11-04 | Leave requests route to the **class teacher of the student's section**, not to all teachers | Owner requirement; enforced by `sections.class_teacher_id` and `is_class_teacher_of()` in RLS |
+| 2026-11-04 | Events: admins own school-wide entries, teachers may only create class-scoped ones | Owner requirement; enforced in RLS with `cardinality(section_ids) = 0` for admin-only rows |
+| 2026-11-04 | Sibling discount (50%) attaches to the **second child only**, admin-owned | Owner requirement; `sibling_links` is admin-write, students only read their own |
+| 2026-11-04 | Student accounts are created from admission number + DOB; password is `Student@DDMMYYYY` | Owner requirement; implemented in the CSV importer, the Edge Function and `scripts/create-admin.mjs` |
+| 2026-11-04 | Admin console reads `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` (Vercel names) with `VITE_` aliases | Owner already has these names in Vercel; renaming would force an env migration for no security gain |
+| 2026-11-04 | `current_role()` helper renamed to `app_role()` | `current_role` is a reserved SQL keyword; the original statement could never have applied |
+| 2026-11-04 | Demo mode (seeded data, no Supabase keys) is a first-class state of the admin console | Lets the owner review every screen before the backend is wired; shows a banner and never writes to a database |

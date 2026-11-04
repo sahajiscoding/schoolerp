@@ -1,11 +1,12 @@
 import { eachDayOfInterval, format, isSunday } from 'date-fns';
+import { passwordFromDob } from './utils';
 import type {
   AppNotification,
+  AuditEntry,
   AttendanceRecord,
   Book,
   BookIssue,
   ChatThread,
-  Circular,
   CourseProgressEntry,
   DeclarationForm,
   FeeInvoice,
@@ -15,13 +16,52 @@ import type {
   Person,
   Poll,
   ReportCard,
+  SchoolClass,
   SchoolEvent,
   SiblingLink,
   StudyMaterial,
+  Subject,
   Submission,
 } from './types';
 
 export const ACADEMIC_YEAR = '2026-27';
+
+export const seedClasses: SchoolClass[] = [
+  { id: 'cls-5', name: 'V', sortOrder: 1, sections: ['A'] },
+  { id: 'cls-6', name: 'VI', sortOrder: 2, sections: ['A', 'B'] },
+  { id: 'cls-7', name: 'VII', sortOrder: 3, sections: ['A', 'B'] },
+  { id: 'cls-8', name: 'VIII', sortOrder: 4, sections: ['A', 'B', 'C'] },
+  { id: 'cls-9', name: 'IX', sortOrder: 5, sections: ['A', 'B', 'C', 'D', 'E'] },
+  { id: 'cls-10', name: 'X', sortOrder: 6, sections: ['A', 'B', 'C'] },
+  { id: 'cls-11', name: 'XI', sortOrder: 7, sections: ['Science', 'Commerce', 'Humanities'] },
+  { id: 'cls-12', name: 'XII', sortOrder: 8, sections: ['Science', 'Commerce', 'Humanities'] },
+];
+
+export const seedAudit: AuditEntry[] = [
+  { id: 'aud-1', actorId: 'p-admin', action: 'Imported roster from CSV', target: '38 students', at: '2026-11-03T09:40:00.000Z' },
+  { id: 'aud-2', actorId: 'p-admin', action: 'Linked sibling (50% discount)', target: 'Vivaan Chugh → Sahaj Chugh', at: '2026-11-02T14:20:00.000Z' },
+  { id: 'aud-3', actorId: 'p-teacher-1', action: 'Approved leave', target: 'Aarav Mehta · 12–13 Nov', at: '2026-11-03T09:15:00.000Z' },
+  { id: 'aud-4', actorId: 'p-teacher-2', action: 'Published assignment', target: 'Quadratic equations worksheet', at: '2026-11-01T06:15:00.000Z' },
+  { id: 'aud-5', actorId: 'p-admin', action: 'Generated report card', target: 'Sahaj Chugh · HALF YEARLY', at: '2026-11-03T01:11:00.000Z' },
+];
+
+export const SUBJECT_NAMES = [
+  'Artificial Intelligence',
+  'Mathematics',
+  'English',
+  'Science',
+  'Social Science',
+  'Hindi',
+] as const;
+
+export const seedSubjects: Subject[] = [
+  { id: 'sub-ai', name: 'Artificial Intelligence', code: 'AI', color: '#4B5D2A' },
+  { id: 'sub-math', name: 'Mathematics', code: 'MATH', color: '#D2691E' },
+  { id: 'sub-eng', name: 'English', code: 'ENG', color: '#7C3AED' },
+  { id: 'sub-sci', name: 'Science', code: 'SCI', color: '#0F766E' },
+  { id: 'sub-sst', name: 'Social Science', code: 'SST', color: '#B45309' },
+  { id: 'sub-hin', name: 'Hindi', code: 'HIN', color: '#BE123C' },
+];
 
 export const seedPeople: Person[] = [
   {
@@ -43,6 +83,7 @@ export const seedPeople: Person[] = [
     phone: '+91 98100 11223',
     class_label: 'IX',
     section_label: 'E',
+    class_teacher_of: 'IX - E',
   },
   {
     id: 'p-teacher-2',
@@ -67,6 +108,9 @@ export const seedPeople: Person[] = [
     admission_no: '0185/18',
     class_label: 'IX',
     section_label: 'E',
+    // Derived, never a literal: the seed only displays this value in demo mode.
+    password: passwordFromDob('2010-05-14'),
+    sibling_id: 'p-student-6',
   },
   {
     id: 'p-student-2',
@@ -127,6 +171,8 @@ export const seedPeople: Person[] = [
     admission_no: '0201/18',
     class_label: 'V',
     section_label: 'A',
+    password: 'Student@11032015',
+    sibling_id: 'p-student-1',
   },
   {
     id: 'p-student-7',
@@ -319,7 +365,22 @@ export const seedDeclarations: DeclarationForm[] = [
   },
 ];
 
-export const seedPolls: Poll[] = [];
+export const seedPolls: Poll[] = [
+  {
+    id: 'poll-1',
+    question: 'Which topic should we revise first for the half-yearly?',
+    audience: 'Section E',
+    created_by: 'p-teacher-2',
+    created_at: '2026-11-02T05:00:00.000Z',
+    closes_at: '2026-11-09',
+    options: [
+      { id: 'opt-1', label: 'Quadratic equations' },
+      { id: 'opt-2', label: 'Polynomials' },
+      { id: 'opt-3', label: 'Coordinate geometry' },
+    ],
+    votes: { 'p-student-2': 'opt-1', 'p-student-3': 'opt-1', 'p-student-4': 'opt-2' },
+  },
+];
 
 export const seedEvents: SchoolEvent[] = [
   {
@@ -384,7 +445,46 @@ export const seedEvents: SchoolEvent[] = [
   },
 ];
 
-export const seedStudyMaterials: StudyMaterial[] = [];
+export const seedStudyMaterials: StudyMaterial[] = [
+  {
+    id: 'mat-1',
+    title: 'AI Practical 2 — System Map',
+    description:
+      'Work through the system map example from class, then build the flowchart for your own project idea. Print and bring it to the next lab.',
+    subject: 'Artificial Intelligence',
+    section_label: 'IX - E',
+    file_name: 'System-Map-Practical-2.pdf',
+    file_size: '302.28 KB',
+    type: 'PDF',
+    uploaded_by: 'p-teacher-1',
+    created_at: '2026-11-01T04:30:00.000Z',
+  },
+  {
+    id: 'mat-2',
+    title: 'Quadratic Equations — Formula Sheet',
+    description:
+      'One-page summary of the discriminant, the quadratic formula and the three forms of a quadratic expression.',
+    subject: 'Mathematics',
+    section_label: 'IX - E',
+    file_name: 'Quadratic-Formula-Sheet.pdf',
+    file_size: '184.10 KB',
+    type: 'PDF',
+    uploaded_by: 'p-teacher-2',
+    created_at: '2026-10-30T06:00:00.000Z',
+  },
+  {
+    id: 'mat-3',
+    title: 'Anne Frank — Chapter Notes',
+    description: 'Character list and the diary timeline for the half-yearly revision.',
+    subject: 'English',
+    section_label: 'IX - E',
+    file_name: 'Anne-Frank-Notes.pdf',
+    file_size: '96.44 KB',
+    type: 'PDF',
+    uploaded_by: 'p-teacher-2',
+    created_at: '2026-10-29T09:15:00.000Z',
+  },
+];
 
 export const seedBooks: Book[] = [
   {
@@ -569,8 +669,6 @@ export const seedThreads: ChatThread[] = [
     ],
   },
 ];
-
-export const seedCirculars: Circular[] = [];
 
 export const seedGallery: GalleryAlbum[] = [
   {

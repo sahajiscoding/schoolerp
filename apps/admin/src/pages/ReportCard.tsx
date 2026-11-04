@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData as useData } from '../lib/appData';
-import { printHtml } from '../lib/utils';
+import { useAppData as useAppDataHook } from '../lib/appData';
+import { escapeHtml, formatDateLong, gradeFor, printHtml } from '../lib/utils';
 import {
   Card,
   Button,
@@ -12,13 +12,22 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
-import { FiPlus, FiPrinter } from 'react-icons/fi';
+import { FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi';
+import type { ReportCard as ReportCardType } from '../lib/types';
 
-const SUBJECTS = ['Artificial Intelligence', 'Mathematics', 'English', 'Science', 'Social Science'];
+const DEFAULT_SUBJECTS = [
+  'Artificial Intelligence',
+  'Mathematics',
+  'English',
+  'Science',
+  'Social Science',
+];
+
+const TERMS = ['HALF YEARLY', 'ANNUAL', 'TERM 1', 'TERM 2'];
 
 export default function ReportCard() {
   const { profile, isAdmin, isTeacher, isStudent } = useAuth();
-  const data = useData();
+  const data = useAppDataHook();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     student_id: '',
@@ -26,50 +35,57 @@ export default function ReportCard() {
     academic_year: '2026-27',
     class_label: '',
     section_label: '',
-    subjects: SUBJECTS.map((s) => ({ subject: s, marks: '', max_marks: '100' })),
+    subjects: DEFAULT_SUBJECTS.map((s) => ({ subject: s, marks: '', max_marks: '100' })),
   });
 
   const canGenerate = isAdmin() || isTeacher();
   const students = data.people.filter((p) => p.role === 'student');
+  const myReportCards = data.reportCards.filter((rc) => rc.student_id === profile?.id);
+  const visibleCards = isStudent() ? myReportCards : data.reportCards;
 
-  const myReportCards = data.reportCards.filter(
-    (rc) => rc.student_id === profile?.id,
-  );
-
-  const handleAddSubject = () => {
+  const pickStudent = (id: string) => {
+    const student = data.people.find((p) => p.id === id);
     setForm((prev) => ({
       ...prev,
-      subjects: [...prev.subjects, { subject: '', marks: '', max_marks: '100' }],
-    }));
-  };
-
-  const handleRemoveSubject = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      subjects: prev.subjects.filter((_, i) => i !== index),
+      student_id: id,
+      class_label: student?.class_label ?? prev.class_label,
+      section_label: student?.section_label ?? prev.section_label,
     }));
   };
 
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-    const subjects = form.subjects.filter((s) => s.subject);
-    const total = subjects.reduce((sum, s) => sum + (Number(s.marks) || 0), 0);
-    const maxTotal = subjects.reduce((sum, s) => sum + (Number(s.max_marks) || 0), 0);
+    if (!form.student_id) {
+      data.notify('Choose which student this report card belongs to.');
+      return;
+    }
+    const subjects = form.subjects
+      .filter((s) => s.subject.trim() && s.marks !== '')
+      .map((s) => ({
+        subject: s.subject.trim(),
+        marks: Number(s.marks) || 0,
+        max_marks: Number(s.max_marks) || 100,
+      }));
+    if (subjects.length === 0) {
+      data.notify('Add at least one subject with marks.');
+      return;
+    }
+    const total = subjects.reduce((sum, s) => sum + s.marks, 0);
+    const maxTotal = subjects.reduce((sum, s) => sum + s.max_marks, 0);
     const percentage = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-    const grade = percentage >= 91 ? 'A1' : percentage >= 81 ? 'A2' : percentage >= 71 ? 'B1' : percentage >= 61 ? 'B2' : percentage >= 51 ? 'C1' : percentage >= 41 ? 'C2' : percentage >= 33 ? 'D' : 'E';
 
     data.addReportCard({
-      student_id: form.student_id || profile.id,
+      student_id: form.student_id,
       term: form.term,
       academic_year: form.academic_year,
       class_label: form.class_label,
       section_label: form.section_label,
-      subjects: subjects.map((s) => ({ subject: s.subject, marks: Number(s.marks) || 0, max_marks: Number(s.max_marks) || 100 })),
+      subjects,
       total,
       max_total: maxTotal,
       percentage,
-      grade,
+      grade: gradeFor(percentage),
     });
     setForm({
       student_id: '',
@@ -77,58 +93,64 @@ export default function ReportCard() {
       academic_year: '2026-27',
       class_label: '',
       section_label: '',
-      subjects: SUBJECTS.map((s) => ({ subject: s, marks: '', max_marks: '100' })),
+      subjects: DEFAULT_SUBJECTS.map((s) => ({ subject: s, marks: '', max_marks: '100' })),
     });
     setOpen(false);
   };
 
-  const handlePrint = (rc: typeof data.reportCards[number]) => {
+  const handlePrint = (rc: ReportCardType) => {
+    const student = data.people.find((p) => p.id === rc.student_id);
     const rows = rc.subjects
       .map(
-        (s) => `<tr><td>${s.subject}</td><td>${s.marks}</td><td>${s.max_marks}</td></tr>`,
+        (s) =>
+          `<tr><td>${escapeHtml(s.subject)}</td><td style="text-align:center">${escapeHtml(s.marks)}</td><td style="text-align:center">${escapeHtml(s.max_marks)}</td><td style="text-align:center">${((s.marks / (s.max_marks || 100)) * 100).toFixed(1)}%</td></tr>`,
       )
       .join('');
-    printHtml(`Report Card - ${rc.student_id}`, `
-      <div class="sheet">
+    printHtml(
+      `Report Card — ${student?.full_name ?? ''}`,
+      `<div class="sheet">
         <div class="school">
           <h1>PACIFIC WORLD SCHOOL</h1>
-          <p>Report Card · ${rc.term} · ${rc.academic_year}</p>
+          <p>Greater Noida West · Report Card</p>
         </div>
-        <h2>Report Card</h2>
+        <h2>${escapeHtml(rc.term)} · Academic Year ${escapeHtml(rc.academic_year)}</h2>
         <div class="meta">
-          <div><strong>Student</strong> ${rc.student_id}</div>
-          <div><strong>Class / Section</strong> ${rc.class_label} / ${rc.section_label}</div>
+          <div><strong>Student</strong> ${escapeHtml(student?.full_name ?? '—')}</div>
+          <div><strong>Admission No.</strong> ${escapeHtml(student?.admission_no ?? student?.login_id ?? '—')}</div>
+          <div><strong>Class / Section</strong> ${escapeHtml(rc.class_label || (student?.class_label ?? ''))} / ${escapeHtml(rc.section_label || (student?.section_label ?? ''))}</div>
+          <div><strong>Date of Birth</strong> ${escapeHtml(student?.dob ? formatDateLong(student.dob) : '—')}</div>
         </div>
         <table>
           <thead>
-            <tr><th>Subject</th><th>Marks</th><th>Max</th></tr>
+            <tr><th>Subject</th><th style="text-align:center">Marks</th><th style="text-align:center">Max</th><th style="text-align:center">Percent</th></tr>
           </thead>
           <tbody>${rows}</tbody>
-        </Table>
+        </table>
         <div class="total">
           Total: <strong>${rc.total} / ${rc.max_total}</strong> &nbsp;·&nbsp;
           Percentage: <strong>${rc.percentage.toFixed(1)}%</strong> &nbsp;·&nbsp;
-          Grade: <strong>${rc.grade}</strong>
+          Grade: <strong>${escapeHtml(rc.grade)}</strong>
         </div>
         <div class="signatures">
           <div>Class Teacher</div>
+          <div>Parent</div>
           <div>Principal</div>
         </div>
-      </div>
-    `);
+      </div>`,
+    );
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-ink">
             {isStudent() ? 'My Report Card' : 'Report Cards'}
           </h1>
           <p className="text-muted">
             {canGenerate
-              ? 'Enter student, class, section, subjects and marks to generate a report card.'
-              : 'View your published report cards.'}
+              ? 'Pick a student, enter subject marks, and the card is generated and assigned instantly.'
+              : 'Your published report cards. Print any term for your records.'}
           </p>
         </div>
         {canGenerate && (
@@ -138,10 +160,14 @@ export default function ReportCard() {
         )}
       </div>
 
+      {isStudent() && myReportCards.length > 0 && (
+        <LatestCard card={myReportCards[0]} onPrint={handlePrint} studentName={profile?.full_name ?? ''} />
+      )}
+
       <Card>
         <div className="mb-4">
           <h3 className="text-lg font-bold text-ink">
-            {isStudent() ? 'My report cards' : 'All report cards'}
+            {isStudent() ? 'All my report cards' : 'All report cards'}
           </h3>
         </div>
         <div className="overflow-x-auto">
@@ -154,37 +180,52 @@ export default function ReportCard() {
                 <TableHead>Total</TableHead>
                 <TableHead>%</TableHead>
                 <TableHead>Grade</TableHead>
-                <TableHead>Action</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <tbody>
-              {(isStudent() ? myReportCards : data.reportCards).map((rc) => {
+              {visibleCards.map((rc) => {
                 const student = data.people.find((p) => p.id === rc.student_id);
                 return (
                   <TableRow key={rc.id}>
-                    <TableCell>{student?.full_name ?? '—'}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{student?.full_name ?? '—'}</div>
+                      <div className="text-xs text-muted">{student?.admission_no}</div>
+                    </TableCell>
                     <TableCell>{rc.term}</TableCell>
-                    <TableCell className="text-sm">{rc.class_label} / {rc.section_label}</TableCell>
-                    <TableCell>{rc.total} / {rc.max_total}</TableCell>
+                    <TableCell className="text-sm">
+                      {rc.class_label} / {rc.section_label}
+                    </TableCell>
+                    <TableCell>
+                      {rc.total} / {rc.max_total}
+                    </TableCell>
                     <TableCell>{rc.percentage.toFixed(1)}%</TableCell>
                     <TableCell>
                       <Badge variant="olive">{rc.grade}</Badge>
                     </TableCell>
                     <TableCell>
-                      {isStudent() ? (
+                      <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => handlePrint(rc)}>
                           <FiPrinter size={14} /> Print
                         </Button>
-                      ) : (
-                        <span className="text-xs text-muted">—</span>
-                      )}
+                        {canGenerate && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => data.removeReportCard(rc.id)}
+                            aria-label="Withdraw report card"
+                          >
+                            <FiTrash2 size={14} />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
               })}
-              {(isStudent() ? myReportCards : data.reportCards).length === 0 && (
+              {visibleCards.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted py-4">
+                  <TableCell colSpan={7} className="py-4 text-center text-muted">
                     No report cards yet.
                   </TableCell>
                 </TableRow>
@@ -195,68 +236,75 @@ export default function ReportCard() {
       </Card>
 
       {canGenerate && open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 lg:hidden">
-          <div className="bg-white p-6 rounded-xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold text-ink mb-4">Generate report card</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="mb-1 text-lg font-bold text-ink">Generate report card</h2>
+            <p className="mb-4 text-xs text-muted">
+              Marks are graded automatically (A1 to E). The card appears in the student’s account
+              immediately.
+            </p>
             <form onSubmit={handleGenerate} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Student</label>
+                <label className="mb-1 block text-xs font-medium text-muted">Student</label>
                 <select
                   value={form.student_id}
-                  onChange={(e) => setForm({ ...form, student_id: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  onChange={(e) => pickStudent(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 >
                   <option value="">Select student</option>
                   {students.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.full_name} ({s.login_id})
+                      {s.full_name} — {s.admission_no} ({s.class_label} {s.section_label})
                     </option>
                   ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Term</label>
+                  <label className="mb-1 block text-xs font-medium text-muted">Term</label>
                   <select
                     value={form.term}
                     onChange={(e) => setForm({ ...form, term: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   >
-                    <option value="HALF YEARLY">Half Yearly</option>
-                    <option value="ANNUAL">Annual</option>
-                    <option value="TERM 1">Term 1</option>
-                    <option value="TERM 2">Term 2</option>
+                    {TERMS.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Academic year</label>
+                  <label className="mb-1 block text-xs font-medium text-muted">Academic year</label>
                   <input
                     value={form.academic_year}
                     onChange={(e) => setForm({ ...form, academic_year: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Class</label>
+                  <label className="mb-1 block text-xs font-medium text-muted">Class</label>
                   <input
                     value={form.class_label}
                     onChange={(e) => setForm({ ...form, class_label: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    placeholder="IX"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Section</label>
+                  <label className="mb-1 block text-xs font-medium text-muted">Section</label>
                   <input
                     value={form.section_label}
                     onChange={(e) => setForm({ ...form, section_label: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    placeholder="E"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Subjects &amp; marks</label>
+                <label className="mb-1 block text-xs font-medium text-muted">Subjects &amp; marks</label>
                 <div className="space-y-2">
                   {form.subjects.map((s, i) => (
                     <div key={i} className="flex gap-2">
@@ -267,7 +315,7 @@ export default function ReportCard() {
                           subs[i] = { ...subs[i], subject: ev.target.value };
                           setForm({ ...form, subjects: subs });
                         }}
-                        className="flex-1 px-3 py-2 border rounded-lg"
+                        className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
                         placeholder="Subject"
                       />
                       <input
@@ -278,7 +326,7 @@ export default function ReportCard() {
                           subs[i] = { ...subs[i], marks: ev.target.value };
                           setForm({ ...form, subjects: subs });
                         }}
-                        className="w-20 px-3 py-2 border rounded-lg"
+                        className="w-20 rounded-lg border border-slate-300 px-3 py-2 text-sm"
                         placeholder="Marks"
                       />
                       <input
@@ -289,24 +337,40 @@ export default function ReportCard() {
                           subs[i] = { ...subs[i], max_marks: ev.target.value };
                           setForm({ ...form, subjects: subs });
                         }}
-                        className="w-20 px-3 py-2 border rounded-lg"
+                        className="w-20 rounded-lg border border-slate-300 px-3 py-2 text-sm"
                         placeholder="Max"
                       />
                       <button
                         type="button"
-                        onClick={() => handleRemoveSubject(i)}
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            subjects: prev.subjects.filter((_, index) => index !== i),
+                          }))
+                        }
                         className="text-terracotta hover:text-terracotta/80"
+                        aria-label="Remove subject"
                       >
                         ✕
                       </button>
                     </div>
                   ))}
-                  <Button variant="outline" size="sm" type="button" onClick={handleAddSubject}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        subjects: [...prev.subjects, { subject: '', marks: '', max_marks: '100' }],
+                      }))
+                    }
+                  >
                     <FiPlus size={14} /> Add subject
                   </Button>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 mt-4">
+              <div className="mt-4 flex justify-end gap-2">
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
@@ -316,6 +380,71 @@ export default function ReportCard() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function LatestCard({
+  card,
+  onPrint,
+  studentName,
+}: {
+  card: ReportCardType;
+  onPrint: (card: ReportCardType) => void;
+  studentName: string;
+}) {
+  return (
+    <Card className="print-card">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-olive">Latest result</div>
+          <h3 className="text-lg font-bold text-ink">
+            {card.term} · {card.academic_year}
+          </h3>
+          <p className="text-sm text-muted">
+            {studentName} · {card.class_label} {card.section_label}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => onPrint(card)}>
+          <FiPrinter size={14} /> Print
+        </Button>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Metric label="Total" value={`${card.total}/${card.max_total}`} />
+        <Metric label="Percentage" value={`${card.percentage.toFixed(1)}%`} />
+        <Metric label="Grade" value={card.grade} />
+        <Metric label="Subjects" value={`${card.subjects.length}`} />
+      </div>
+      <div className="mt-4 space-y-1.5">
+        {card.subjects.map((s) => {
+          const share = Math.round((s.marks / (s.max_marks || 100)) * 100);
+          return (
+            <div key={s.subject}>
+              <div className="flex justify-between text-xs">
+                <span className="text-ink">{s.subject}</span>
+                <span className="text-muted">
+                  {s.marks}/{s.max_marks}
+                </span>
+              </div>
+              <div className="mt-0.5 h-1.5 w-full rounded-full bg-sand">
+                <div
+                  className="h-1.5 rounded-full bg-olive"
+                  style={{ width: `${Math.min(100, share)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-sand/60 bg-cream/40 p-3">
+      <div className="text-lg font-bold text-ink">{value}</div>
+      <div className="text-xs text-muted">{label}</div>
     </div>
   );
 }

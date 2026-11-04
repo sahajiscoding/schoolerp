@@ -20,6 +20,8 @@ export default [
         ...globals.browser,
         ...globals.node,
         React: 'readonly',
+        // Build-time constant from vite.config.ts (see src/vite-env.d.ts).
+        __DEMO_MODE__: 'readonly',
       },
     },
     plugins: {
@@ -35,6 +37,16 @@ export default [
       ],
       '@typescript-eslint/no-unused-vars': 'warn',
       'no-unused-vars': 'off',
+      // Defence in depth for the printable documents built in printHtml() and
+      // the study-room preview: dynamic HTML must go through escapeHtml().
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='write']",
+          message:
+            'document.write() with interpolated values is an XSS sink. Build the string with escapeHtml() from lib/utils first.',
+        },
+      ],
     },
   },
 ]

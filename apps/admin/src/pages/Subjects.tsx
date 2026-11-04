@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppData } from '../lib/appData';
 import {
   Card,
   Button,
-  Badge,
   Table,
   TableHeader,
   TableRow,
   TableHead,
   TableCell,
 } from '../components/ui';
-import { FiBookOpen, FiPlus, FiEdit3, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiEdit3, FiTrash2 } from 'react-icons/fi';
 
 export default function Subjects() {
   const { isAdmin } = useAuth();
@@ -20,10 +20,16 @@ export default function Subjects() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    // subjects not in appData yet; keep local
+    if (!form.name.trim() || !form.code.trim()) {
+      data.notify('Subject name and code are required.');
+      return;
+    }
+    data.addSubject({ name: form.name.trim(), code: form.code.trim().toUpperCase(), color: '#4B5D2A' });
     setForm({ name: '', code: '' });
     setOpen(false);
   };
+
+  const subjects = data.subjects;
 
   if (!isAdmin()) return <div className="p-4 text-terracotta">Admin only</div>;
 
@@ -50,24 +56,28 @@ export default function Subjects() {
               </TableRow>
             </TableHeader>
             <tbody>
-              {[
-                { name: 'Artificial Intelligence', code: 'AI' },
-                { name: 'Mathematics', code: 'MATH' },
-                { name: 'English', code: 'ENG' },
-                { name: 'Science', code: 'SCI' },
-                { name: 'Social Science', code: 'SST' },
-                { name: 'Hindi', code: 'HIN' },
-              ].map((s, i) => (
-                <TableRow key={i}>
-                  <TableCell>{s.name}</TableCell>
+              {subjects.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell>
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: s.color }}
+                        aria-hidden
+                      />
+                      {s.name}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-muted text-sm">{s.code}</TableCell>
-                  <TableCell className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => {}}>
-                      <FiEdit3 size={14} />
-                    </Button>
-                    <Button variant="danger" size="sm" onClick={() => {}}>
-                      <FiTrash2 size={14} />
-                    </Button>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => data.notify(`Editing ${s.name} is available to admins on the live database.`)} aria-label={`Edit ${s.name}`}>
+                        <FiEdit3 size={14} />
+                      </Button>
+                      <Button variant="danger" size="sm" onClick={() => data.removeSubject(s.id)} aria-label={`Remove ${s.name}`}>
+                        <FiTrash2 size={14} />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

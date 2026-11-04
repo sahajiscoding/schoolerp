@@ -1,58 +1,91 @@
-import { useAuth } from '../contexts/AuthContext';
+import { useMemo, useState } from 'react';
+import { useAppData as useData } from '../lib/appData';
 import {
   Card,
+  Badge,
   Table,
   TableHeader,
   TableRow,
   TableHead,
   TableCell,
 } from '../components/ui';
+import { formatDateTime } from '../lib/utils';
+import { FiShield } from 'react-icons/fi';
 
 export default function AuditLog() {
-  const { isAdmin } = useAuth();
+  const data = useData();
+  const [query, setQuery] = useState('');
 
-  if (!isAdmin()) return <div className="p-4 text-terracotta">Admin only</div>;
-
-  const logs = [
-    { actor: 'School Administrator', action: 'Created user', entity: 'Sahaj Chugh (0185/18)', time: '2026-11-03 10:00' },
-    { actor: 'Anuradha Gupta', action: 'Approved leave', entity: 'Aarav Mehta', time: '2026-11-03 09:15' },
-    { actor: 'School Administrator', action: 'Linked sibling', entity: 'Vivaan Chugh → Sahaj Chugh', time: '2026-11-02 14:20' },
-    { actor: 'Radhika Malhotra', action: 'Published assignment', entity: 'Quadratic equations worksheet', time: '2026-11-01 06:15' },
-  ];
+  const entries = useMemo(
+    () =>
+      data.audit.filter((entry) => {
+        if (!query) return true;
+        const actor = data.people.find((p) => p.id === entry.actorId)?.full_name ?? '';
+        return `${actor} ${entry.action} ${entry.target}`.toLowerCase().includes(query.toLowerCase());
+      }),
+    [data.audit, data.people, query],
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Audit Log</h1>
-          <p className="text-muted">Administrative actions are recorded and read-only.</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-ink">Audit Log</h1>
+        <p className="text-muted">
+          Every administrative action is recorded. Entries are read-only — admins cannot edit or delete
+          them, on this page or in the database.
+        </p>
+      </div>
+
+      <div className="flex items-start gap-2 rounded-xl border border-olive/15 bg-olive/5 p-3 text-xs text-olive">
+        <FiShield size={14} className="mt-0.5 shrink-0" />
+        <span>
+          In the live system this table is backed by <code>audit_log</code> with RLS: admins can
+          select, only the service role can insert.
+        </span>
       </div>
 
       <Card>
+        <div className="mb-3">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search actor, action or student"
+            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>When</TableHead>
                 <TableHead>Actor</TableHead>
                 <TableHead>Action</TableHead>
-                <TableHead>Entity</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>Target</TableHead>
               </TableRow>
             </TableHeader>
             <tbody>
-              {logs.map((log, i) => (
-                <TableRow key={i}>
-                  <TableCell className="font-medium">{log.actor}</TableCell>
-                  <TableCell>{log.action}</TableCell>
-                  <TableCell className="text-sm text-muted">{log.entity}</TableCell>
-                  <TableCell className="text-sm text-muted">{log.time}</TableCell>
-                </TableRow>
-              ))}
-              {logs.length === 0 && (
+              {entries.map((entry) => {
+                const actor = data.people.find((p) => p.id === entry.actorId);
+                return (
+                  <TableRow key={entry.id}>
+                    <TableCell className="whitespace-nowrap text-xs text-muted">
+                      {formatDateTime(entry.at)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm font-medium">{actor?.full_name ?? 'System'}</div>
+                      <Badge variant={actor?.role === 'admin' ? 'terracotta' : 'olive'} className="mt-1">
+                        {actor?.role ?? 'system'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{entry.action}</TableCell>
+                    <TableCell className="text-sm text-muted">{entry.target}</TableCell>
+                  </TableRow>
+                );
+              })}
+              {entries.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted py-4">
-                    No audit records yet.
+                  <TableCell colSpan={4} className="py-4 text-center text-muted">
+                    No entries match that search.
                   </TableCell>
                 </TableRow>
               )}
