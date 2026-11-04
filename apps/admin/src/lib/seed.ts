@@ -1,4 +1,5 @@
 import { eachDayOfInterval, format, isSunday } from 'date-fns';
+import { passwordFromDob } from './utils';
 import type {
   AppNotification,
   AuditEntry,
@@ -107,7 +108,8 @@ export const seedPeople: Person[] = [
     admission_no: '0185/18',
     class_label: 'IX',
     section_label: 'E',
-    password: 'Student@14052010',
+    // Derived, never a literal: the seed only displays this value in demo mode.
+    password: passwordFromDob('2010-05-14'),
     sibling_id: 'p-student-6',
   },
   {

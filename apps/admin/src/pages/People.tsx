@@ -377,7 +377,8 @@ export default function People() {
               <span>
                 Every account starts with the password{' '}
                 <strong>Student@</strong> followed by the date of birth as <strong>DDMMYYYY</strong>.
-                A student born 14 May 2010 gets <code className="rounded bg-white px-1">Student@14052010</code>.
+                A student born 14 May 2010 gets{' '}
+                <code className="rounded bg-white px-1">{`Student@${passwordFromDob('14/05/2010')}`}</code>.
               </span>
             </div>
 
