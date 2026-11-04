@@ -39,7 +39,10 @@
       "minimatch": "^11.0.4"
     },
     "@eslint/config-array": {
-      "minimatch": "^10.2.6"
+      "minimatch": "^11.0.4"
+    },
+    "eslint": {
+      "minimatch": "^11.0.4"
     }
   }
 }

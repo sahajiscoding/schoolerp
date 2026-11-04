@@ -73,7 +73,10 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Without a Supabase client there is no session to wait for, so start out
+  // resolved rather than flipping `loading` inside an effect (which cascades
+  // renders on mount).
+  const [loading, setLoading] = useState(() => !missingSupabaseConfig());
   const [viewingRole, setViewingRole] = useState<Role | null>(null);
 
   const demoMode = missingSupabaseConfig();
@@ -95,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     const client = supabase;
     if (!client) {
-      setLoading(false);
+      // `loading` already starts false in this case; nothing to await.
       return undefined;
     }
 
