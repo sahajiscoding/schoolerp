@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData as useAppDataHook } from '../lib/appData';
-import { formatDateLong, gradeFor, printHtml } from '../lib/utils';
+import { escapeHtml, formatDateLong, gradeFor, printHtml } from '../lib/utils';
 import {
   Card,
   Button,
@@ -103,7 +103,7 @@ export default function ReportCard() {
     const rows = rc.subjects
       .map(
         (s) =>
-          `<tr><td>${s.subject}</td><td style="text-align:center">${s.marks}</td><td style="text-align:center">${s.max_marks}</td><td style="text-align:center">${((s.marks / (s.max_marks || 100)) * 100).toFixed(1)}%</td></tr>`,
+          `<tr><td>${escapeHtml(s.subject)}</td><td style="text-align:center">${escapeHtml(s.marks)}</td><td style="text-align:center">${escapeHtml(s.max_marks)}</td><td style="text-align:center">${((s.marks / (s.max_marks || 100)) * 100).toFixed(1)}%</td></tr>`,
       )
       .join('');
     printHtml(
@@ -113,12 +113,12 @@ export default function ReportCard() {
           <h1>PACIFIC WORLD SCHOOL</h1>
           <p>Greater Noida West · Report Card</p>
         </div>
-        <h2>${rc.term} · Academic Year ${rc.academic_year}</h2>
+        <h2>${escapeHtml(rc.term)} · Academic Year ${escapeHtml(rc.academic_year)}</h2>
         <div class="meta">
-          <div><strong>Student</strong> ${student?.full_name ?? '—'}</div>
-          <div><strong>Admission No.</strong> ${student?.admission_no ?? student?.login_id ?? '—'}</div>
-          <div><strong>Class / Section</strong> ${rc.class_label || (student?.class_label ?? '')} / ${rc.section_label || (student?.section_label ?? '')}</div>
-          <div><strong>Date of Birth</strong> ${student?.dob ? formatDateLong(student.dob) : '—'}</div>
+          <div><strong>Student</strong> ${escapeHtml(student?.full_name ?? '—')}</div>
+          <div><strong>Admission No.</strong> ${escapeHtml(student?.admission_no ?? student?.login_id ?? '—')}</div>
+          <div><strong>Class / Section</strong> ${escapeHtml(rc.class_label || (student?.class_label ?? ''))} / ${escapeHtml(rc.section_label || (student?.section_label ?? ''))}</div>
+          <div><strong>Date of Birth</strong> ${escapeHtml(student?.dob ? formatDateLong(student.dob) : '—')}</div>
         </div>
         <table>
           <thead>
@@ -129,7 +129,7 @@ export default function ReportCard() {
         <div class="total">
           Total: <strong>${rc.total} / ${rc.max_total}</strong> &nbsp;·&nbsp;
           Percentage: <strong>${rc.percentage.toFixed(1)}%</strong> &nbsp;·&nbsp;
-          Grade: <strong>${rc.grade}</strong>
+          Grade: <strong>${escapeHtml(rc.grade)}</strong>
         </div>
         <div class="signatures">
           <div>Class Teacher</div>

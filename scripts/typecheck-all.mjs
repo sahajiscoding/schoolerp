@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
+// Fixed workspace allowlist; paths are never built from untrusted input.
 const workspaces = ['apps/admin', 'apps/mobile', 'packages/shared'];
 let failed = false;
 
