@@ -2,7 +2,7 @@
 
 pgTAP (`supabase/tests/*.sql`) is the canonical suite and needs `supabase test
 db`. This script is the fallback for environments without Docker: it boots a
-throwaway Postgres with `pgserver`, applies 0001 + 0002, seeds a school and
+throwaway Postgres with `pgserver`, applies 0001 + 0002 + 0003, seeds a school and
 asserts the same rules through the `authenticated` role.
 
     python3 -m venv .venv && .venv/bin/pip install pgserver
@@ -21,6 +21,7 @@ create or replace function auth.uid() returns uuid language sql stable as $fn$
 do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;""")
 db.psql(open('/home/user/schoolerp/supabase/migrations/0001_initial_schema.sql').read().replace('CREATE EXTENSION IF NOT EXISTS pgcrypto;',''))
 db.psql(open('/home/user/schoolerp/supabase/migrations/0002_dashboard_modules.sql').read())
+db.psql(open('/home/user/schoolerp/supabase/migrations/0003_function_hardening.sql').read())
 
 ids = {k: str(uuid.uuid4()) for k in ['admin','cteach','oteach','sa','sb']}
 sec, osec, cls, subj = (str(uuid.uuid4()) for _ in range(4))
@@ -78,6 +79,21 @@ def rows(uid, table, where='true'):
     m = re.findall(r'^\s*(\d+)\s*$', out, re.M)
     return int(m[-1]) if m else '?'
 
+def scalar(uid, sql):
+    """Run a one-row query and return its first column.
+
+    psql prints a header, a rule line, the value and a "(N rows)" footer, so the
+    value is the line after the dashed rule of the LAST result set.
+    """
+    ok, out = run_as(uid, sql)
+    if not ok:
+        return f"ERR {out.splitlines()[0][:60]}"
+    lines = out.splitlines()
+    rule = max((i for i, l in enumerate(lines) if set(l.strip()) == {'-'}), default=None)
+    if rule is None or rule + 1 >= len(lines):
+        return '?'
+    return lines[rule + 1].strip()
+
 def attempt(uid, sql):
     """Blocked writes produce no command tag (the RLS error goes to stderr) and
     a blocked UPDATE/DELETE reports `UPDATE 0` / `DELETE 0`."""
@@ -106,6 +122,12 @@ checks = [
  ("student sees own sibling link", rows(ids['sa'],'sibling_links'), 1),
  ("student reads own report card", rows(ids['sa'],'report_cards',f"student_id='{ids['sa']}'"), 1),
  ("student reads school events", rows(ids['sb'],'school_events'), 1),
+ # Regression: teaches_section() used to compare `ta.section_id = section_id`,
+ # where the bare name resolved to the parameter, making it true for every
+ # caller. A teacher must NOT see another section's rows.
+ ("unrelated teacher sees no other-section rows", rows(ids['oteach'],'leave_requests',f"student_id='{ids['sa']}'"), 0),
+ ("teaches_section(other section) is false", scalar(ids['oteach'], f"select case when teaches_section('{sec}') then 'TRUE' else 'FALSE' end as v;"), 'FALSE'),
+ ("teaches_section(own section) is true", scalar(ids['oteach'], f"select case when teaches_section('{osec}') then 'TRUE' else 'FALSE' end as v;"), 'TRUE'),
 ]
 fails = 0
 for name, got, want in checks:
