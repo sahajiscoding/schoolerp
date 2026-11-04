@@ -49,9 +49,11 @@ export function normalizeDob(input: string): { day: string; month: string; year:
   const value = input.trim();
   const isoMatch = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   const dmyMatch = value.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-  let year = '';
-  let month = '';
-  let day = '';
+  // Declared without an initial value: the three branches below always assign
+  // all of them before they are read, so placeholder '' values were dead stores.
+  let year: string;
+  let month: string;
+  let day: string;
   if (isoMatch) {
     year = isoMatch[1];
     month = isoMatch[2].padStart(2, '0');
