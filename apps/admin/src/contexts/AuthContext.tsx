@@ -12,27 +12,35 @@ import { toAuthEmail } from '../lib/utils';
 import type { Profile, Role } from '@schoolerp/shared';
 import { useAppData } from '../lib/appData';
 
+/**
+ * Demo accounts map to real seeded profiles (`seed.ts`). The `id` MUST be the
+ * seeded person id — every "my …" screen looks the signed-in user up by id, so
+ * a synthetic id would leave the student's fees, attendance and leaves empty.
+ */
 const DEMO_LOGINS: Record<
   string,
-  { password: string; role: Role; full_name: string; login_id: string }
+  { password: string; role: Role; full_name: string; login_id: string; id: string }
 > = {
   ADMIN001: {
     password: 'REDACTED',
     role: 'admin',
     full_name: 'School Administrator',
     login_id: 'ADMIN001',
+    id: 'p-admin',
   },
   TCH001: {
     password: 'REDACTED',
     role: 'teacher',
     full_name: 'Anuradha Gupta',
     login_id: 'TCH001',
+    id: 'p-teacher-1',
   },
   '0185/18': {
     password: 'Student@14052010',
     role: 'student',
     full_name: 'Sahaj Chugh',
     login_id: '0185/18',
+    id: 'p-student-1',
   },
 };
 
@@ -137,9 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Demo path: exact credentials without hitting Supabase.
       const demo = DEMO_LOGINS[loginId];
       if (demo && demo.password === password) {
-        setSessionUserId(`demo-${demo.login_id}`);
+        setSessionUserId(demo.id);
         setProfile({
-          id: `demo-${demo.login_id}`,
+          id: demo.id,
           role: demo.role,
           full_name: demo.full_name,
           login_id: demo.login_id,

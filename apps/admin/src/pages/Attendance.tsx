@@ -39,7 +39,21 @@ export default function Attendance() {
   const [open, setOpen] = useState(false);
 
   const canMark = isAdmin() || isTeacher();
-  const students = data.people.filter((p) => p.role === 'student');
+
+  /**
+   * A teacher only marks the section they are class teacher of. Admins see the
+   * whole school. This mirrors the RLS policy on `attendance`.
+   */
+  const mySection = data.people.find((p) => p.id === profile?.id)?.class_teacher_of;
+  const students = data.people
+    .filter((p) => p.role === 'student')
+    .filter((p) =>
+      isAdmin() || isStudent()
+        ? true
+        : mySection
+          ? `${p.class_label} - ${p.section_label}` === mySection
+          : false,
+    );
 
   const dayRecords = useMemo(() => {
     return data.attendance.filter((a) => a.date === viewDate);
