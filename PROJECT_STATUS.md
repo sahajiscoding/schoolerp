@@ -107,11 +107,10 @@ This file is the single source of truth for project state. Every agent must read
   longer 404s. Verified against the real build output.
 - CI runs on Node 22 with `npm ci`; typecheck, lint (0 errors) and the admin
   build all pass. First-party actions moved off deprecated Node 20 runtimes.
-- The redundant vendor scanners (**Black Duck, Synopsys, CxFlow, Checkmarx One,
-  CodeScan**) were **removed on 2026-11-05** — they only ever failed on missing
-  vendor credentials, not findings. Endor Labs and Debricked remain and still
-  need vendor credentials to run. See `docs/security/scanning.md`; CodeQL stays
-  the always-on baseline.
+- All seven paid vendor scanners (**Black Duck, Synopsys, CxFlow, Checkmarx One,
+  CodeScan, Endor Labs, Debricked**) were **removed on 2026-11-05** — they only
+  ever failed on missing vendor credentials, not findings. CodeQL stays the
+  always-on baseline, with free Codacy + OSSAR on top. See `docs/security/scanning.md`.
 
 ### Supabase project
 
