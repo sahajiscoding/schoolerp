@@ -23,7 +23,7 @@ import { cn, formatDateLong, inr } from '../lib/utils';
  * correct everywhere.
  */
 export default function Fees() {
-  const { profile, isAdmin, isTeacher, isStudent } = useAuth();
+  const { profile, isAdmin, isStudent } = useAuth();
   const data = useData();
   const [openSibling, setOpenSibling] = useState(false);
   const [openPay, setOpenPay] = useState(false);
@@ -34,7 +34,9 @@ export default function Fees() {
   });
   const [payForm, setPayForm] = useState({ invoice_id: '', amount: '' });
 
-  const canManage = isAdmin() || isTeacher();
+  // Fee collection and sibling discounts are admin-only, matching the
+  // fee_records_admin_write / sibling_links_admin_write RLS policies.
+  const canManage = isAdmin();
   const students = data.people.filter((p) => p.role === 'student');
   const myFees = isStudent() ? data.fees.filter((f) => f.student_id === profile?.id) : data.fees;
 

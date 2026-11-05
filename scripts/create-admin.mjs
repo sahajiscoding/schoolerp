@@ -5,11 +5,12 @@
  * Usage:
  *   SUPABASE_URL=https://xxx.supabase.co \
  *   SUPABASE_SERVICE_ROLE_KEY=... \
- *   node scripts/create-admin.mjs ADMIN001 "School Administrator" 'REDACTED'
+ *   node scripts/create-admin.mjs ADMIN001 "School Administrator"
  *
- * Or run `node scripts/create-admin.mjs` and answer the prompts (the service
- * role key is read from the environment, or from .env.local, never typed into
- * a browser).
+ * The password is then prompted for interactively (preferred — it stays out
+ * of shell history). Or run `node scripts/create-admin.mjs` and answer all
+ * prompts. The service role key is read from the environment, or from
+ * .env.local, never typed into a browser.
  *
  * The service role key must stay on this machine. Never commit it, never put it
  * in apps/*, and never ship it to Vercel as a client variable.
@@ -55,7 +56,7 @@ Set the project URL and the SERVICE ROLE key (server-side only):
 
   SUPABASE_URL=https://<project>.supabase.co \\
   SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \\
-  node scripts/create-admin.mjs ADMIN001 "School Administrator" 'REDACTED'
+  node scripts/create-admin.mjs ADMIN001 "School Administrator"
 
 The service role key is never used by the web apps. Do not put it in .env
 files that Vite reads.

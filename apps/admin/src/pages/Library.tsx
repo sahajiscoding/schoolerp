@@ -222,7 +222,7 @@ export default function Library() {
       </Card>
 
       {canManage && openAdd && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 lg:hidden">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
             <h2 className="text-lg font-bold text-ink mb-4">Add book</h2>
             <form onSubmit={handleAddBook} className="space-y-3">
@@ -279,7 +279,7 @@ export default function Library() {
       )}
 
       {canManage && openIssue && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 lg:hidden">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
             <h2 className="text-lg font-bold text-ink mb-4">Issue book</h2>
             <form onSubmit={handleIssueBook} className="space-y-3">

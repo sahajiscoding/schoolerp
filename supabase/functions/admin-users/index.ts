@@ -21,7 +21,6 @@ interface ImportRow {
 }
 
 const STUDENT_DOMAIN = 'pws.local';
-const ADMIN_DOMAIN = 'pws.local';
 
 /** School rule: Student@ + DDMMYYYY. */
 function passwordFromDob(isoDate: string): string {
@@ -119,7 +118,9 @@ Deno.serve(async (req) => {
     }
 
     const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email: `${loginId.toLowerCase()}@${ADMIN_DOMAIN}`,
+      // Normalize identically to authEmail()/client toAuthEmail() so the created
+      // account matches the sign-in lookup (audit finding F8).
+      email: authEmail(loginId),
       password,
       email_confirm: true,
       user_metadata: { full_name: fullName, login_id: loginId },

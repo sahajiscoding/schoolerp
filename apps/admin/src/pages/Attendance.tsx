@@ -47,13 +47,12 @@ export default function Attendance() {
   const mySection = data.people.find((p) => p.id === profile?.id)?.class_teacher_of;
   const students = data.people
     .filter((p) => p.role === 'student')
-    .filter((p) =>
-      isAdmin() || isStudent()
-        ? true
-        : mySection
-          ? `${p.class_label} - ${p.section_label}` === mySection
-          : false,
-    );
+    .filter((p) => {
+      // Students only ever see their own attendance (mirrors the RLS policy).
+      if (isStudent()) return p.id === profile?.id;
+      if (isAdmin()) return true;
+      return mySection ? `${p.class_label} - ${p.section_label}` === mySection : false;
+    });
 
   const dayRecords = useMemo(() => {
     return data.attendance.filter((a) => a.date === viewDate);
@@ -67,25 +66,31 @@ export default function Attendance() {
     end: new Date(weekStart.getTime() + 6 * 86400000),
   });
 
-  const handleMark = (studentId: string, status: AttendanceStatus) => {
-    if (!profile) return;
-    const existing = dayRecords.find((r) => r.student_id === studentId);
-    if (existing) {
-      // update
-      data.saveAttendance([
-        { ...existing, status },
-      ]);
-    } else {
-      data.saveAttendance([
-        {
-          student_id: studentId,
-          date: viewDate,
-          status,
-          note: '',
-        },
-      ]);
+  /**
+   * Only admins and teachers may write attendance, and a teacher only for the
+   * section they are class teacher of. Students have a read-only view. This
+   * mirrors the RLS policy on `attendance` and is enforced here regardless of
+   * which control triggered the write.
+   */
+  const markStatus = (studentId: string, dateStr: string, status: AttendanceStatus) => {
+    if (!canMark || !profile) return;
+    if (!isAdmin()) {
+      const student = data.people.find((p) => p.id === studentId);
+      if (!student || `${student.class_label} - ${student.section_label}` !== mySection) return;
     }
+    const existing = data.attendance.find((r) => r.student_id === studentId && r.date === dateStr);
+    data.saveAttendance([
+      existing
+        ? { ...existing, status }
+        : { student_id: studentId, date: dateStr, status, note: '' },
+    ]);
   };
+
+  const handleMark = (studentId: string, status: AttendanceStatus) => markStatus(studentId, viewDate, status);
+
+  // Clicking a day badge cycles that day's status (present → absent → leave → medical).
+  const CYCLE: AttendanceStatus[] = ['present', 'absent', 'leave', 'medical'];
+  const nextStatus = (s: AttendanceStatus): AttendanceStatus => CYCLE[(CYCLE.indexOf(s) + 1) % CYCLE.length];
 
   const presentCount = dayRecords.filter((r) => r.status === 'present').length;
   const absentCount = dayRecords.filter((r) => r.status === 'absent').length;
@@ -169,8 +174,9 @@ export default function Attendance() {
                       <TableCell key={i} className="text-center">
                       <Badge
                         variant={STATUS_COLOR[status]}
-                        className="text-[10px] px-2 py-1"
-                        onClick={canMark ? () => handleMark(student.id, status) : undefined}
+                        className={`text-[10px] px-2 py-1 ${canMark ? 'cursor-pointer' : ''}`}
+                        title={canMark ? `Click to change ${format(weekDays[i], 'dd MMM')} status` : undefined}
+                        onClick={canMark ? () => markStatus(student.id, format(weekDays[i], 'yyyy-MM-dd'), nextStatus(status)) : undefined}
                         >
                           {STATUS_LABEL[status].charAt(0)}
                         </Badge>
@@ -193,7 +199,7 @@ export default function Attendance() {
 
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-ink">Mark today ({format(new Date(viewDate), 'dd MMM yyyy')})</h3>
+          <h3 className="text-lg font-bold text-ink">{canMark ? 'Mark today' : 'Attendance'} ({format(new Date(viewDate), 'dd MMM yyyy')})</h3>
           {canMark && (
             <Button onClick={() => setOpen(true)}>
               <FiCheckCircle size={14} /> Mark attendance
@@ -215,19 +221,23 @@ export default function Attendance() {
                   <TableRow key={student.id}>
                     <TableCell className="font-medium">{student.full_name} ({student.login_id})</TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        {['present', 'absent', 'leave', 'medical'].map((status) => (
-                          <Button
-                            key={status}
-                            variant={current === status ? 'olive' : 'outline'}
-                            size="sm"
-                            onClick={() => handleMark(student.id, status as AttendanceStatus)}
-                            className="px-2 py-1 text-xs"
-                          >
-                            {STATUS_LABEL[status as AttendanceStatus].charAt(0)}
-                          </Button>
-                        ))}
-                      </div>
+                      {canMark ? (
+                        <div className="flex gap-2">
+                          {['present', 'absent', 'leave', 'medical'].map((status) => (
+                            <Button
+                              key={status}
+                              variant={current === status ? 'olive' : 'outline'}
+                              size="sm"
+                              onClick={() => handleMark(student.id, status as AttendanceStatus)}
+                              className="px-2 py-1 text-xs"
+                            >
+                              {STATUS_LABEL[status as AttendanceStatus].charAt(0)}
+                            </Button>
+                          ))}
+                        </div>
+                      ) : (
+                        <Badge variant={STATUS_COLOR[current]}>{STATUS_LABEL[current]}</Badge>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -238,7 +248,7 @@ export default function Attendance() {
       </Card>
 
       {canMark && open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 lg:hidden">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
             <h2 className="text-lg font-bold text-ink mb-4">Mark attendance</h2>
             <p className="text-muted text-sm mb-4">Date: {format(new Date(viewDate), 'dd MMM yyyy')}</p>

@@ -47,7 +47,10 @@ export default function Communications() {
   const mySection =
     data.people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'IX - E';
 
-  const handleSign = (id: string) => data.signDeclaration(id);
+  const handleSign = (id: string) => {
+    if (!profile) return;
+    data.signDeclaration(id, profile.id);
+  };
 
   const handleCreateDeclaration = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,7 +107,10 @@ export default function Communications() {
     data.votePoll(pollId, optionId, profile.id);
   };
 
-  const pendingDeclarations = data.declarations.filter((f) => f.status === 'pending').length;
+  // Per-student: a form is "to sign" only if THIS student has not signed it.
+  const pendingDeclarations = data.declarations.filter(
+    (f) => !(f.signed_by ?? []).includes(profile?.id ?? ''),
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -155,33 +161,43 @@ export default function Communications() {
                 </TableRow>
               </TableHeader>
               <tbody>
-                {data.declarations.map((form) => (
-                  <TableRow key={form.id}>
-                    <TableCell>
-                      <div className="font-medium text-ink">{form.name}</div>
-                      <div className="text-xs text-muted">{form.description}</div>
-                    </TableCell>
-                    <TableCell>{form.type}</TableCell>
-                    <TableCell>
-                      <Badge variant={form.status === 'signed' ? 'success' : 'pending'}>
-                        {form.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {form.status === 'pending' && isStudent() ? (
-                        <Button variant="outline" size="sm" onClick={() => handleSign(form.id)}>
-                          <FiCheckCircle size={14} /> Sign
-                        </Button>
-                      ) : form.status === 'signed' ? (
-                        <span className="text-xs text-muted">
-                          Signed {form.signed_at ? formatDateLong(form.signed_at.slice(0, 10)) : ''}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted">Awaiting students</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {data.declarations.map((form) => {
+                  const signedBy = form.signed_by ?? [];
+                  const iSigned = signedBy.includes(profile?.id ?? '');
+                  return (
+                    <TableRow key={form.id}>
+                      <TableCell>
+                        <div className="font-medium text-ink">{form.name}</div>
+                        <div className="text-xs text-muted">{form.description}</div>
+                      </TableCell>
+                      <TableCell>{form.type}</TableCell>
+                      <TableCell>
+                        {isStudent() ? (
+                          <Badge variant={iSigned ? 'success' : 'pending'}>{iSigned ? 'signed' : 'pending'}</Badge>
+                        ) : (
+                          <Badge variant={signedBy.length ? 'olive' : 'pending'}>{signedBy.length} signed</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isStudent() ? (
+                          iSigned ? (
+                            <span className="text-xs text-muted">
+                              Signed {form.signed_at ? formatDateLong(form.signed_at.slice(0, 10)) : ''}
+                            </span>
+                          ) : (
+                            <Button variant="outline" size="sm" onClick={() => handleSign(form.id)}>
+                              <FiCheckCircle size={14} /> Sign
+                            </Button>
+                          )
+                        ) : (
+                          <span className="text-xs text-muted">
+                            {signedBy.length ? `${signedBy.length} student${signedBy.length === 1 ? '' : 's'} signed` : 'Awaiting students'}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {data.declarations.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="py-4 text-center text-muted">

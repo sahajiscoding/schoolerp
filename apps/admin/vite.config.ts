@@ -28,9 +28,6 @@ export default defineConfig(({ mode }) => {
     define: {
       'import.meta.env.SUPABASE_URL': JSON.stringify(supabaseUrl),
       'import.meta.env.SUPABASE_PUBLISHABLE_KEY': JSON.stringify(supabaseKey),
-      // Replaced with the literal `true`/`false`, so demo accounts and the
-      // demo-credential hint are eliminated from production bundles.
-      __DEMO_MODE__: JSON.stringify(mode !== 'production'),
     },
     server: {
       host: '0.0.0.0',

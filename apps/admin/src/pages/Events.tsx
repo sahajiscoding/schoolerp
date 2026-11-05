@@ -53,7 +53,7 @@ const MONTH_NAMES = [
 ];
 
 export default function Events() {
-  const { profile, isAdmin, isTeacher } = useAuth();
+  const { profile, isAdmin, isTeacher, isStudent } = useAuth();
   const data = useData();
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState({ year: 2026, month: 10 });
@@ -71,10 +71,22 @@ export default function Events() {
   const teacherSection =
     data.people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'IX - E';
 
-  const events = useMemo(
-    () => [...data.events].sort((a, b) => a.start_date.localeCompare(b.start_date)),
-    [data.events],
-  );
+  const studentView = isStudent();
+  const mySectionLabel = (() => {
+    const me = data.people.find((p) => p.id === profile?.id);
+    return me?.class_label && me?.section_label ? `${me.class_label} - ${me.section_label}` : undefined;
+  })();
+
+  const events = useMemo(() => {
+    const visible = data.events.filter((ev) => {
+      // Students see whole-school events plus their own class's "Class only"
+      // events; admins and teachers see the full calendar.
+      if (!studentView) return true;
+      if (ev.audience !== 'Class only') return true;
+      return !!ev.section_label && ev.section_label === mySectionLabel;
+    });
+    return visible.sort((a, b) => a.start_date.localeCompare(b.start_date));
+  }, [data.events, studentView, mySectionLabel]);
 
   const todayIso = '2026-11-04';
   const upcoming = events.filter((e) => e.end_date >= todayIso).slice(0, 8);
@@ -98,6 +110,7 @@ export default function Events() {
       start_date: form.start_date,
       end_date: form.end_date || form.start_date,
       audience,
+      section_label: audience === 'Class only' ? teacherSection : undefined,
       created_by: profile.id,
     });
     setForm({
