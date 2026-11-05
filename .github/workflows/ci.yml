@@ -29,6 +29,9 @@ jobs:
 
       - run: npm run lint
 
+      - name: Test demo isolation and school login
+        run: npm run test --workspace=apps/admin
+
       - name: Build admin console
         run: npm run build --workspace=apps/admin
 

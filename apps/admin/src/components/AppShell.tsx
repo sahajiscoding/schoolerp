@@ -1,5 +1,6 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
+import { isDemoPath } from '../lib/demo';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../lib/appData';
 import { cn, initials } from '../lib/utils';
@@ -283,7 +284,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
           <div className="mb-3 rounded-lg border border-amber-100 bg-amber-50 p-2.5">
             <div className="text-[11px] font-semibold text-amber-800">Demo data</div>
             <div className="mt-0.5 text-[10px] leading-snug text-amber-700">
-              Supabase keys are not set, so the console runs on the seeded school.
+              Sample data only. Changes stay in this browser and never affect school records.
             </div>
             <button
               onClick={() => data.resetDemoData()}
@@ -357,8 +358,10 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                 Config
               </Badge>
             )}
-            {/* Gate on the REAL profile role, not the view-as override, so an
-                admin previewing another role can always switch back. */}
+            {!isDemoPath && (
+              <a href="/demo/login" className="text-xs font-medium text-olive underline underline-offset-2">Try a demo</a>
+            )}
+            {/* Gate on the real profile so an admin can always switch back. */}
             {profile?.role === 'admin' && (
               <RoleSwitcher
                 roles={['admin', 'teacher', 'student']}
@@ -382,6 +385,12 @@ export default function AppShell({ children }: { children?: ReactNode }) {
           </div>
         </header>
 
+        {isDemoPath && (
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900 md:px-6">
+            <span><strong>Demo mode</strong> · Sample data only — no school records are changed.</span>
+            <a href="/login" className="font-semibold underline underline-offset-2">Exit demo · School sign in</a>
+          </div>
+        )}
         <div className="shrink-0 px-4 pt-3 md:px-6">
           <Breadcrumbs items={breadcrumbItems} />
         </div>
