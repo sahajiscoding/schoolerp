@@ -105,6 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    // Read through a closure: this can change while a profile query awaits.
+    const isMounted = () => mounted;
     const client = supabase;
     if (!client) {
       // `loading` already starts false in this case; nothing to await.
@@ -112,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     client.auth.getSession().then(async ({ data, error }) => {
-      if (!mounted) return;
+      if (!isMounted()) return;
       if (error) {
         setLoading(false);
         return;
@@ -124,15 +126,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('id', data.session.user.id)
           .single();
-        if (mounted) setProfile(prof ?? null);
+        if (isMounted()) setProfile(prof ?? null);
       }
       setLoading(false);
     }).catch(() => {
-      if (mounted) setLoading(false);
+      if (isMounted()) setLoading(false);
     });
 
     const { data: sub } = client.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
+      if (!isMounted()) return;
       setSessionUserId(session?.user.id ?? null);
       if (session?.user) {
         const { data: prof } = await client
@@ -140,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('id', session.user.id)
           .single();
-        if (mounted) setProfile(prof ?? null);
+        if (isMounted()) setProfile(prof ?? null);
       } else {
         setProfile(null);
       }

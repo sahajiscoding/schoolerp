@@ -30,6 +30,11 @@ it('offers isolated demo links with Supabase configured, including during sessio
   expect(readDemoRole()).toBeNull(); // Demo storage cannot authenticate the school app.
   expect(supabase).not.toBeNull();
   render(<App />);
+  expect(screen.getByRole('button', { name: 'Checking session...' })).toHaveProperty('disabled', true);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText('Your Email/ UserId'), 'staff1');
+  await user.type(screen.getByLabelText('Your Password'), 'test-input{Enter}');
+  expect(auth.signInWithPassword).not.toHaveBeenCalled();
   await userEvent.click(screen.getByRole('button', { name: 'Try a demo' }));
   for (const role of ['Admin', 'Teacher', 'Student']) {
     expect(screen.getByRole('link', { name: role, exact: true }).getAttribute('href'))

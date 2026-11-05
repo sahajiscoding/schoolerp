@@ -59,7 +59,7 @@ function getInitials(account: RememberedAccount) {
 }
 
 export default function Login() {
-  const { signIn, signInAsDemo } = useAuth();
+  const { signIn, signInAsDemo, loading: restoringSession } = useAuth();
   const navigate = useNavigate();
   const [remembered] = useState<RememberedAccount | null>(readRememberedAccount);
   const [showForm, setShowForm] = useState(() => !readRememberedAccount());
@@ -104,6 +104,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (restoringSession) return;
     const id = loginId.trim();
     if (!id) {
       setError('Enter your login ID.');
@@ -274,10 +275,10 @@ export default function Login() {
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || restoringSession}
                   className="h-10 w-full rounded-md bg-olive px-8 text-center text-sm font-medium text-white shadow transition-colors hover:bg-olive/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {loading ? 'Logging in...' : 'Login'}
+                  {restoringSession ? 'Checking session...' : loading ? 'Logging in...' : 'Login'}
                 </button>
               </form>
             ) : (
