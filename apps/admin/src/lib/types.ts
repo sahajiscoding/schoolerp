@@ -27,6 +27,16 @@ export interface Subject {
   color: string;
 }
 
+/** A teacher assigned to teach one subject to one section. */
+export interface TeachingAssignment {
+  id: string;
+  teacher_id: string;
+  /** Combined section label, e.g. "IX - E". */
+  section_label: string;
+  /** Subject name (matches Subject.name). */
+  subject: string;
+}
+
 export interface Attachment {
   id: string;
   name: string;
@@ -94,6 +104,8 @@ export interface DeclarationForm {
   type: string;
   status: 'pending' | 'signed';
   signed_at?: string;
+  /** Student ids that have signed this form (per-student, not global). */
+  signed_by: string[];
 }
 
 export interface PollOption {
@@ -122,6 +134,8 @@ export interface SchoolEvent {
   start_date: string;
   end_date: string;
   audience: string;
+  /** For "Class only" events: the section the event is scoped to. */
+  section_label?: string;
   created_by: string;
 }
 
@@ -224,6 +238,8 @@ export interface AppNotification {
   kind: 'notice' | 'message' | 'assignment' | 'fee' | 'approval';
   created_at: string;
   read: boolean;
+  /** Target section label for a broadcast; undefined = everyone. */
+  audience?: string;
 }
 
 export interface ChatMessage {

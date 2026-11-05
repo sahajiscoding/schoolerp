@@ -22,6 +22,7 @@ import type {
   StudyMaterial,
   Subject,
   Submission,
+  TeachingAssignment,
 } from './types';
 
 export const ACADEMIC_YEAR = '2026-27';
@@ -63,6 +64,11 @@ export const seedSubjects: Subject[] = [
   { id: 'sub-hin', name: 'Hindi', code: 'HIN', color: '#BE123C' },
 ];
 
+export const seedTeachingAssignments: TeachingAssignment[] = [
+  { id: 'ta-1', teacher_id: 'p-teacher-1', section_label: 'IX - E', subject: 'Artificial Intelligence' },
+  { id: 'ta-2', teacher_id: 'p-teacher-2', section_label: 'IX - E', subject: 'Mathematics' },
+];
+
 export const seedPeople: Person[] = [
   {
     id: 'p-admin',
@@ -76,7 +82,7 @@ export const seedPeople: Person[] = [
   {
     id: 'p-teacher-1',
     login_id: 'TCH001',
-    full_name: 'Anuradha Gupta',
+    full_name: 'Teacher',
     role: 'teacher',
     is_active: true,
     email: 'anuradha.gupta@pws.local',
@@ -171,7 +177,8 @@ export const seedPeople: Person[] = [
     admission_no: '0201/18',
     class_label: 'V',
     section_label: 'A',
-    password: 'Student@11032015',
+    // Derived, never a literal: the seed only displays this value in demo mode.
+    password: passwordFromDob('2015-03-11'),
     sibling_id: 'p-student-1',
   },
   {
@@ -332,6 +339,7 @@ export const seedDeclarations: DeclarationForm[] = [
     description: 'Transport Norms Declaration',
     type: 'Transport',
     status: 'pending',
+    signed_by: [],
   },
   {
     id: 'dec-2',
@@ -339,6 +347,7 @@ export const seedDeclarations: DeclarationForm[] = [
     description: 'UNATTENDED DEPARTURE CONSENT FORM',
     type: 'Transport',
     status: 'pending',
+    signed_by: [],
   },
   {
     id: 'dec-3',
@@ -347,6 +356,7 @@ export const seedDeclarations: DeclarationForm[] = [
     type: 'Transport',
     status: 'signed',
     signed_at: '2026-10-20T10:00:00.000Z',
+    signed_by: ['p-student-1'],
   },
   {
     id: 'dec-4',
@@ -354,6 +364,7 @@ export const seedDeclarations: DeclarationForm[] = [
     description: 'Declaration Form',
     type: 'Registration',
     status: 'pending',
+    signed_by: [],
   },
   {
     id: 'dec-5',
@@ -362,6 +373,7 @@ export const seedDeclarations: DeclarationForm[] = [
     type: 'Registration',
     status: 'signed',
     signed_at: '2026-10-21T10:00:00.000Z',
+    signed_by: ['p-student-1'],
   },
 ];
 
@@ -638,7 +650,7 @@ export const seedNotifications: AppNotification[] = [
   {
     id: 'notif-2',
     title: 'New assignment published',
-    body: 'Anuradha Gupta posted AI practical file work.',
+    body: 'Teacher posted AI practical file work.',
     kind: 'assignment',
     created_at: '2026-11-02T08:30:00.000Z',
     read: false,

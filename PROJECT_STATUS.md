@@ -1,6 +1,6 @@
 # Project Status — Pacific World School ERP
 
-**Last updated:** 2026-11-04
+**Last updated:** 2026-11-05
 **Current milestone:** Milestone 3 — Dashboard modules (admin console complete, backend schema written, mobile pending).
 **Next milestone:** Wire the admin console to Supabase (replace demo store), then Milestone 4 — Messaging.
 
@@ -23,7 +23,8 @@ This file is the single source of truth for project state. Every agent must read
 | Helpers | `src/lib/utils.ts` | Dates, INR, CSV parser, `normalizeDob` (rejects 31 Feb), `passwordFromDob`, `gradeFor`, `printHtml` |
 | Supabase client | `src/lib/supabase.ts` | Reads `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`; `configHint()` names the missing pair |
 | Build config | `vite.config.ts` | `loadEnv(mode, cwd, '')` so **unprefixed** `SUPABASE_URL` works from `.env`; inlines both names via `define` |
-| Login | `src/pages/Login.tsx` | School design; demo credentials hint; remembered account |
+| Login | `src/pages/Login.tsx` | School design; small passwordless **"Try a demo"** button (Admin / Teacher / Student picker, demo mode only); remembered account |
+| Demo entry | `src/contexts/AuthContext.tsx` | `signInAsDemo(role)` signs in as the seeded person for the role; refused whenever a Supabase client exists; no credentials anywhere in the client |
 
 ### Dashboard modules
 
@@ -50,13 +51,24 @@ This file is the single source of truth for project state. Every agent must read
 |---|---|---|
 | Initial schema + RLS | `supabase/migrations/0001_initial_schema.sql` | 77 statements, parses clean; `current_role()` renamed to `app_role()` (was a reserved-keyword bug) |
 | Dashboard schema + RLS | `supabase/migrations/0002_dashboard_modules.sql` | 15 tables, class-teacher helpers, sibling links, admin-only fees; 82 statements, parses clean |
+| Function hardening | `supabase/migrations/0003_function_hardening.sql` | Narrows EXECUTE on the SECURITY DEFINER helpers to `authenticated` |
+| **Security-audit hardening** | `supabase/migrations/0004_profiles_hardening.sql` | Fixes the 8 audit findings: protects `profiles.role/is_active/login_id` (column grants + trigger), scopes profile reads, closes audit-log forgery, scopes attendance/report-card/event/goal writes |
 | Base RLS matrix | `supabase/tests/rls_matrix.sql` | 24 assertions |
 | Dashboard RLS matrix | `supabase/tests/rls_matrix_dashboard.sql` | 24 assertions (leave routing, self-approval guard, events scoping, fees/siblings, cards) |
-| Local RLS verifier | `supabase/tests/verify_rls_local.py` | Boots a throwaway Postgres, applies both migrations, asserts 20 rules as `authenticated` — **all pass** |
+| Local RLS verifier | `supabase/tests/verify_rls_local.py` | Boots a throwaway Postgres, applies 0001–0004, asserts the rules as `authenticated` incl. new security regressions (self-escalation, audit forgery, cross-section writes) — run `npm run verify:rls` |
 | Admin provisioning function | `supabase/functions/admin-users/index.ts` | `create-admin`, `import-students` (`Student@DDMMYYYY`); verifies JWT + admin role, writes audit log |
 | Shared CORS | `supabase/functions/_shared/cors.ts` | — |
 | Admin bootstrap | `scripts/create-admin.mjs` | Local-only, service role from environment |
 | CI | `.github/workflows/ci.yml` | Rewritten (the committed file was a single line of literal `\n`): typecheck, lint, build, secret guard, env-name guard |
+
+### Demo entry + credential removal (2026-11-05)
+
+- Login page has a small "Try a demo" button that expands into Admin / Teacher / Student options; one click enters that role's dashboard with no login. Shown only in demo mode (no Supabase configured); `signInAsDemo` refuses when a Supabase client exists, so the client never decides identity against a live backend.
+- Demo teacher display name is now **Teacher** (seed profile, sample notification, and teaching-assignment sample row). Existing `v3` demo data migrates to `v4` without resetting other demo edits. Verified: admin typecheck/lint/build clean; 39 role smoke checks and 6 storage-migration checks pass; production bundle contains no old display name.
+- All hardcoded demo passwords removed (GitGuardian): `DEMO_LOGINS` in `AuthContext.tsx`, the split-string credential hint in `Login.tsx`, the hardcoded fallback password in `appData.tsx` (no DOB → no initial password shown), the literal sibling password in `seed.ts` (now derived via `passwordFromDob`), and the example password in `scripts/create-admin.mjs` (password is prompted interactively). The `__DEMO_MODE__` compile flag is gone — there is nothing left to strip. **2026-11-05: the git history was also purged** — `git filter-repo` replaced the demo-password literals across all commits and `main` was force-pushed, so they no longer appear in any reachable commit (GitGuardian may need a re-scan / GitHub GC of dangling objects to fully clear old incidents).
+- Fixed a display bug in `People.tsx`: the import help rendered `Student@Student@14052010` (double prefix); it now shows the derived value once.
+- The school's `Student@DDMMYYYY` initial-password rule is unchanged — it is derived from DOB at runtime (`utils.ts`, `admin-users` Edge Function), never stored as a literal.
+- Verified: admin + shared typecheck clean; eslint 0 errors; production build passes; `grep` of `dist/assets/*.js` finds zero credential strings and the demo button ships in the bundle (works on a deployed demo-mode build). jsdom smoke test clicked through all three roles: correct seeded identity, role-aware nav, sign-out returns to login — 39/39 checks pass.
 
 ### Verification done
 
@@ -95,10 +107,10 @@ This file is the single source of truth for project state. Every agent must read
   longer 404s. Verified against the real build output.
 - CI runs on Node 22 with `npm ci`; typecheck, lint (0 errors) and the admin
   build all pass. First-party actions moved off deprecated Node 20 runtimes.
-- Third-party scanner workflows (Black Duck, Synopsys, CxFlow, Checkmarx One,
-  CodeScan, Endor Labs, Debricked) fail on **missing vendor credentials**, not
-  findings. See `docs/security/scanning.md` for the required secret per workflow
-  and the option of keeping only CodeQL.
+- All seven paid vendor scanners (**Black Duck, Synopsys, CxFlow, Checkmarx One,
+  CodeScan, Endor Labs, Debricked**) were **removed on 2026-11-05** — they only
+  ever failed on missing vendor credentials, not findings. CodeQL stays the
+  always-on baseline, with free Codacy + OSSAR on top. See `docs/security/scanning.md`.
 
 ### Supabase project
 
@@ -110,6 +122,8 @@ have not been applied to that project from this environment.
 
 ## Known gaps
 
+0. **Functional audit (2026-11-05) — all defects FIXED:** every module was click-tested as admin/teacher/student. The first pass found 12 broken + 4 partial defects (Teaching Assignments stub, four desktop-hidden dialogs, students marking attendance, empty audit log, "View as" trap, Submissions roster, Subjects edit, per-student declarations, event/broadcast targeting). **All 15 were fixed and re-verified: 82 working / 0 broken / 0 partial / 11 notes across 93 runtime checks.** Details: `docs/audits/2026-11-05-functional-audit.md`.
+0b. **Security audit (2026-11-05) — full Cloudflare `security-audit` skill, all findings FIXED:** the live Supabase RLS layer, Edge Function, client, deploy headers and CI were audited. Found **1 critical + 4 medium + 3 low** issues — the critical one let any signed-in user escalate themselves to admin via the `profiles_self` policy. All 8 are fixed in `supabase/migrations/0004_profiles_hardening.sql` (+ an Edge Function normalization fix), with new regression assertions in `verify_rls_local.py`. Report, traces and owner replay plan: `~/security-audit-skill/schoolerp/run-1/` (REPORT.md / FINDINGS-DETAIL.md / NEEDS-VALIDATION.md). **Migrations 0001–0004 have now been APPLIED to the live Supabase project (`ausnymdtnpewcfvdrpcu`) and verified empirically:** 32 tables all RLS-enabled; a live student self-escalation attempt returns `permission denied for table profiles`, while a legitimate self-service rename succeeds (role unchanged). Test data was cleaned up.
 1. The admin console still runs on the demo store. Wiring it to the new tables (replacing `appData.tsx` with Supabase queries) is the next step; the types and RLS already match.
 2. The pgTAP suites themselves have not been run through `supabase test db` (no Docker here); their rules are covered by `supabase/tests/verify_rls_local.py`, which passes against real Postgres 14.
 3. Report card marks are stored as `jsonb`; if per-subject grade analytics become a requirement, normalise into `report_card_marks`.
@@ -118,7 +132,7 @@ have not been applied to that project from this environment.
 
 ## Next up
 
-1. Apply `0001` + `0002`, run both pgTAP suites, fix any policy fallout.
+1. ~~Apply `0001`–`0004`~~ **Done** — applied to the live project and verified. Remaining: run the pgTAP suites (`supabase test db`) when Docker is available, and deploy the `admin-users` Edge Function.
 2. Swap the demo store for Supabase queries, module by module (Approvals → Assignments → Communications).
 3. Deploy `admin-users`; run `scripts/create-admin.mjs` for the first admin.
 4. Mobile: login, assignments, approvals.

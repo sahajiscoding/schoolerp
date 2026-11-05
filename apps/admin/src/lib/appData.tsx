@@ -21,6 +21,7 @@ import {
   seedClasses,
   seedSubjects,
   seedSubmissions,
+  seedTeachingAssignments,
   seedThreads,
 } from './seed';
 import type {
@@ -49,8 +50,10 @@ import type {
   StudyMaterial,
   Subject,
   Submission,
+  TeachingAssignment,
 } from './types';
 import { passwordFromDob, uid } from './utils';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AppState {
   people: Person[];
@@ -73,10 +76,12 @@ interface AppState {
   threads: ChatThread[];
   subjects: Subject[];
   classes: SchoolClass[];
+  teachingAssignments: TeachingAssignment[];
   audit: AuditEntry[];
 }
 
-const STORAGE_KEY = 'pws.demo.data.v3';
+const STORAGE_KEY = 'pws.demo.data.v4';
+const PREVIOUS_STORAGE_KEY = 'pws.demo.data.v3';
 
 /** Class teacher for IX-E owns door-to-door leave approvals in the demo. */
 export const CLASS_TEACHER_ID = 'p-teacher-1';
@@ -111,6 +116,7 @@ function initialData(): AppState {
     threads: seedThreads,
     subjects: seedSubjects,
     classes: seedClasses,
+    teachingAssignments: seedTeachingAssignments,
     audit: seedAudit,
   };
 }
@@ -118,7 +124,8 @@ function initialData(): AppState {
 function loadData(): AppState {
   const fresh = initialData();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const currentRaw = localStorage.getItem(STORAGE_KEY);
+    const raw = currentRaw ?? localStorage.getItem(PREVIOUS_STORAGE_KEY);
     if (!raw) return fresh;
     const parsed = JSON.parse(raw) as Partial<AppState>;
     // Any collection that is empty in storage but seeded by a newer build is
@@ -136,6 +143,21 @@ function loadData(): AppState {
         (merged as unknown as Record<string, unknown>)[key] = seeded;
       }
     }
+    // Carry existing demo edits forward, but refresh the seeded teacher label
+    // and its sample notification without resetting the rest of the demo.
+    if (!currentRaw) {
+      merged.people = merged.people.map((person) =>
+        person.id === 'p-teacher-1' ? { ...person, full_name: 'Teacher' } : person,
+      );
+      const teacherNotification = fresh.notifications.find((n) => n.id === 'notif-2');
+      if (teacherNotification) {
+        merged.notifications = merged.notifications.map((notification) =>
+          notification.id === 'notif-2'
+            ? { ...notification, body: teacherNotification.body }
+            : notification,
+        );
+      }
+    }
     return merged;
   } catch {
     return fresh;
@@ -150,7 +172,7 @@ interface AppDataContextValue extends AppState {
   applyLeave: (input: { student_id: string; start_date: string; end_date: string; leave_type: LeaveType; reason: string; attachment_name?: string }) => void;
   reviewLeave: (id: string, status: LeaveStatus, reviewerId: string, note?: string) => void;
   addProgress: (input: Omit<CourseProgressEntry, 'id' | 'updated_at'>) => void;
-  signDeclaration: (id: string) => void;
+  signDeclaration: (id: string, studentId: string) => void;
   createPoll: (input: { question: string; audience: string; created_by: string; closes_at: string; options: string[] }) => void;
   votePoll: (pollId: string, optionId: string, studentId: string) => void;
   addEvent: (input: Omit<SchoolEvent, 'id' | 'created_by'> & { created_by: string }) => void;
@@ -174,7 +196,11 @@ interface AppDataContextValue extends AppState {
   sendMessage: (threadId: string, senderId: string, body: string) => void;
   createThread: (input: { subject: string; participant_ids: string[]; sender_id: string; body: string }) => void;
   addSubject: (input: Omit<Subject, 'id'>) => void;
+  updateSubject: (id: string, input: Omit<Subject, 'id'>) => void;
   removeSubject: (id: string) => void;
+  addTeachingAssignment: (input: Omit<TeachingAssignment, 'id'>) => void;
+  updateTeachingAssignment: (id: string, input: Omit<TeachingAssignment, 'id'>) => void;
+  removeTeachingAssignment: (id: string) => void;
   addClass: (input: { name: string; sections: string[] }) => void;
   removeClass: (id: string) => void;
   enrollStudent: (studentId: string, classId: string, sectionName: string) => void;
@@ -196,6 +222,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(loadData);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
+
+  // AppDataProvider sits inside AuthProvider, so the store always knows who is
+  // acting. Every management mutation below records an audit entry under this
+  // identity — the Audit Log is a real trail, not just seeded samples.
+  const { profile } = useAuth();
+  const actorRef = useRef<string>('system');
+  useEffect(() => {
+    actorRef.current = profile?.id ?? 'system';
+  }, [profile?.id]);
+
+  const pushAudit = useCallback((action: string, target: string, actorId?: string) => {
+    setState((current) => ({
+      ...current,
+      audit: [
+        { id: uid('audit'), actorId: actorId ?? actorRef.current, action, target, at: new Date().toISOString() },
+        ...current.audit,
+      ],
+    }));
+  }, []);
 
   useEffect(() => {
     try {
@@ -226,7 +271,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addPerson: AppDataContextValue['addPerson'] = useCallback((input) => {
-    const generatedPassword = input.dob ? passwordFromDob(input.dob) : 'REDACTED';
+    // Initial passwords are always derived from the date of birth (school
+    // rule). No DOB → no initial password shown, never a hardcoded fallback.
+    const generatedPassword = input.dob ? passwordFromDob(input.dob) : undefined;
     setState((current) => ({
       ...current,
       people: [
@@ -242,12 +289,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
       ],
     }));
+    pushAudit('Added person', `${input.full_name} (${input.role})`);
     notify(
-      input.role === 'student'
+      input.role === 'student' && generatedPassword
         ? `${input.full_name} added. Password: ${generatedPassword}`
         : `${input.full_name} added.`,
     );
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const importPeople: AppDataContextValue['importPeople'] = useCallback((rows) => {
     setState((current) => ({
@@ -269,8 +317,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         })),
       ],
     }));
+    pushAudit('Imported roster from CSV', `${rows.length} student${rows.length === 1 ? '' : 's'}`);
     notify(`${rows.length} student${rows.length === 1 ? '' : 's'} imported.`);
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const applyLeave: AppDataContextValue['applyLeave'] = useCallback((input) => {
     setState((current) => ({
@@ -307,8 +356,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       body: 'Your class teacher reviewed your leave request.',
       kind: 'approval',
     });
+    pushAudit(status === 'approved' ? 'Approved leave' : 'Rejected leave', `Leave request ${id}`);
     notify(`Leave ${status}.`);
-  }, [addNotification, notify]);
+  }, [addNotification, notify, pushAudit]);
 
   const addProgress: AppDataContextValue['addProgress'] = useCallback((input) => {
     setState((current) => ({
@@ -318,18 +368,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         ...current.courseProgress,
       ],
     }));
+    pushAudit('Updated course progress', `${input.subject} · ${input.title}`);
     notify('Course progress saved.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
-  const signDeclaration: AppDataContextValue['signDeclaration'] = useCallback((id) => {
+  const signDeclaration: AppDataContextValue['signDeclaration'] = useCallback((id, studentId) => {
     setState((current) => ({
       ...current,
       declarations: current.declarations.map((form) =>
-        form.id === id ? { ...form, status: 'signed', signed_at: new Date().toISOString() } : form,
+        form.id === id
+          ? {
+              ...form,
+              status: 'signed',
+              signed_at: new Date().toISOString(),
+              // Per-student signature: record this student without affecting others.
+              signed_by: Array.from(new Set([...(form.signed_by ?? []), studentId])),
+            }
+          : form,
       ),
     }));
+    pushAudit('Signed declaration', `Form ${id}`, studentId);
     notify('Declaration signed.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const createPoll: AppDataContextValue['createPoll'] = useCallback((input) => {
     setState((current) => ({
@@ -348,8 +408,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         ...current.polls,
       ],
     }));
+    pushAudit('Published poll', input.question);
     notify('Poll published.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const votePoll: AppDataContextValue['votePoll'] = useCallback((pollId, optionId, studentId) => {
     setState((current) => ({
@@ -366,8 +427,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ...current,
       events: [...current.events, { ...input, id: uid('event') }],
     }));
+    pushAudit('Added event', input.title);
     notify('Event added to the calendar.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const addAssignment: AppDataContextValue['addAssignment'] = useCallback((input) => {
     setState((current) => ({
@@ -379,8 +441,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       body: `${input.title} is now available.`,
       kind: 'assignment',
     });
+    pushAudit('Published assignment', input.title);
     notify('Assignment published.');
-  }, [addNotification, notify]);
+  }, [addNotification, notify, pushAudit]);
 
   const submitAssignment: AppDataContextValue['submitAssignment'] = useCallback((input) => {
     setState((current) => ({
@@ -407,8 +470,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         submission.id === id ? { ...submission, status: 'reviewed' } : submission,
       ),
     }));
+    pushAudit('Reviewed submission', id);
     notify('Submission marked as reviewed.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const addStudyMaterial: AppDataContextValue['addStudyMaterial'] = useCallback((input) => {
     setState((current) => ({
@@ -418,16 +482,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         ...current.studyMaterials,
       ],
     }));
+    pushAudit('Shared study material', input.title);
     notify('Study material shared.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const addBook: AppDataContextValue['addBook'] = useCallback((input) => {
     setState((current) => ({
       ...current,
       books: [...current.books, { ...input, id: uid('book'), available_copies: input.total_copies }],
     }));
+    pushAudit('Added library book', input.title);
     notify('Book added to the library.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const issueBook: AppDataContextValue['issueBook'] = useCallback((input) => {
     setState((current) => ({
@@ -440,8 +506,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         book.id === input.book_id ? { ...book, available_copies: Math.max(0, book.available_copies - 1) } : book,
       ),
     }));
+    pushAudit('Issued library book', `Book ${input.book_id} → student ${input.student_id}`);
     notify('Book issued.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const returnBook: AppDataContextValue['returnBook'] = useCallback((issueId) => {
     setState((current) => {
@@ -458,8 +525,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           : current.books,
       };
     });
+    pushAudit('Returned library book', `Issue ${issueId}`);
     notify('Book returned.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const reserveBook: AppDataContextValue['reserveBook'] = useCallback((bookId, studentId) => {
     setState((current) => ({
@@ -487,8 +555,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ...current,
       reportCards: [{ ...input, id: uid('report'), generated_at: new Date().toISOString() }, ...current.reportCards],
     }));
+    pushAudit('Generated report card', `Student ${input.student_id} · ${input.term}`);
     notify('Report card generated and assigned.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const saveAttendance: AppDataContextValue['saveAttendance'] = useCallback((records) => {
     setState((current) => {
@@ -500,8 +569,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         attendance: [...remaining, ...records.map((record) => ({ ...record, id: uid('att') }))],
       };
     });
+    pushAudit('Saved attendance', `${records.length} record${records.length === 1 ? '' : 's'} · ${records[0]?.date ?? ''}`);
     notify('Attendance saved.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const recordPayment: AppDataContextValue['recordPayment'] = useCallback((invoiceId, amount) => {
     setState((current) => ({
@@ -517,8 +587,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         };
       }),
     }));
+    pushAudit('Recorded fee payment', `Invoice ${invoiceId} · ₹${amount}`);
     notify('Payment recorded.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const linkSibling: AppDataContextValue['linkSibling'] = useCallback((studentId, siblingId, discount) => {
     setState((current) => ({
@@ -533,8 +604,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           : invoice,
       ),
     }));
+    pushAudit('Linked sibling discount', `${studentId} → ${siblingId} (${discount}%)`);
     notify('Sibling discount linked.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const unlinkSibling: AppDataContextValue['unlinkSibling'] = useCallback((linkId) => {
     setState((current) => {
@@ -558,16 +630,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           : current.people,
       };
     });
+    pushAudit('Removed sibling link', linkId);
     notify('Sibling link removed.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const removeReportCard: AppDataContextValue['removeReportCard'] = useCallback((id) => {
     setState((current) => ({
       ...current,
       reportCards: current.reportCards.filter((card) => card.id !== id),
     }));
+    pushAudit('Withdrew report card', id);
     notify('Report card withdrawn.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const removeBook: AppDataContextValue['removeBook'] = useCallback((id) => {
     setState((current) => ({
@@ -575,8 +649,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       books: current.books.filter((book) => book.id !== id),
       bookIssues: current.bookIssues.filter((issue) => issue.book_id !== id),
     }));
+    pushAudit('Removed library book', id);
     notify('Book removed from the catalogue.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const markNotificationRead: AppDataContextValue['markNotificationRead'] = useCallback((id) => {
     setState((current) => ({
@@ -636,16 +711,56 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ...current,
       subjects: [...current.subjects, { ...input, id: uid('subject') }],
     }));
+    pushAudit('Added subject', input.name);
     notify(`${input.name} added to the subject list.`);
-  }, [notify]);
+  }, [notify, pushAudit]);
+
+  const updateSubject: AppDataContextValue['updateSubject'] = useCallback((id, input) => {
+    setState((current) => ({
+      ...current,
+      subjects: current.subjects.map((subject) => (subject.id === id ? { ...subject, ...input } : subject)),
+    }));
+    pushAudit('Updated subject', input.name);
+    notify(`${input.name} updated.`);
+  }, [notify, pushAudit]);
 
   const removeSubject: AppDataContextValue['removeSubject'] = useCallback((id) => {
     setState((current) => ({
       ...current,
       subjects: current.subjects.filter((subject) => subject.id !== id),
     }));
+    pushAudit('Removed subject', id);
     notify('Subject removed.');
-  }, [notify]);
+  }, [notify, pushAudit]);
+
+  const addTeachingAssignment: AppDataContextValue['addTeachingAssignment'] = useCallback((input) => {
+    setState((current) => ({
+      ...current,
+      teachingAssignments: [...current.teachingAssignments, { ...input, id: uid('ta') }],
+    }));
+    pushAudit('Added teaching assignment', `${input.subject} · ${input.section_label}`);
+    notify('Teaching assignment saved.');
+  }, [notify, pushAudit]);
+
+  const updateTeachingAssignment: AppDataContextValue['updateTeachingAssignment'] = useCallback((id, input) => {
+    setState((current) => ({
+      ...current,
+      teachingAssignments: current.teachingAssignments.map((entry) =>
+        entry.id === id ? { ...entry, ...input } : entry,
+      ),
+    }));
+    pushAudit('Updated teaching assignment', `${input.subject} · ${input.section_label}`);
+    notify('Teaching assignment updated.');
+  }, [notify, pushAudit]);
+
+  const removeTeachingAssignment: AppDataContextValue['removeTeachingAssignment'] = useCallback((id) => {
+    setState((current) => ({
+      ...current,
+      teachingAssignments: current.teachingAssignments.filter((entry) => entry.id !== id),
+    }));
+    pushAudit('Removed teaching assignment', id);
+    notify('Teaching assignment removed.');
+  }, [notify, pushAudit]);
 
   const addDeclaration: AppDataContextValue['addDeclaration'] = useCallback((input) => {
     setState((current) => ({
@@ -657,12 +772,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           description: input.description,
           type: input.type,
           status: 'pending',
+          signed_by: [],
         },
         ...current.declarations,
       ],
     }));
+    pushAudit('Published declaration form', input.name);
     notify('Declaration form published to students.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const broadcastMessage: AppDataContextValue['broadcastMessage'] = useCallback((input) => {
     setState((current) => ({
@@ -675,12 +792,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           kind: 'notice',
           created_at: new Date().toISOString(),
           read: false,
+          audience: input.section_label,
         },
         ...current.notifications,
       ],
     }));
+    pushAudit('Broadcast message', `${input.title} → ${input.section_label}`);
     notify(`Message sent to ${input.section_label}.`);
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const addClass: AppDataContextValue['addClass'] = useCallback((input) => {
     setState((current) => ({
@@ -695,16 +814,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
       ],
     }));
+    pushAudit('Added class', input.name);
     notify(`${input.name} added.`);
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const removeClass: AppDataContextValue['removeClass'] = useCallback((id) => {
     setState((current) => ({
       ...current,
       classes: current.classes.filter((entry) => entry.id !== id),
     }));
+    pushAudit('Removed class', id);
     notify('Class removed.');
-  }, [notify]);
+  }, [notify, pushAudit]);
 
   const enrollStudent: AppDataContextValue['enrollStudent'] = useCallback(
     (studentId, classId, sectionName) => {
@@ -720,20 +841,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           ),
         };
       });
+      pushAudit('Updated enrollment', `Student ${studentId} → class ${classId} / ${sectionName}`);
       notify('Enrollment updated.');
     },
-    [notify],
+    [notify, pushAudit],
   );
 
   const logAudit: AppDataContextValue['logAudit'] = useCallback((entry) => {
-    setState((current) => ({
-      ...current,
-      audit: [
-        { id: uid('audit'), actorId: entry.actorId, action: entry.action, target: entry.target, at: new Date().toISOString() },
-        ...current.audit,
-      ],
-    }));
-  }, []);
+    pushAudit(entry.action, entry.target, entry.actorId);
+  }, [pushAudit]);
 
   const resetDemoData = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
@@ -775,7 +891,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       sendMessage,
       createThread,
       addSubject,
+      updateSubject,
       removeSubject,
+      addTeachingAssignment,
+      updateTeachingAssignment,
+      removeTeachingAssignment,
       addClass,
       removeClass,
       enrollStudent,
@@ -817,7 +937,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       sendMessage,
       createThread,
       addSubject,
+      updateSubject,
       removeSubject,
+      addTeachingAssignment,
+      updateTeachingAssignment,
+      removeTeachingAssignment,
       addClass,
       removeClass,
       enrollStudent,

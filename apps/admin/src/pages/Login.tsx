@@ -1,38 +1,33 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiChevronRight, FiEye, FiEyeOff, FiPlus } from 'react-icons/fi';
+import {
+  FiBookOpen,
+  FiChevronDown,
+  FiChevronRight,
+  FiEye,
+  FiEyeOff,
+  FiPlay,
+  FiPlus,
+  FiShield,
+  FiUser,
+} from 'react-icons/fi';
+import type { Role } from '@schoolerp/shared';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
 const REMEMBERED_ACCOUNT_KEY = 'pws.rememberedAccount';
 
 /**
- * The demo credentials hint, built behind the compile-time `__DEMO_MODE__`
- * flag. Returning it from a function (rather than rendering `<p>` inside a
- * `&&`) keeps the JSX literal inside the dead branch, so both Vite and esbuild
- * strip it from production bundles.
+ * Passwordless demo entry: one small button that reveals the three roles.
+ * No credentials are stored or shown anywhere — picking a role signs in as
+ * the matching seeded person, and only while the app runs in demo mode
+ * (no Supabase configured). See `signInAsDemo` in AuthContext.
  */
-function demoHint() {
-  if (!SHOW_DEMO_HINT) return null;
-  // Assembled from parts so no complete credential string exists in source.
-  // Bundlers keep the JSX literal itself even in dead branches, so a literal
-  // here would leak the passwords into the production bundle regardless.
-  const accounts = [
-    ['ADMIN001', ['Admin', '@', '1234']],
-    ['TCH001', ['Teacher', '@', '1234']],
-    ['0185/18', ['Student', '@', '14052010']],
-  ].map(([id, parts]) => `${id} / ${(parts as string[]).join('')}`);
-  return (
-    <p className="text-xs text-slate-400 text-center mt-2">Demo: {accounts.join(' · ')}</p>
-  );
-}
-
-/**
- * Demo credentials are never advertised in a production build. Bound to a local
- * const so the bundler folds the whole branch away and the literals never reach
- * the bundle (verified by grepping dist/assets/*.js for them).
- */
-const SHOW_DEMO_HINT = __DEMO_MODE__;
+const DEMO_ROLES: { role: Role; label: string; Icon: typeof FiShield }[] = [
+  { role: 'admin', label: 'Admin', Icon: FiShield },
+  { role: 'teacher', label: 'Teacher', Icon: FiBookOpen },
+  { role: 'student', label: 'Student', Icon: FiUser },
+];
 
 type RememberedAccount = {
   loginId: string;
@@ -62,10 +57,11 @@ function getInitials(account: RememberedAccount) {
 }
 
 export default function Login() {
-  const { signIn } = useAuth();
+  const { signIn, signInAsDemo, demoMode } = useAuth();
   const navigate = useNavigate();
   const [remembered] = useState<RememberedAccount | null>(readRememberedAccount);
   const [showForm, setShowForm] = useState(() => !readRememberedAccount());
+  const [demoOpen, setDemoOpen] = useState(false);
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -130,6 +126,17 @@ export default function Login() {
       } catch {
         // Ignore unavailable storage.
       }
+    }
+    navigate('/dashboard');
+  };
+
+  const handleDemo = (role: Role) => {
+    const { error: err } = signInAsDemo(role);
+    if (err) {
+      // Surface the refusal in the form's error area.
+      setError(err);
+      setShowForm(true);
+      return;
     }
     navigate('/dashboard');
   };
@@ -263,8 +270,6 @@ export default function Login() {
                   </p>
                 )}
 
-                {demoHint()}
-
                 <button
                   type="submit"
                   disabled={loading}
@@ -301,6 +306,46 @@ export default function Login() {
                   <FiPlus size={16} />
                   Use another account
                 </button>
+              </div>
+            )}
+
+            {demoMode && (
+              <div className="mx-auto mt-6 w-full max-w-[400px] text-center">
+                <button
+                  type="button"
+                  onClick={() => setDemoOpen((open) => !open)}
+                  aria-expanded={demoOpen}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:border-olive hover:text-olive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
+                >
+                  <FiPlay size={11} />
+                  Try a demo
+                  <FiChevronDown
+                    size={12}
+                    className={`transition-transform ${demoOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {demoOpen && (
+                  <div
+                    role="group"
+                    aria-label="Choose a demo role"
+                    className="mt-3 flex items-center justify-center gap-2"
+                  >
+                    {DEMO_ROLES.map(({ role, label, Icon }) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => handleDemo(role)}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-olive hover:bg-olive hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
+                      >
+                        <Icon size={12} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-2 text-[11px] text-slate-400">
+                  Explore with sample data — no login needed.
+                </p>
               </div>
             )}
           </div>

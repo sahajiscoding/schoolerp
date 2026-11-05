@@ -150,7 +150,7 @@ function labelFor(role: Role): Record<string, string> {
 }
 
 export default function AppShell({ children }: { children?: ReactNode }) {
-  const { profile, viewAsRole, viewingRole, demoMode, configError, signOut, isAdmin } = useAuth();
+  const { profile, viewAsRole, viewingRole, demoMode, configError, signOut } = useAuth();
   const data = useAppData();
   const navigate = useNavigate();
   const location = useLocation();
@@ -194,7 +194,16 @@ export default function AppShell({ children }: { children?: ReactNode }) {
   };
 
   const pendingLeaves = data.leaves.filter((l) => l.status === 'pending').length;
-  const unread = data.notifications.filter((n) => !n.read).length;
+  // Broadcasts target a section: students only see notifications addressed to
+  // their own section (or to everyone). Admins and teachers see everything.
+  const mySectionLabel = (() => {
+    const me = data.people.find((p) => p.id === profile?.id);
+    return me?.class_label && me?.section_label ? `${me.class_label} - ${me.section_label}` : undefined;
+  })();
+  const visibleNotifications = data.notifications.filter(
+    (n) => role !== 'student' || !n.audience || n.audience === mySectionLabel,
+  );
+  const unread = visibleNotifications.filter((n) => !n.read).length;
 
   const badgeFor = (to: string) => {
     if (to === '/approvals' && role !== 'student' && pendingLeaves > 0) return pendingLeaves;
@@ -348,7 +357,9 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                 Config
               </Badge>
             )}
-            {isAdmin() && (
+            {/* Gate on the REAL profile role, not the view-as override, so an
+                admin previewing another role can always switch back. */}
+            {profile?.role === 'admin' && (
               <RoleSwitcher
                 roles={['admin', 'teacher', 'student']}
                 current={viewingRole}
@@ -357,7 +368,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
             )}
             <div className="relative">
               <NotificationsDropdown
-                notifications={data.notifications}
+                notifications={visibleNotifications}
                 onMarkRead={data.markNotificationRead}
                 onMarkAllRead={data.markAllNotificationsRead}
                 open={notifOpen}

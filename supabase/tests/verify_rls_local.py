@@ -2,7 +2,7 @@
 
 pgTAP (`supabase/tests/*.sql`) is the canonical suite and needs `supabase test
 db`. This script is the fallback for environments without Docker: it boots a
-throwaway Postgres with `pgserver`, applies 0001 + 0002 + 0003, seeds a school and
+throwaway Postgres with `pgserver`, applies 0001-0004, seeds a school and
 asserts the same rules through the `authenticated` role.
 
     python3 -m venv .venv && .venv/bin/pip install pgserver
@@ -22,6 +22,7 @@ do $$ begin create role authenticated nologin; exception when duplicate_object t
 db.psql(open('/home/user/schoolerp/supabase/migrations/0001_initial_schema.sql').read().replace('CREATE EXTENSION IF NOT EXISTS pgcrypto;',''))
 db.psql(open('/home/user/schoolerp/supabase/migrations/0002_dashboard_modules.sql').read())
 db.psql(open('/home/user/schoolerp/supabase/migrations/0003_function_hardening.sql').read())
+db.psql(open('/home/user/schoolerp/supabase/migrations/0004_profiles_hardening.sql').read())
 
 ids = {k: str(uuid.uuid4()) for k in ['admin','cteach','oteach','sa','sb']}
 sec, osec, cls, subj = (str(uuid.uuid4()) for _ in range(4))
@@ -145,6 +146,16 @@ neg = [
  # which collapsed to a tautology and let a teacher open a thread with ANY
  # student. 'sa' sits in a section this teacher does not teach.
  ("teacher opens thread with foreign student", attempt(ids['oteach'], f"insert into threads (teacher_id,student_id,subject) values ('{ids['oteach']}','{ids['sa']}','Extra classes')")),
+ # Regression (security audit run-1 / migration 0004):
+ # F1 — a user must not be able to raise their own role / is_active / login_id.
+ ("student escalates own role to admin", attempt(ids['sa'], f"update profiles set role='admin' where id='{ids['sa']}'")),
+ ("student flips own is_active", attempt(ids['sa'], f"update profiles set is_active=false where id='{ids['sa']}'")),
+ ("student rewrites own login_id", attempt(ids['sa'], f"update profiles set login_id='HACKED' where id='{ids['sa']}'")),
+ # F2 — the audit trail must not be forgeable by a regular user.
+ ("student forges an audit_log entry", attempt(ids['sa'], f"insert into audit_log (actor_id,action,entity_type) values ('{ids['admin']}','create-admin','profile')")),
+ # F3/F4 — teacher writes must be scoped to students they teach (sa is NOT oteach's).
+ ("unrelated teacher marks foreign attendance", attempt(ids['oteach'], f"insert into attendance (student_id,section_id,date,mark,marked_by) values ('{ids['sa']}','{sec}','2026-11-10','present','{ids['oteach']}')")),
+ ("unrelated teacher authors foreign report card", attempt(ids['oteach'], f"insert into report_cards (student_id,term,academic_year,created_by) values ('{ids['sa']}','FORGED','2026-27','{ids['oteach']}')")),
 ]
 for name, res in neg:
     ok = res.startswith("DENIED") or res.startswith("NO-ROWS"); fails += 0 if ok else 1
@@ -156,6 +167,10 @@ pos = [
  ("teacher creates class event", attempt(ids['oteach'], f"insert into school_events (title,kind,start_date,end_date,section_ids,created_by) values ('Unit test','Exam','2026-12-02','2026-12-02',ARRAY['{osec}']::uuid[],'{ids['oteach']}')")),
  ("admin applies sibling discount", attempt(ids['admin'], f"update fee_records set sibling_discount_percent=50 where student_id='{ids['sb']}'")),
  ("teacher opens thread with own student", attempt(ids['oteach'], f"insert into threads (teacher_id,student_id,subject) values ('{ids['oteach']}','{ids['sb']}','Revision plan')")),
+ # Regression (migration 0004) — legitimate self-service / in-scope writes still work.
+ ("student updates own full_name", attempt(ids['sa'], f"update profiles set full_name='Student A Renamed' where id='{ids['sa']}'")),
+ ("teacher marks own-student attendance", attempt(ids['oteach'], f"insert into attendance (student_id,section_id,date,mark,marked_by) values ('{ids['sb']}','{osec}','2026-11-12','present','{ids['oteach']}')")),
+ ("teacher authors own-student report card", attempt(ids['oteach'], f"insert into report_cards (student_id,term,academic_year,created_by) values ('{ids['sb']}','UNIT','2026-27','{ids['oteach']}')")),
 ]
 for name, res in pos:
     ok = res == "ALLOWED"; fails += 0 if ok else 1

@@ -93,7 +93,6 @@ export default function Assignments() {
       const submitted = data.submissions.filter((s) => s.assignment_id === hw.id);
       return sectionStudents
         .filter((student) => !submitted.some((s) => s.student_id === student.id))
-        .slice(0, 1)
         .map((student) => ({
           assignment: hw,
           student,

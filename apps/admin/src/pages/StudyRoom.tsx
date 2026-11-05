@@ -146,7 +146,7 @@ export default function StudyRoom() {
       </Card>
 
       {canShare && open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 lg:hidden">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
             <h2 className="text-lg font-bold text-ink mb-4">Share PDF</h2>
             <form onSubmit={handleAdd} className="space-y-3">
