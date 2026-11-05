@@ -75,6 +75,19 @@ SUPABASE_URL=
 SUPABASE_PUBLISHABLE_KEY=
 ```
 
-Without these values the console starts in **demo mode** on the seeded school
-data and shows a banner. Nothing is written to a database, so it is safe to
-demo to staff.
+The login page always offers **Try a demo → Admin / Teacher / Student**, with
+or without these values. It opens an isolated `/demo` area using a full page
+navigation. `/demo/login` can also be bookmarked or shared directly.
+
+In that area, `src/lib/supabase.ts` returns `null` before constructing a client:
+no real auth session is loaded, no auth listener is attached, and no database
+requests are made. Sample changes use `pws.showcase.data.v1`, separate from
+the existing school-console store; the selected role uses tab-local
+`pws.showcase.role` session storage. Demo sign-out clears only the demo identity.
+**Exit demo · School sign in** loads `/login` normally and preserves any existing
+real session. Neither demo storage nor a `role` query parameter authenticates
+the school app. Live authorization remains enforced by Supabase Auth and RLS.
+
+Do not remove production Supabase configuration to enable demos. When adding
+backend-backed modules, keep the `/demo` data path local and do not construct
+additional clients that bypass the central Supabase module.

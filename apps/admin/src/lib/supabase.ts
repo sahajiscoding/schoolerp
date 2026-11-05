@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { isDemoPath } from './demo';
 import type { Database } from '@schoolerp/shared';
 
 const url = import.meta.env.SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
@@ -8,7 +9,7 @@ const key =
   import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = (() => {
-  if (!url || !key) return null;
+  if (isDemoPath || !url || !key) return null;
   try {
     return createClient<Database>(url, key);
   } catch {

@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fi';
 import type { Role } from '@schoolerp/shared';
 import { useAuth } from '../contexts/AuthContext';
+import { isDemoPath } from '../lib/demo';
 import { supabase } from '../lib/supabase';
 
 const REMEMBERED_ACCOUNT_KEY = 'pws.rememberedAccount';
@@ -20,8 +21,8 @@ const REMEMBERED_ACCOUNT_KEY = 'pws.rememberedAccount';
 /**
  * Passwordless demo entry: one small button that reveals the three roles.
  * No credentials are stored or shown anywhere — picking a role signs in as
- * the matching seeded person, and only while the app runs in demo mode
- * (no Supabase configured). See `signInAsDemo` in AuthContext.
+ * the matching seeded person in the isolated /demo app, with or without
+ * production Supabase configuration. See `signInAsDemo` in AuthContext.
  */
 const DEMO_ROLES: { role: Role; label: string; Icon: typeof FiShield }[] = [
   { role: 'admin', label: 'Admin', Icon: FiShield },
@@ -35,6 +36,7 @@ type RememberedAccount = {
 };
 
 function readRememberedAccount(): RememberedAccount | null {
+  if (isDemoPath) return null;
   try {
     const raw = localStorage.getItem(REMEMBERED_ACCOUNT_KEY);
     if (!raw) return null;
@@ -57,11 +59,11 @@ function getInitials(account: RememberedAccount) {
 }
 
 export default function Login() {
-  const { signIn, signInAsDemo, demoMode } = useAuth();
+  const { signIn, signInAsDemo } = useAuth();
   const navigate = useNavigate();
   const [remembered] = useState<RememberedAccount | null>(readRememberedAccount);
   const [showForm, setShowForm] = useState(() => !readRememberedAccount());
-  const [demoOpen, setDemoOpen] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(isDemoPath);
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -138,7 +140,7 @@ export default function Login() {
       setShowForm(true);
       return;
     }
-    navigate('/dashboard');
+    if (isDemoPath) navigate('/dashboard');
   };
 
   const openRememberedAccount = () => {
@@ -174,14 +176,14 @@ export default function Login() {
                 className="mx-auto h-auto w-[80px] select-none md:w-[100px]"
               />
               <h3 className="mb-1 text-xl font-semibold text-ink md:text-2xl">
-                Login to your account
+                {isDemoPath ? 'Explore the school demo' : 'Login to your account'}
               </h3>
               <p className="text-xs text-slate-500 md:text-sm">
-                Welcome back, Please enter your email &amp; password to continue.
+                {isDemoPath ? 'Choose a role below. No account or password required.' : 'Welcome back, Please enter your email & password to continue.'}
               </p>
             </div>
 
-            {showForm ? (
+            {!isDemoPath && (showForm ? (
               <form
                 onSubmit={handleSubmit}
                 className="mx-auto w-full max-w-[400px] space-y-6"
@@ -307,47 +309,59 @@ export default function Login() {
                   Use another account
                 </button>
               </div>
-            )}
+            ))}
 
-            {demoMode && (
-              <div className="mx-auto mt-6 w-full max-w-[400px] text-center">
-                <button
-                  type="button"
-                  onClick={() => setDemoOpen((open) => !open)}
-                  aria-expanded={demoOpen}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:border-olive hover:text-olive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
+            <div className="mx-auto mt-6 w-full max-w-[400px] text-center">
+              <button
+                type="button"
+                onClick={() => setDemoOpen((open) => !open)}
+                aria-expanded={demoOpen}
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-olive shadow-sm transition-colors hover:border-olive hover:text-olive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
+              >
+                <FiPlay size={11} />
+                Try a demo
+                <FiChevronDown
+                  size={12}
+                  className={`transition-transform ${demoOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {demoOpen && (
+                <div
+                  role="group"
+                  aria-label="Choose a demo role"
+                  className="mt-3 flex items-center justify-center gap-2"
                 >
-                  <FiPlay size={11} />
-                  Try a demo
-                  <FiChevronDown
-                    size={12}
-                    className={`transition-transform ${demoOpen ? 'rotate-180' : ''}`}
-                  />
-                </button>
-                {demoOpen && (
-                  <div
-                    role="group"
-                    aria-label="Choose a demo role"
-                    className="mt-3 flex items-center justify-center gap-2"
-                  >
-                    {DEMO_ROLES.map(({ role, label, Icon }) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => handleDemo(role)}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-olive hover:bg-olive hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
-                      >
-                        <Icon size={12} />
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <p className="mt-2 text-[11px] text-slate-400">
-                  Explore with sample data — no login needed.
-                </p>
-              </div>
-            )}
+                  {DEMO_ROLES.map(({ role, label, Icon }) => isDemoPath ? (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => handleDemo(role)}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-olive hover:bg-olive hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
+                    >
+                      <Icon size={12} />
+                      {label}
+                    </button>
+                  ) : (
+                    <a
+                      key={role}
+                      href={`/demo/dashboard?role=${role}`}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-olive hover:bg-olive hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
+                    >
+                      <Icon size={12} />
+                      {label}
+                    </a>
+                  ))}
+                </div>
+              )}
+              <p className="mt-2 text-[11px] text-slate-400">
+                Explore with sample data — no login needed.
+              </p>
+              {isDemoPath && (
+                <a href="/login" className="mt-3 inline-block text-sm font-medium text-olive underline">
+                  School sign in
+                </a>
+              )}
+            </div>
           </div>
         </div>
 

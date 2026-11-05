@@ -23,8 +23,8 @@ This file is the single source of truth for project state. Every agent must read
 | Helpers | `src/lib/utils.ts` | Dates, INR, CSV parser, `normalizeDob` (rejects 31 Feb), `passwordFromDob`, `gradeFor`, `printHtml` |
 | Supabase client | `src/lib/supabase.ts` | Reads `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`; `configHint()` names the missing pair |
 | Build config | `vite.config.ts` | `loadEnv(mode, cwd, '')` so **unprefixed** `SUPABASE_URL` works from `.env`; inlines both names via `define` |
-| Login | `src/pages/Login.tsx` | School design; small passwordless **"Try a demo"** button (Admin / Teacher / Student picker, demo mode only); remembered account |
-| Demo entry | `src/contexts/AuthContext.tsx` | `signInAsDemo(role)` signs in as the seeded person for the role; refused whenever a Supabase client exists; no credentials anywhere in the client |
+| Login | `src/pages/Login.tsx` | School design; always-visible **"Try a demo"** button (Admin / Teacher / Student), including with Supabase configured; remembered account |
+| Demo entry | `src/contexts/AuthContext.tsx` | `signInAsDemo(role)` opens isolated `/demo` with a seeded role; `src/lib/demo.ts` defines the route boundary; no Supabase client is created inside `/demo` |
 
 ### Dashboard modules
 
@@ -61,7 +61,7 @@ This file is the single source of truth for project state. Every agent must read
 | Admin bootstrap | `scripts/create-admin.mjs` | Local-only, service role from environment |
 | CI | `.github/workflows/ci.yml` | Rewritten (the committed file was a single line of literal `\n`): typecheck, lint, build, secret guard, env-name guard |
 
-### Demo entry + credential removal (2026-11-05)
+### Original demo entry + credential removal (2026-11-05; visibility restriction superseded below)
 
 - Login page has a small "Try a demo" button that expands into Admin / Teacher / Student options; one click enters that role's dashboard with no login. Shown only in demo mode (no Supabase configured); `signInAsDemo` refuses when a Supabase client exists, so the client never decides identity against a live backend.
 - Demo teacher display name is now **Teacher** (seed profile, sample notification, and teaching-assignment sample row). Existing `v3` demo data migrates to `v4` without resetting other demo edits. Verified: admin typecheck/lint/build clean; 39 role smoke checks and 6 storage-migration checks pass; production bundle contains no old display name.
@@ -69,6 +69,20 @@ This file is the single source of truth for project state. Every agent must read
 - Fixed a display bug in `People.tsx`: the import help rendered `Student@Student@14052010` (double prefix); it now shows the derived value once.
 - The school's `Student@DDMMYYYY` initial-password rule is unchanged — it is derived from DOB at runtime (`utils.ts`, `admin-users` Edge Function), never stored as a literal.
 - Verified: admin + shared typecheck clean; eslint 0 errors; production build passes; `grep` of `dist/assets/*.js` finds zero credential strings and the demo button ships in the bundle (works on a deployed demo-mode build). jsdom smoke test clicked through all three roles: correct seeded identity, role-aware nav, sign-out returns to login — 39/39 checks pass.
+
+### Demo visibility investigation (2026-11-05; before the fix below)
+
+- Read-only application/configuration review confirmed the demo picker exists in `apps/admin/src/pages/Login.tsx`, but renders only when `missingSupabaseConfig()` is true (`src/lib/supabase.ts`, `src/contexts/AuthContext.tsx`). Network unavailability does not enable demo mode; the presence of both public configuration values disables the picker.
+- Vercel metadata confirms the latest ready production deployment uses commit `29681ccca26a4af81602b2e072fe9018c5efe4fe` (the inspected source), and the project has `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` configured for production. This explains the hidden production demo entry; no secrets were decrypted and no deployment/settings were changed. Live browser behaviour was not tested in this investigation.
+- The separate header **View as** control in `src/components/AppShell.tsx` is available only after signing in with an admin profile. Next: decide whether to offer a separate isolated demo deployment or implement an explicit isolated demo experience alongside live login; do not remove production authentication configuration to expose the picker.
+
+### Demo alongside configured Supabase (2026-11-05)
+
+- Owner requested demos on the configured production site without creating accounts. `apps/admin/src/pages/Login.tsx` now always offers **Try a demo → Admin / Teacher / Student**; the signed-in header also links to `/demo/login`. Live login remains visible while auth restoration is pending, so slow Supabase does not hide demo entry.
+- `src/lib/demo.ts`, `src/lib/supabase.ts`, `src/contexts/AuthContext.tsx`, and `src/App.tsx` isolate the showcase under `/demo` using full-page entry/exit and a separate router base. No Supabase client or live auth subscription is created there; backend session identity stays null. The seeded role survives refresh in tab-local storage. Invalid roles are rejected; demo sign-out does not sign out a real account.
+- `src/lib/appData.tsx` stores showcase edits separately (`pws.showcase.data.v1`), with no migration from the school-console store. `src/components/AppShell.tsx` displays a persistent sample-data banner and **Exit demo · School sign in**. Demo login never displays a remembered real account.
+- Added Vitest/jsdom regression tests under `apps/admin/tests/`, `vitest.config.ts`, the `test` workspace script, and a CI test step. Verified: 10 tests pass (all roles, configured Supabase, direct entry, refresh, sign-out, data/reset isolation, blocked storage, invalid roles, pending auth, normal password login); admin/shared typechecks pass; admin lint has 0 errors and 3 existing fast-refresh warnings; production build passes (bundle-size warning only).
+- Updated `docs/security/environment-variables.md` and the design decision log. No production environment variables, auth accounts, database policies, or deployments changed. Next: deploy this branch's changes to make the demo entry visible on the production site; keep future backend modules isolated from `/demo`.
 
 ### Verification done
 
