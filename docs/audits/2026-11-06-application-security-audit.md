@@ -17,7 +17,7 @@ The backend authorization model is **better than typical for a project of this s
 
 The material risk has **moved to the identity and credential layer**, and it is not small:
 
-1. **Every student password is a deterministic function of the admission number and date of birth** (`Student@DDMMYYYY`). Both are printed in the UI, on report cards and in CSV exports, and DOB is readable by **any teacher of that student**. This is an offline-brute-forceable (~5,000 candidates), non-rotatable credential for a minor's account, made worse by `apps/mobile` having no password-change flow and the admin console never enforcing `must_change_password`. **Fix before the first production import** — once real accounts exist on the live project, this is a mass-credential incident, not a code review finding.
+1. **Every student password is a deterministic function of the admission number and date of birth** (`Student@DDMMYYYY`). Both are printed in the UI, on report cards and in CSV exports, and DOB is readable by **any teacher of that student** — an offline-brute-forceable (~5,000 candidates) credential for a minor's account. **This scheme is retained by school policy (accepted risk, §F-01).** Because login can no longer be the trust gate, the compensating controls in **F-01a–F-01e** become mandatory: bind the child's access to a guardian OTP / step-up factor, deny sensitive reads (medical, fees, guardian contact) to password-only sessions, rate-limit and alert on failed logins, and stop bulk-disclosing credentials to every browser. Without those controls the residual rating stays **Critical**.
 2. **No row-level authorization exists on four federation-style write paths** — declaration signatures (public), poll options (public), poll votes (any student), notice read receipts (any user, unaudited). Two of them let an ordinary student publish content to **every user in the school**.
 3. **`viewAsRole()` is a display override wired into `isAdmin()`/`requireRole()`**, so a teacher session can open every "admin-only" route client-side. RLS holds for table writes, but the audit trail, CSV exports and deletion affordances all follow the client gate.
 4. **Audit trail integrity is inconsistent**: the console promises admins "cannot edit or delete" entries and that reads are logged, but `audit_log` accepts inserts without an actor binding, has no immutability grant, and the two exports (`People`, `Fees`) are unaudited.
@@ -26,7 +26,7 @@ There is **no** prompt-injection, RAG, MCP-server, LLM-tool-execution or model-o
 
 | # | Finding | Severity | CWE | One-line |
 |---|---|---|---|---|
-| F-01 | Credentials derived from public data (`Student@DDMMYYYY`) | **Critical** | CWE-1391, 521 | Full account takeover of any student from an admission number + DOB |
+| F-01 | Credentials derived from public data (`Student@DDMMYYYY`) — **accepted by school policy** | **High** *(residual)* | CWE-1391, 521 | Scheme is fixed by policy; risk must be engineered out via F-01a–F-01e |
 | F-02 | No server-side authorization on declaration signatures | **Critical** | CWE-639 (BOLA) | Any signed-in user can sign any declaration for any student |
 | F-03 | Poll options insertable by any user | **High** | CWE-639 (BFLA) | Injectable ballot options visible school-wide; forged results |
 | F-04 | `viewAsRole` feeds `isAdmin()`/`requireRole()` | **High** | CWE-863 | Teacher session opens all admin client gates |
@@ -49,7 +49,7 @@ There is **no** prompt-injection, RAG, MCP-server, LLM-tool-execution or model-o
 
 | Finding | Live today? | Why |
 |---|---|---|
-| F-01 | **Yes (scheme)** / demo-only (display) | Migrations applied; any account provisioned via the Edge Function/CLI gets a derived password. No account provisioning has been run yet per `PROJECT_STATUS.md`, so rotate *before* the first real import. |
+| F-01 | **Yes, by design** | Scheme retained by policy. Mitigation is F-01a–F-01e, not credential replacement. |
 | F-02, F-03, F-08, F-10, F-11, F-12 | **Yes** | These are RLS policies in `0001`/`0002`, already applied to `ausnymdtnpewcfvdrpcu` |
 | F-04, F-05, F-07, F-16, F-17 | Demo store only *(until wiring lands)* | `PROJECT_STATUS.md`: the console still reads `appData.tsx`; the Edge Function is not deployed |
 | F-06 | **Yes** | `profiles.must_change_password` is live and unused |
@@ -301,45 +301,224 @@ Each finding: **severity → root cause → evidence → fix (with code) → ver
 
 ---
 
-### F-01 — Deterministic, non-rotatable student credentials · **CRITICAL**
+### F-01 — The password scheme is a *policy*, so harden the scheme · **HIGH (was Critical)**
 
-**Root cause.** The initial password is a pure function of two non-secret values: `Student@DDMMYYYY`. Implemented three times (`apps/admin/src/lib/utils.ts:32`, `apps/admin/src/lib/appData.tsx:277/317`, `supabase/functions/admin-users/index.ts:26,185`) with no randomness, no forced rotation, no reset path (F-06). The auth identity is derived from the admission number (`authEmail()`), which is printed on public-facing artefacts.
+> **Status: ACCEPTED RISK — scheme retained by school policy (2026-11-06).**
+> The school requires `Student@DDMMYYYY` as the initial password so staff can hand a known value to a
+> parent at the counter. The credential cannot be replaced. **The residual risk is therefore not
+> "fixable" in code — it must be engineered out of the *consequences*.** This section is now a
+> hardening plan for a scheme that is assumed to be *known to the attacker*, not a request to change it.
+> Severity drops from Critical to **High** only because of the compensating controls in F-01a–F-01e;
+> **without them it stays Critical.**
 
-**Evidence.**
+**Root cause.** The initial password is a pure function of two non-secret values: `Student@DDMMYYYY`
+(`apps/admin/src/lib/utils.ts:32`, `supabase/functions/admin-users/index.ts:26`, `apps/admin/src/lib/appData.tsx:277/317`),
+with no rotation and no reset path (F-06). The auth identity is derived from the admission number,
+which is printed on report cards and exported to CSV.
 
-- `apps/admin/src/lib/utils.ts:32` — `passwordFromDob()`; UI renders it (`People.tsx:286, 330, 378, 445`), toasts it (`appData.tsx:295`), exports it as CSV (`People.tsx:188, 211`).
-- `supabase/functions/admin-users/index.ts:185` — server re-derives the same value; `:220` returns it in the response body for up to 200 students.
-- `docs/audits/2026-11-05-security-audit-findings.md:92` (F5) itself notes the scheme "enables username/role enumeration against predictable DOB-derived passwords" — the enumeration was fixed, the **credential design was not**.
-- Confirmed by PoC-1 (`tests/poc-security.test.tsx`): candidate space ≈ 5,478 (ages 3–18), single verification request per candidate.
+**Evidence.** `utils.ts:32`; UI renders the value (`People.tsx:286, 330, 378, 445`), toasts it
+(`appData.tsx:295`), exports it as CSV (`People.tsx:188, 211`); `admin-users/index.ts:185` re-derives
+it server-side and `:220` returns up to 200 of them per response. PoC-1 confirms a candidate space of
+≈5,478 (ages 3–18) with one verification request per candidate.
 
-**Impact.** Any party holding an admission number + DOB (any teacher of that student, any parent, any leaked CSV) can authenticate as that student: read fees, report cards, medical leave reasons, messaging threads; send messages to teachers; submit assignments. Because the derived password is *shown to the administrator*, it is also recoverable later from screen-shares, photos and tickets. For a minor, this is a child-data compromise with DPDP significance (§6).
+**Impact (unchanged, unavoidable while the scheme exists).** Anyone holding an admission number + DOB
+(any teacher of that student, any parent, any leaked CSV) can authenticate as that student: fees,
+report cards, medical leave reasons, messaging threads. For a minor this is a child-data compromise
+under DPDP §8(4).
 
-**Fix.**
-
-1. **Issue random, one-time credentials server-side only.**
-
-```ts
-// supabase/functions/admin-users/index.ts
-const NEW_PASSWORD_BYTES = 24;
-
-/** Cryptographically random, URL-safe, no transcription ambiguity. */
-function generatePassword(): string {
-  const alphabet = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const bytes = crypto.getRandomValues(new Uint8Array(NEW_PASSWORD_BYTES));
-  let out = '';
-  for (const b of bytes) out += alphabet[b % alphabet.length];
-  return `${out.slice(0, 4)}-${out.slice(4, 8)}-${out.slice(8, 12)}-${out.slice(12, 16)}`;
-}
-```
-
-2. **Never derive, never re-display.** Replace `passwordFromDob(dateOfBirth)` with `generatePassword()`; delete `passwordFromDob` from `packages/shared` **and** `utils.ts`; remove the `password` field from `Person` (`apps/admin/src/lib/types.ts:26`) and the "Initial password" column/CSV column entirely.
-3. **Deliver out-of-band, once.** Return per-row `{ admissionNo, status }` only. Deliver the credential via a single-use, short-TTL "set your password" token (Supabase `inviteUserByEmail` or your own `password_reset_tokens` table), never in the API response and never in the admin's screen.
-4. **Force rotation before any data access** (see F-06).
-5. **Rotate everything that exists today.** All accounts provisioned so far must be re-issued; treat every current student credential as compromised.
-
-**Verification.** `grep -r "Student@" apps packages supabase` returns nothing; PoC-1's FIXED assertion (random secret ≥20 chars, no plaintext anywhere) is enabled.
+**The design principle that makes acceptance survivable:**
+> Treat `Student@DDMMYYYY` as a **public, low-assurance identifier** — not a secret. Everything that
+> matters must be defended *after* login, because login can no longer be the gate.
 
 ---
+
+#### F-01a — Add a zero-cost second factor the school already permits · **HIGH** *(compensating control)*
+
+`docs/superpowers/specs/2026-11-03-school-erp-design.md` §18 is explicit: *"School-issued IDs + password
+| **No SMS cost**, no dependency on student email, admin control"*. So the second factor must cost
+nothing and must not need student email or SMS. Two mechanisms satisfy that and are worth more than
+they look, because **the realistic attacker here is a classmate, not a stranger** — DOB is in the class
+register and on every birthday post. A classmate knows `Student@DDMMYYYY`; they do not know a secret the
+student chose.
+
+**1. Self-chosen PIN at first login (no cost, defeats the classmate attack).**
+
+```ts
+// First successful sign-in with the school-issued password → force PIN enrolment.
+// Stored as a slow hash server-side; never in JWT, never client-readable.
+// supabase/functions/student-pin/index.ts  (verify_jwt = true)
+import { hash, verify } from 'npm:@node-rs/argon2@2';
+
+const PIN = /^\d{6}$/;
+
+Deno.serve(async (req) => {
+  const { action, pin } = await req.json();
+  const uid = await callerId(req);                    // verified JWT, not body
+  if (action === 'set') {
+    if (!PIN.test(pin)) return json({ error: 'PIN must be 6 digits' }, 400);
+    if (insecurePins.has(pin)) return json({ error: 'Pick a less obvious PIN' }, 400);
+    await svc.from('student_pin').upsert({
+      profile_id: uid, pin_hash: await hash(pin), set_at: new Date().toISOString(),
+    });
+    return json({ ok: true });
+  }
+  // action === 'verify' → mint a short-lived step-up claim (see F-01b)
+});
+```
+
+**2. Trusted-device enrolment (no cost, defeats remote/distributed guessing).**
+
+Most student logins happen on a school-managed device or the family phone. Record the device on first
+login; a **new** device with a correct password requires one approval from the class teacher or admin
+in the console (`/approvals`). Remote attackers cannot obtain approvals; a shared lab machine is
+enrolled once, not per student, if you key the device to the browser profile.
+
+```sql
+-- 0005_authorization_hardening.sql, part F-01a
+CREATE TABLE IF NOT EXISTS public.trusted_devices (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  device_fingerprint text NOT NULL,          -- sha256 of a first-party random cookie + UA
+  label text,
+  approved_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  approved_at timestamptz,
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (profile_id, device_fingerprint)
+);
+ALTER TABLE public.trusted_devices ENABLE ROW LEVEL SECURITY;
+CREATE POLICY trusted_devices_self_read ON public.trusted_devices
+  FOR SELECT TO authenticated USING (auth.uid() = profile_id);
+REVOKE INSERT, UPDATE, DELETE ON public.trusted_devices FROM anon, authenticated;
+-- Rows are written only by the Edge Function (service_role).
+```
+
+**If the school later accepts a small SMS/WhatsApp cost,** guardian OTP is the strongest option and
+slots into the same step-up claim. Until then, PIN + trusted device is the no-cost equivalent of
+2FA and is the single highest-value mitigation available for a scheme that must stay deterministic.
+
+**Design principle.** Treat `Student@DDMMYYYY` as a **public, low-assurance identifier** — not a
+secret. Everything that matters must be defended *after* login, because login can no longer be the gate.
+
+#### F-01b — Deny-by-default on everything sensitive, for the "password-only" assurance tier · **HIGH**
+
+Since any student credential is guessable, every read that a guessed login would expose must be
+reclassified. Implement an assurance tier and gate the high-sensitivity tables on it:
+
+```sql
+-- 0005_authorization_hardening.sql, part F-01b
+-- NOTE: no BEGIN/COMMIT and no CONCURRENTLY anywhere in this file, so it can be
+-- pasted into the Supabase SQL Editor (which runs statements one at a time)
+-- or applied with `supabase db push`. Every statement is idempotent.
+
+-- A session is only "step-up" after OTP/MFA; stored in the JWT by a custom
+-- access-token hook, so it cannot be set from the client.
+CREATE OR REPLACE FUNCTION public.has_step_up() RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT COALESCE(
+    (current_setting('request.jwt.claims', true)::jsonb -> 'app_metadata' ->> 'amr') = 'mfa',
+    false
+  );
+$$;
+REVOKE ALL ON FUNCTION public.has_step_up() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.has_step_up() TO authenticated;
+
+-- Medical/safeguarding data: never readable on a password-only session,
+-- not even by the student whose record it is.
+DROP POLICY IF EXISTS leave_requests_student_read ON public.leave_requests;
+CREATE POLICY leave_requests_student_read ON public.leave_requests
+  FOR SELECT TO authenticated USING (
+    (auth.uid() = student_id AND public.has_step_up())
+    OR public.is_class_teacher_of(student_id)
+    OR (public.teaches_student(student_id) AND public.has_step_up())
+    OR public.is_admin()
+  );
+
+-- Money: same tier.
+DROP POLICY IF EXISTS fee_records_student_read ON public.fee_records;
+CREATE POLICY fee_records_student_read ON public.fee_records
+  FOR SELECT TO authenticated USING (
+    (auth.uid() = student_id AND public.has_step_up()) OR public.is_admin()
+  );
+
+-- Guardian contact + DOB: remove from routine reads entirely (also bounds the
+-- blast radius of a guessed login to non-sensitive data).
+REVOKE SELECT ON public.student_details FROM authenticated;
+GRANT SELECT (profile_id, admission_no) ON public.student_details TO authenticated;
+-- Full row only through a DEFINER function callable by staff who need it:
+CREATE OR REPLACE FUNCTION public.student_contact(p_student_id uuid)
+RETURNS TABLE (guardian_name text, guardian_phone text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT sd.guardian_name, sd.guardian_phone
+  FROM public.student_details sd
+  WHERE sd.profile_id = p_student_id
+    AND (public.is_admin() OR public.is_class_teacher_of(p_student_id));
+$$;
+REVOKE ALL ON FUNCTION public.student_contact(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.student_contact(uuid) TO authenticated;
+```
+
+#### F-01c — Make guessing *visible* and *expensive* · **HIGH**
+
+A 5,478-value space is only dangerous because it is silent and unlimited. Three controls close that:
+
+```toml
+# supabase/config.toml — Supabase Auth rate limits (apply to the live project)
+[auth.rate_limit]
+email_sent = 30          # per hour
+token_verifications = 30
+sign_in_sign_ups = 30    # per 5 minutes per IP  <-- the important one
+```
+
+```sql
+-- 0005_authorization_hardening.sql, part F-01c
+CREATE TABLE IF NOT EXISTS public.login_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  login_id text,
+  succeeded boolean NOT NULL,
+  reason text,                     -- never the submitted password
+  ip_hash text,                    -- sha256(ip + server salt), never raw IP
+  user_agent text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.login_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY login_events_admin_read ON public.login_events
+  FOR SELECT TO authenticated USING (public.is_admin());
+REVOKE INSERT, UPDATE, DELETE ON public.login_events FROM anon, authenticated;
+-- Writes come from the Edge Function / auth webhook with service_role only.
+CREATE INDEX login_events_burst_idx ON public.login_events (created_at)
+  WHERE succeeded = false;
+```
+
+Alert when **>5 failures for one `login_id` in 10 minutes** or **>20 from one `ip_hash` in 10 minutes**.
+That detection, not the password rule, is what actually stops a patient attacker.
+
+#### F-01d — Stop shipping the password to every browser · **MEDIUM**
+
+The value is displayed in the People table and exported to CSV. Keep the *scheme* (policy) but remove
+the *bulk disclosure*:
+
+- Delete the `password` column from `Person` (`apps/admin/src/lib/types.ts:26`) and every render/toast
+  (`People.tsx:286, 330, 378, 445`, `appData.tsx:295`).
+- Delete the `password` column from the people CSV export.
+- Where staff genuinely need to read a credential out to a parent, use a per-student, audited reveal
+  (the scheme is deterministic, so the reveal is just `passwordFromDob(dob)` computed on demand,
+  behind `isAdmin()`, and it writes an `audit_log` row).
+
+#### F-01e — Accept the risk formally · **Process**
+
+Record the decision, the compensating controls, the owner and a review date. Suggested text:
+
+> *Accepted risk AR-2026-01.* Student initial passwords are `Student@DDMMYYYY` by school policy.
+> Compensating controls: step-up MFA for sensitive reads (F-01b), auth rate limits + failed-login
+> detection (F-01c), no bulk credential disclosure (F-01d), forced-rotation at first login where the
+> school permits it (F-06), and full audit of credential reveals (F-09). Residual risk accepted by:
+> _______ (school principal / DPO). Review: 2027-02-06 (quarterly). If a single account-takeover
+> incident is detected, this acceptance is void and immediate rotation of all student credentials is
+> mandatory.
+
+**What I will not recommend again:** replacing the scheme itself, if the constraint above is accurate
+and permanent. Everything in this section is compatible with the password your school wants.
 
 ### F-02 — No authorization on declaration signatures (BOLA) · **CRITICAL**
 
@@ -353,12 +532,10 @@ CREATE POLICY "declaration_signatures_student_insert" ON declaration_signatures
 
 Any authenticated user (including a teacher or admin, and any student) can insert a signature for any student, for any form — including forms not addressed to them. This table is the legal consent record for minors.
 
-**Fix.**
+**Fix.** Complete, runnable version: `supabase/migrations/0005_authorization_hardening.sql` (Part 4).
 
 ```sql
--- migrations/0005_authorization_hardening.sql
-BEGIN;
-
+-- 0005_authorization_hardening.sql, part F-02
 DROP POLICY IF EXISTS declaration_signatures_student_insert ON public.declaration_signatures;
 
 CREATE POLICY declaration_signatures_student_insert ON public.declaration_signatures
@@ -387,8 +564,6 @@ CREATE POLICY declaration_signatures_student_insert ON public.declaration_signat
 
 -- Signatures are append-only evidence; nothing may update/delete them.
 REVOKE UPDATE, DELETE ON public.declaration_signatures FROM anon, authenticated;
-
-COMMIT;
 ```
 
 Rationale for `cardinality(...) = 0`: it matches the `school_events` convention in your own schema ("empty array = whole school"). Apply the same predicate to `declaration_forms_read` so read and write scopes agree.
@@ -663,7 +838,7 @@ Also enforce `results_visible` server-side rather than relying on the page to hi
 **Fix.**
 
 ```sql
-BEGIN;
+-- 0005_authorization_hardening.sql, part F-09
 -- 1. Bind the actor to the session for non-service inserts.
 DROP POLICY IF EXISTS audit_log_admin_insert ON public.audit_log;
 CREATE POLICY audit_log_admin_insert ON public.audit_log
@@ -682,7 +857,6 @@ CREATE TRIGGER audit_log_no_mutation
 
 -- 3. Server-side timestamp authority for non-service writes.
 ALTER TABLE public.audit_log ALTER COLUMN created_at SET DEFAULT now();
-COMMIT;
 ```
 
 ```ts
@@ -734,10 +908,10 @@ CREATE POLICY notice_recipients_mark_read ON public.notice_recipients
 3. `app_role()` is declared **without qualified types** (`profiles`/`auth.uid()` resolved through `search_path` at *creation* time), unlike every other helper; it is also not `public.`-qualified in the `0003` revoke. Combined with `0004:35` (`IF current_user IN ('service_role','postgres') OR public.is_admin()`) this is an invitation to a future privilege bug (F-14).
 4. `is_enrolled`'s predicate is semantically wrong anyway: `e.academic_year IS NOT NULL` is true for every enrollment row, so the helper answers "is this user enrolled in anything" rather than "in the relevant section".
 
-**Fix.**
+**Fix.** Complete, runnable version: `supabase/migrations/0005_authorization_hardening.sql` (Part 0).
 
 ```sql
-BEGIN;
+-- 0005_authorization_hardening.sql, part F-11
 -- Revoke helpers nobody needs.
 REVOKE ALL ON FUNCTION public.is_enrolled(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.class_teacher_of_section(uuid) FROM PUBLIC, anon, authenticated;
@@ -756,7 +930,6 @@ CREATE OR REPLACE FUNCTION public.app_role() RETURNS text
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
   SELECT p.role::text FROM public.profiles p WHERE p.id = auth.uid();
 $$;
-COMMIT;
 ```
 
 Also add an explicit `TO authenticated` to every policy (`CREATE POLICY … TO authenticated USING …`) so `anon` is denied by construction, and add a test that asserts `relrowsecurity` for **every** table (see F-18).
@@ -772,7 +945,7 @@ Also add an explicit `TO authenticated` to every policy (`CREATE POLICY … TO a
 **Fix.**
 
 ```sql
-BEGIN;
+-- 0005_authorization_hardening.sql, part F-12
 DROP POLICY IF EXISTS books_staff_write ON public.books;
 CREATE POLICY books_admin_write ON public.books
   FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
@@ -789,7 +962,6 @@ CREATE POLICY book_issues_librarian_return ON public.book_issues
   WITH CHECK (public.is_admin() AND issued_by = auth.uid());
 -- No DELETE: returns are recorded, not erased. (Add a librarian role if
 -- staff other than admins must run circulation.)
-COMMIT;
 ```
 
 If teachers genuinely circulate books, add a `librarian boolean` to a `staff_roles` table (not to `profiles`, which is privilege-protected) and scope on it.
@@ -1015,17 +1187,19 @@ Because there is no AI system in scope, the RMF mapping is a *readiness* posture
 
 | Order | Action | Findings | Effort |
 |---|---|---|---|
-| 1 | Replace `passwordFromDob` with cryptographic random passwords server-side; delete it from `apps/`, `packages/`, `scripts/`; strip the `password` field and every UI/CSV surface | F-01, F-07 | 1–2 d |
-| 2 | Ship a forced first-login password rotation gate; re-issue/expire all existing student + admin credentials | F-01, F-06 | 1 d |
-| 3 | Migration `0005_authorization_hardening.sql`: declaration signatures, poll options/votes, notice receipts, books/book_issues, helper revokes (all snippets in §5) | F-02, F-03, F-08, F-10, F-11, F-12 | 1 d |
-| 4 | Decouple `viewAsRole` from `isAdmin`/`requireRole`; refuse for non-admins | F-04 | 2 h |
-| 5 | Stop persisting `people` PII to `localStorage`; purge existing keys | F-05 | 3 h |
-| 6 | Stop swallowing `audit_log` insert errors; make the table append-only | F-09 | 2 h |
-| 7 | Re-run `supabase/tests/verify_rls_local.py` + add the F-02/F-03/F-08 negative cases | all | 4 h |
+| 1 | **F-01c first (it is the real control):** set Auth rate limits and failed-login detection/alerting; stop flagging this as "later" | F-01, F-01c | 4 h |
+| 2 | **F-01d:** strip the `password` field from client state, the People table, toasts and the CSV export; keep the scheme, remove bulk disclosure | F-01, F-01d | 4 h |
+| 3 | **F-01b:** assurance tier — deny `leave_requests`, `fee_records`, `student_details` guardian contact to password-only sessions | F-01, F-01b | 1 d |
+| 4 | Forced first-login rotation **only where the school permits it**, and MFA for `admin` (not for students) | F-06 | 1 d |
+| 5 | Migration `0005_authorization_hardening.sql`: declaration signatures, poll options/votes, notice receipts, books/book_issues, helper revokes (all snippets in §5) | F-02, F-03, F-08, F-10, F-11, F-12 | 1 d |
+| 6 | Decouple `viewAsRole` from `isAdmin`/`requireRole`; refuse for non-admins | F-04 | 2 h |
+| 7 | Stop persisting `people` PII to `localStorage`; purge existing keys | F-05 | 3 h |
+| 8 | Stop swallowing `audit_log` insert errors; make the table append-only | F-09 | 2 h |
+| 9 | Re-run `supabase/tests/verify_rls_local.py` + add the F-02/F-03/F-08 negative cases | all | 4 h |
 
 **Architectural hardening (this quarter)**
 
-1. **Redesign identity**: random one-time credentials delivered out-of-band, mandatory rotation, MFA for `admin` (Supabase MFA is available), self-service reset with server-side rate limiting, and a `login_attempts`/failed-auth monitor.
+1. **Identity assurance without changing the password rule**: guardian-bound accounts with SMS OTP (F-01a), step-up assurance tiers in RLS (F-01b), Supabase Auth rate limits plus the `login_events` burst monitor (F-01c), MFA for `admin` only, and a self-service reset flow that does not require a secret the school is unwilling to keep.
 2. **Make the database the only authority**: add `TO authenticated` to every policy, add a "no table without RLS + policy" CI assertion, add actor-bound audit writes, drop every helper no policy uses.
 3. **Data minimisation**: remove DOB/phone from role-obvious reads; serve student PII through narrow, audited views; add a `student_details` column grant so teachers read `full_name` without `date_of_birth`.
 4. **Explicit directory model**: if classmates/teachers must be discoverable, ship a `security_invoker` view exposing only shared-section `id, full_name, role`.

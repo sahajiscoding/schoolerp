@@ -164,9 +164,16 @@ LLM/MCP/agent surface exists in the repo (the agentic taxonomy was applied to th
 trust boundaries instead).
 
 **Critical / high, in fix order:**
-- **F-01 (critical)** `Student@DDMMYYYY` derived credentials (`lib/utils.ts:32`,
-  `admin-users/index.ts:26`, `appData.tsx:277/317`). Both inputs are public; ~5k candidate space.
-  **Must be fixed before the first production import** — rotate any account already provisioned.
+- **F-01 (High residual — SCHOOL POLICY, accepted 2026-11-06)** `Student@DDMMYYYY` derived
+  credentials (`lib/utils.ts:32`, `admin-users/index.ts:26`, `appData.tsx:277/317`) stay, because
+  staff must hand a known password to a parent at the counter. Design doc §18 records this. The
+  password is derived from public data, so **login is now a low-assurance identifier and the data
+  behind it must be defended in RLS**. Mandatory compensating controls (report §F-01a–F-01e):
+  F-01a self-chosen PIN + trusted-device step-up (no SMS cost, the school's stated constraint),
+  F-01b assurance tiers that deny `leave_requests`/`fee_records`/guardian contact to password-only
+  sessions, F-01c Supabase Auth rate limits + `login_events` burst alerting, F-01d no bulk credential
+  display or CSV export, F-01e formal accepted-risk record with a review date and a named owner.
+  Without them the residual rating is still Critical.
 - **F-02 (critical)** `declaration_signatures_student_insert` only checks `auth.uid() = student_id`
   (`0002:352`) — any user can sign any consent form for any student. **Live in the deployed schema.**
 - **F-03 (high)** `polls_teacher_insert` lets any teacher broadcast school-wide and
@@ -182,6 +189,11 @@ Medium: poll votes (F-08), audit-log integrity + unaudited exports (F-09), notic
 unscoped `is_enrolled`/`class_teacher_of_section` (F-11), library `FOR ALL` for all teachers (F-12),
 DPDP data-transfer posture (F-13), plus lows F-14…F-18.
 
-**Next up (changed):** apply `0005_authorization_hardening.sql` (snippets in the report §5) to the
-live project **before** wiring the console to Supabase, replace the credential scheme, and enforce
-first-login rotation. Wiring `appData.tsx` to Supabase first would make F-04/F-05 live.
+**Proposed migration (NOT applied):** `supabase/migrations/0005_authorization_hardening.sql` consolidates
+the SQL remediation (helpers, assurance tiers, declaration signatures, polls, votes, receipts, audit
+trail, library). Apply to a staging project first and extend `supabase/tests/verify_rls_local.py` with
+negative cases for F-02/F-03/F-08/F-10 before touching production.
+
+**Next up (changed):** apply `0005_authorization_hardening.sql` to the live project **before** wiring
+the console to Supabase. The credential scheme stays (school policy); the compensating controls in
+report §F-01a-F-01e are now the priority work, not credential replacement.
