@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { isDemoPath } from './lib/demo';
 import { AppDataProvider } from './lib/appData';
 import AppShell from './components/AppShell';
 import Login from './pages/Login';
@@ -37,7 +38,8 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 function GuestOnly({ children }: { children: ReactNode }) {
   const { loading, profile } = useAuth();
-  if (loading) return null;
+  // Demo entry must remain available while live auth is slow or offline.
+  if (loading) return <>{children}</>;
   return profile ? <Navigate to="/dashboard" replace /> : <>{children}</>;
 }
 
@@ -57,7 +59,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppDataProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={isDemoPath ? '/demo' : '/'}>
           <Routes>
             <Route
               path="/login"

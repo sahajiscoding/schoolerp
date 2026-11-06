@@ -1,3 +1,4 @@
+import { isDemoPath } from './demo';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ACADEMIC_YEAR,
@@ -80,7 +81,7 @@ interface AppState {
   audit: AuditEntry[];
 }
 
-const STORAGE_KEY = 'pws.demo.data.v4';
+const STORAGE_KEY = isDemoPath ? 'pws.showcase.data.v1' : 'pws.demo.data.v4';
 const PREVIOUS_STORAGE_KEY = 'pws.demo.data.v3';
 
 /** Class teacher for IX-E owns door-to-door leave approvals in the demo. */
@@ -125,7 +126,7 @@ function loadData(): AppState {
   const fresh = initialData();
   try {
     const currentRaw = localStorage.getItem(STORAGE_KEY);
-    const raw = currentRaw ?? localStorage.getItem(PREVIOUS_STORAGE_KEY);
+    const raw = currentRaw ?? (isDemoPath ? null : localStorage.getItem(PREVIOUS_STORAGE_KEY));
     if (!raw) return fresh;
     const parsed = JSON.parse(raw) as Partial<AppState>;
     // Any collection that is empty in storage but seeded by a newer build is
