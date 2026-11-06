@@ -151,3 +151,37 @@ have not been applied to that project from this environment.
 2. Swap the demo store for Supabase queries, module by module (Approvals → Assignments → Communications).
 3. Deploy `admin-users`; run `scripts/create-admin.mjs` for the first admin.
 4. Mobile: login, assignments, approvals.
+
+## Security audit — 2026-11-06 (application security & agentic threat model)
+
+Full report: `docs/audits/2026-11-06-application-security-audit.md`. Executable proofs:
+`apps/admin/tests/poc-security.test.tsx` (4 tests, green — they assert the *current, insecure*
+behaviour so the suite stays honest; each carries a commented FIXED assertion to enable after
+remediation).
+
+**Result:** 2 critical, 5 high, 5 medium, 6 low. No secrets in history; `npm audit` clean; no
+LLM/MCP/agent surface exists in the repo (the agentic taxonomy was applied to the credential and
+trust boundaries instead).
+
+**Critical / high, in fix order:**
+- **F-01 (critical)** `Student@DDMMYYYY` derived credentials (`lib/utils.ts:32`,
+  `admin-users/index.ts:26`, `appData.tsx:277/317`). Both inputs are public; ~5k candidate space.
+  **Must be fixed before the first production import** — rotate any account already provisioned.
+- **F-02 (critical)** `declaration_signatures_student_insert` only checks `auth.uid() = student_id`
+  (`0002:352`) — any user can sign any consent form for any student. **Live in the deployed schema.**
+- **F-03 (high)** `polls_teacher_insert` lets any teacher broadcast school-wide and
+  `poll_options_owner_insert` guards writes but `polls_read` is unscoped (`0002:356-364`).
+- **F-04 (high)** `viewAsRole` feeds `isAdmin()`/`requireRole()` (`AuthContext.tsx:96-104`) — a
+  teacher session can open every admin client gate. Proven by PoC-2.
+- **F-05 (high)** DOB, guardian phone and initial passwords serialized to `localStorage`
+  (`appData.tsx:248`). Proven by PoC-3.
+- **F-06 (high)** `must_change_password` is never enforced and no change-password flow exists
+  anywhere (`grep updateUser` → none), so initial credentials never rotate.
+
+Medium: poll votes (F-08), audit-log integrity + unaudited exports (F-09), notice receipts (F-10),
+unscoped `is_enrolled`/`class_teacher_of_section` (F-11), library `FOR ALL` for all teachers (F-12),
+DPDP data-transfer posture (F-13), plus lows F-14…F-18.
+
+**Next up (changed):** apply `0005_authorization_hardening.sql` (snippets in the report §5) to the
+live project **before** wiring the console to Supabase, replace the credential scheme, and enforce
+first-login rotation. Wiring `appData.tsx` to Supabase first would make F-04/F-05 live.
