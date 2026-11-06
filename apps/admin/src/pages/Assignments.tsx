@@ -219,7 +219,7 @@ export default function Assignments() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className={cn(overdue ? 'text-terracotta' : 'text-muted')}>
+                    <span className={cn(overdue ? 'font-medium text-red-600' : 'text-muted')}>
                       Due {formatDateLong(hw.due_date)} · {relativeToToday(hw.due_date)}
                     </span>
                     {alreadySubmitted && (
@@ -298,7 +298,7 @@ export default function Assignments() {
                     </TableCell>
                     <TableCell>
                       {row.missing ? (
-                        <Badge variant="terracotta">Not submitted</Badge>
+                        <Badge variant="warning">Not submitted</Badge>
                       ) : row.submission?.status === 'reviewed' ? (
                         <Badge variant="success">Reviewed</Badge>
                       ) : (
@@ -388,7 +388,7 @@ export default function Assignments() {
                         </Button>
                       )
                     ) : (
-                      <Badge variant="terracotta">Missing</Badge>
+                      <Badge variant="warning">Missing</Badge>
                     )}
                   </div>
                 );

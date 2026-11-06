@@ -201,19 +201,19 @@ export default function AppShell({ children }: { children?: ReactNode }) {
           className={cn(
             "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
             active
-              ? "bg-navy text-white shadow-sm"
-              : "text-slate-600 hover:bg-navy/5 hover:text-navy dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-300",
+              ? "bg-brand-primary text-white shadow-sm"
+              : "text-slate-600 hover:bg-brand-hover hover:text-white dark:text-slate-300 dark:hover:bg-brand-hover dark:hover:text-white",
           )}
         >
           <item.icon
-            className={cn("h-[18px] w-[18px] shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-navy dark:group-hover:text-blue-300")}
+            className={cn("h-[18px] w-[18px] shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-white dark:group-hover:text-white")}
           />
           <span className="truncate">{label}</span>
           {count !== undefined && (
             <span
               className={cn(
                 "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                active ? "bg-white/20 text-white" : "bg-blue-600/10 text-blue-600 dark:text-blue-300",
+                active ? "bg-white/20 text-white" : "bg-brand-accent/10 text-brand-primary dark:text-olive-300",
               )}
             >
               {count}
@@ -273,7 +273,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
           </div>
         )}
         <div className="flex items-center gap-2.5 rounded-lg bg-slate-50 px-2.5 py-2 dark:bg-slate-800">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy text-[10px] font-bold text-white">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-primary text-[10px] font-bold text-white">
             {initials(profile?.full_name ?? "U")}
           </div>
           <div className="min-w-0 flex-1">
@@ -286,7 +286,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
         </div>
         <button
           onClick={handleLogout}
-          className="mt-2 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-blue-600 transition-colors hover:bg-blue-600/5 dark:text-blue-300"
+          className="mt-2 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-brand-primary transition-colors hover:bg-brand-hover/10 hover:text-brand-hover dark:text-olive-300"
         >
           <FiLogOut size={14} /> Sign out
         </button>
@@ -332,7 +332,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
 
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             {configError && (
-              <Badge variant="terracotta" className="hidden cursor-help text-[10px] sm:inline-flex" title={configError}>
+              <Badge variant="warning" className="hidden cursor-help text-[10px] sm:inline-flex" title={configError}>
                 Config
               </Badge>
             )}
@@ -359,7 +359,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
               />
               {unread === 0 && <span className="sr-only">No unread notifications</span>}
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-navy/10 text-xs font-bold text-navy dark:bg-blue-950 dark:text-blue-300">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10 text-xs font-bold text-brand-primary dark:bg-olive-700 dark:text-olive-300">
               {initials(profile?.full_name ?? "U")}
             </div>
           </div>

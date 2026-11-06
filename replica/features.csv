@@ -1,0 +1,40 @@
+feature,area,priority,original,clone,notes
+School login form with olive primary button,login,must,yes,yes,strict parity: bg #5A6638 hover #FE1616
+Account picker + use another account,login,must,yes,yes,remembered account in localStorage
+I forgot my password link,login,must,yes,yes,button shows admin-reset notice
+Try a demo Admin/Teacher/Student,login,must,yes,yes,browser-only sessionStorage demo; supersedes reference (clone addition)
+Dashboard greeting banner + StatCards,dashboard,must,yes,yes,role-aware greeting
+Dashboard homework + upcoming events,dashboard,must,yes,yes,student assignments + events
+Approvals leave table with pagination,approvals,must,yes,yes,class-teacher routing; page/limit honored
+Course progress goals,progress,must,yes,yes,teacher adds goals per student
+Events month calendar + scoping,events,must,yes,yes,admin school-wide / teacher class-only
+Homework hub + worksheets,homeworks,must,yes,yes,teacher name on cards; attachments
+Homework submit two-tab editor,homeworks,must,yes,partial,rich text via textarea; Tiptap pending
+Study room share PDF,study-room,must,yes,yes,teacher/admin share; student opens
+My Library borrowed ledger + fines,library,must,yes,yes,issue/return/reserve
+Issue Book catalog + reservation,library,must,yes,yes,member_able_type honored
+Digital Library searchable catalog,library,must,yes,yes,Open e-book navigates to /study-room (fixed 2026-11-07)
+Examination Report Cards table,examination,must,yes,yes,page/limit honored; grade badges
+Attendance matrix + gauge + Apply Leave,attendance,must,yes,yes,day grid; student read-own enforced
+Fees ledger + sibling 50% discount,fees,must,yes,yes,second child only; admin-owned
+School Gallery albums, gallery,must,yes,yes,album grid + pagination
+Album viewer prev/next,gallery,must,yes,yes,holder media (no shipped photos)
+Circulars list + pagination,circulars,must,yes,yes,detail + download route exists
+Declaration forms sign, declarations,must,yes,yes,compose + sign
+Messages inbox/sent + compose + thread,messages,must,yes,yes,teacher<->student only; admin read-only
+Polls create + vote,polls,must,yes,yes,active surveys
+Profile 7-tab dossier + change password,profile,must,yes,yes,tabbed dossier
+AppShell sidebar/topbar + notifications + theme,shell,must,yes,yes,role-aware nav; daylight auto 05:00-18:00
+Old->new route redirects with query strings,routes,must,yes,yes,QueryRedirect preserves search verbatim
+Live Supabase wiring module by module,backend,must,yes,no,not yet; demo store only (PROJECT_STATUS next)
+Storage signed uploads 10MB + MIME,backend,should,yes,partial,client limit enforced; signed URLs pending
+Notifications push + unread counts,notifications,should,yes,partial,in-app counts yes; push pending
+Parent session + switch-student,auth,should,yes,no,parent_links table exists; UI pending
+Library kiosk JWT flow,library,should,yes,no,kiosk_sessions table exists; UI pending
+Tiptap rich-text in homework,homeworks,should,yes,no,textarea today (see submit row)
+Realtime notifications broadcast,backend,could,yes,no,Supabase Realtime pending
+Performance budget LCP/INP/CLS,performance,could,yes,no,not measured yet
+Dark mode manual override + schedule,theme,should,yes,yes,05:00-18:00 auto + override
+Reference PII S3 URLs in seeds,content,must,no,skip,never copied per clean-room rule
+Reference logos/photos/copy in clone,content,must,no,skip,never copied per clean-room rule
+Private reference APIs replicated,backend,must,no,skip,never read or replicated

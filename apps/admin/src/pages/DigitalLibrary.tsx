@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppData as useData } from "../lib/appData";
 import { Card, Button } from "../components/ui";
 
 /** Report-parity `/digital-library` — searchable digital e-books catalog. */
 export default function DigitalLibrary() {
   const data = useData();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -32,7 +34,9 @@ export default function DigitalLibrary() {
               {m.subject} · {m.type} · {m.file_size}
             </div>
             <div className="mt-auto pt-2">
-              <Button size="sm">Open e-book</Button>
+              <Button size="sm" onClick={() => navigate("/study-room")} aria-label={`Open ${m.title} in Study Room`}>
+                Open e-book
+              </Button>
             </div>
           </Card>
         ))}

@@ -45,7 +45,7 @@ export default function Layout() {
                 }
               }}
               className={`flex items-center gap-3 px-6 py-3 text-left rounded-lg transition ${
-                item.isLogout ? 'text-terracotta hover:bg-white/10' : 'text-white hover:bg-white/10'
+                item.isLogout ? 'text-white/80 hover:bg-brand-hover' : 'text-white hover:bg-brand-hover'
               }`}
             >
               <item.icon size={18} />

@@ -24,9 +24,9 @@ const LEAVE_TYPES = [
   'Long Leave',
 ] as const;
 
-const STATUS_VARIANT: Record<LeaveStatus, 'success' | 'terracotta' | 'pending'> = {
+const STATUS_VARIANT: Record<LeaveStatus, 'success' | 'danger' | 'pending'> = {
   approved: 'success',
-  rejected: 'terracotta',
+  rejected: 'danger',
   pending: 'pending',
 };
 
@@ -191,7 +191,7 @@ export default function Approvals() {
                     : `Students in ${data.people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'your class'}.`}
                 </p>
               </div>
-              <Badge variant={pendingInbox.length ? 'terracotta' : 'success'}>
+              <Badge variant={pendingInbox.length ? 'warning' : 'success'}>
                 {pendingInbox.length} waiting
               </Badge>
             </div>
@@ -401,8 +401,8 @@ function MiniStat({
 }) {
   const tones: Record<typeof tone, string> = {
     warning: 'border-amber-100 bg-amber-50 text-amber-700',
-    success: 'border-olive/15 bg-olive/5 text-olive',
-    danger: 'border-terracotta/15 bg-terracotta/5 text-terracotta',
+    success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    danger: 'border-red-200 bg-red-50 text-red-700',
     neutral: 'border-slate-200 bg-slate-50 text-ink',
   };
   return (

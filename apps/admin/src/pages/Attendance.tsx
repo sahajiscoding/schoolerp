@@ -25,8 +25,8 @@ const STATUS_LABEL: Record<AttendanceStatus, string> = {
 };
 
 const STATUS_COLOR: Record<AttendanceStatus, string> = {
-  present: 'olive',
-  absent: 'terracotta',
+  present: 'success',
+  absent: 'danger',
   leave: 'slate',
   medical: 'slate',
   holiday: 'slate',
@@ -135,13 +135,13 @@ export default function Attendance() {
             <div className="text-xs text-muted">Total marked</div>
             <div className="text-2xl font-bold text-ink">{total}</div>
           </Card>
-          <Card className="p-4 border-olive/10 bg-olive/5">
-            <div className="text-xs text-muted text-olive">Present</div>
-            <div className="text-2xl font-bold text-olive">{presentCount}</div>
+          <Card className="p-4 border-emerald-200/60 bg-emerald-50/60">
+            <div className="text-xs text-muted">Present</div>
+            <div className="text-2xl font-bold text-emerald-700">{presentCount}</div>
           </Card>
-          <Card className="p-4 border-terracotta/10 bg-terracotta/5">
-            <div className="text-xs text-muted text-terracotta">Absent</div>
-            <div className="text-2xl font-bold text-terracotta">{absentCount}</div>
+          <Card className="p-4 border-red-200/60 bg-red-50/60">
+            <div className="text-xs text-muted">Absent</div>
+            <div className="text-2xl font-bold text-red-700">{absentCount}</div>
           </Card>
         </div>
       )}

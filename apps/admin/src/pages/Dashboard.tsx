@@ -237,7 +237,7 @@ export default function Dashboard() {
                           leave.status === 'approved'
                             ? 'success'
                             : leave.status === 'rejected'
-                              ? 'terracotta'
+                              ? 'danger'
                               : 'warning'
                         }
                       >

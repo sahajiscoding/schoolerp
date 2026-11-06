@@ -14,15 +14,15 @@ export function Button({ className, variant = "olive", size = "md", children, ..
   const base =
     "inline-flex items-center justify-center rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-50";
   const variants: Record<string, string> = {
-    // Legacy names resolve to the report identity (navy / blue).
-    olive: "bg-navy text-white hover:bg-navy/90 active:bg-navy/80",
-    terracotta: "bg-blue-600 text-white hover:bg-blue-600/90 active:bg-blue-600/80",
-    navy: "bg-navy text-white hover:bg-navy/90 active:bg-navy/80",
-    accent: "bg-blue-600 text-white hover:bg-blue-600/90 active:bg-blue-600/80",
+    // Reference roles: primary olive + red hover; accent (lighter olive) darkens to primary.
+    olive: "bg-brand-primary text-white hover:bg-brand-hover active:bg-brand-hover/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40",
+    terracotta: "bg-brand-accent text-white hover:bg-brand-primary active:bg-brand-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40",
+    navy: "bg-brand-primary text-white hover:bg-brand-hover active:bg-brand-hover/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40",
+    accent: "bg-brand-accent text-white hover:bg-brand-primary active:bg-brand-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40",
     outline:
       "border border-slate-300 bg-white text-ink hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700",
     ghost: "bg-transparent text-ink hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800",
-    danger: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800",
+    danger: "bg-brand-hover text-white hover:bg-brand-hover/90 active:bg-brand-hover/80",
   };
   const sizes: Record<string, string> = {
     sm: "px-3 py-1.5 text-xs",
@@ -90,13 +90,15 @@ export function Badge({ className, variant = "default", children, ...props }: Ba
   const base = "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors";
   const variants: Record<string, string> = {
     default: "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
-    olive: "border-navy/20 bg-navy/5 text-navy dark:text-blue-300",
-    terracotta: "border-blue-600/20 bg-blue-600/5 text-blue-600 dark:text-blue-300",
-    navy: "border-navy/20 bg-navy/5 text-navy dark:text-blue-300",
-    accent: "border-blue-600/20 bg-blue-600/5 text-blue-600 dark:text-blue-300",
+    olive: "border-brand-primary/20 bg-brand-primary/5 text-brand-primary dark:text-olive-300",
+    terracotta: "border-brand-accent/20 bg-brand-accent/10 text-brand-primary dark:text-olive-300",
+    navy: "border-brand-primary/20 bg-brand-primary/5 text-brand-primary dark:text-olive-300",
+    accent: "border-brand-accent/20 bg-brand-accent/10 text-brand-primary dark:text-olive-300",
     success: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
     warning: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300",
-    pending: "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
+    pending: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300",
+    danger: "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300",
+    holiday: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",
     neutral: "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
   };
   return (
@@ -178,10 +180,10 @@ interface StatCardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function StatCard({ className, label, value, delta, icon: Icon, variant = "olive", ...props }: StatCardProps) {
   const colorMap: Record<string, string> = {
-    olive: "border-navy/10 bg-navy/5 text-navy dark:text-blue-300",
-    terracotta: "border-blue-600/10 bg-blue-600/5 text-blue-600 dark:text-blue-300",
-    navy: "border-navy/10 bg-navy/5 text-navy dark:text-blue-300",
-    accent: "border-blue-600/10 bg-blue-600/5 text-blue-600 dark:text-blue-300",
+    olive: "border-brand-primary/10 bg-brand-primary/5 text-brand-primary dark:text-olive-300",
+    terracotta: "border-brand-accent/20 bg-brand-accent/10 text-brand-primary dark:text-olive-300",
+    navy: "border-brand-primary/10 bg-brand-primary/5 text-brand-primary dark:text-olive-300",
+    accent: "border-brand-accent/20 bg-brand-accent/10 text-brand-primary dark:text-olive-300",
     neutral: "border-slate-200 bg-slate-50 text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100",
     warning: "border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300",
   };
@@ -216,7 +218,7 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
             {last || !item.to ? (
               <span className={last ? "font-medium text-ink dark:text-white" : "text-muted"}>{item.label}</span>
             ) : (
-              <Link to={item.to} className="transition-colors hover:text-navy dark:hover:text-blue-300">
+              <Link to={item.to} className="transition-colors hover:text-brand-primary dark:hover:text-olive-300">
                 {item.label}
               </Link>
             )}
@@ -258,9 +260,9 @@ export function NotificationsDropdown({
   const unread = notifications.filter((n) => !n.read).length;
   const kindColor: Record<string, string> = {
     notice: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
-    message: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-    assignment: "bg-navy/10 text-navy dark:text-blue-300",
-    fee: "bg-blue-600/10 text-blue-600 dark:text-blue-300",
+    message: "bg-brand-accent/10 text-brand-primary dark:text-olive-300",
+    assignment: "bg-brand-primary/10 text-brand-primary dark:text-olive-300",
+    fee: "bg-brand-accent/10 text-brand-primary dark:text-olive-300",
     approval: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
   };
   return (
@@ -285,7 +287,7 @@ export function NotificationsDropdown({
             {unread > 0 && (
               <button
                 onClick={onMarkAllRead}
-                className="text-xs text-navy underline decoration-1 decoration-navy/30 underline-offset-2 hover:text-navy/80 dark:text-blue-300"
+                className="text-xs text-brand-primary underline decoration-1 decoration-brand-primary/30 underline-offset-2 hover:text-brand-hover dark:text-olive-300"
               >
                 Mark all read
               </button>
@@ -300,7 +302,7 @@ export function NotificationsDropdown({
                   key={n.id}
                   className={cn(
                     "flex cursor-pointer gap-2 rounded-lg p-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50",
-                    !n.read ? "bg-navy/5 dark:bg-navy/20" : "",
+                    !n.read ? "bg-brand-primary/5 dark:bg-brand-primary/20" : "",
                   )}
                   onClick={() => onMarkRead(n.id)}
                 >
@@ -372,7 +374,7 @@ export function RoleSwitcher({ roles, current, onChange }: RoleSwitcherProps) {
                 onChange(null);
                 setOpen(false);
               }}
-              className="mt-1 w-full border-t border-slate-100 px-3 py-1.5 text-left text-xs text-blue-600 hover:bg-blue-600/5 dark:border-slate-700 dark:text-blue-300"
+              className="mt-1 w-full border-t border-slate-100 px-3 py-1.5 text-left text-xs text-brand-primary hover:bg-brand-primary/5 dark:border-slate-700 dark:text-olive-300"
             >
               Back to my role
             </button>

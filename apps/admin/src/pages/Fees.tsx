@@ -117,7 +117,7 @@ export default function Fees() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MoneyCard label="Billed (after discount)" value={inr(totals.billed)} />
         <MoneyCard label="Collected" value={inr(totals.paid)} tone="olive" />
-        <MoneyCard label="Outstanding" value={inr(totals.due)} tone="terracotta" />
+        <MoneyCard label="Outstanding" value={inr(totals.due)} tone="danger" />
         <MoneyCard label="Sibling discounts given" value={inr(totals.discounts)} tone="neutral" />
       </div>
 
@@ -185,7 +185,7 @@ export default function Fees() {
                             ? 'success'
                             : fee.status === 'partial'
                               ? 'warning'
-                              : 'terracotta'
+                              : 'danger'
                         }
                       >
                         {fee.status}
@@ -421,11 +421,12 @@ function MoneyCard({
 }: {
   label: string;
   value: string;
-  tone?: 'olive' | 'terracotta' | 'neutral';
+  tone?: 'olive' | 'terracotta' | 'neutral' | 'danger';
 }) {
   const tones = {
     olive: 'border-olive/15 bg-olive/5 text-olive',
     terracotta: 'border-terracotta/15 bg-terracotta/5 text-terracotta',
+    danger: 'border-red-200 bg-red-50 text-red-700',
     neutral: 'border-sand/60 bg-white text-ink',
   };
   return (

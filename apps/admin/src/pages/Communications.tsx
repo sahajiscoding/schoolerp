@@ -143,7 +143,7 @@ export default function Communications() {
           <div className="mb-4 flex items-center justify-between gap-2">
             <h3 className="text-lg font-bold text-ink">Declaration forms</h3>
             {isStudent() ? (
-              <Badge variant={pendingDeclarations ? 'terracotta' : 'success'}>
+              <Badge variant={pendingDeclarations ? 'warning' : 'success'}>
                 {pendingDeclarations ? `${pendingDeclarations} to sign` : 'All signed'}
               </Badge>
             ) : (

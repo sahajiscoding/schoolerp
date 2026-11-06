@@ -23,15 +23,15 @@ const TYPE_LABEL: Record<EventType, string> = {
   meeting: 'Meeting',
 };
 
-const TYPE_COLOR: Record<EventType, 'terracotta' | 'olive' | 'warning' | 'default'> = {
-  holiday: 'terracotta',
+const TYPE_COLOR: Record<EventType, 'holiday' | 'olive' | 'warning' | 'default'> = {
+  holiday: 'holiday',
   event: 'olive',
   exam: 'warning',
   meeting: 'default',
 };
 
 const TYPE_DOT: Record<EventType, string> = {
-  holiday: 'bg-terracotta',
+  holiday: 'bg-indigo-500',
   event: 'bg-olive',
   exam: 'bg-amber-500',
   meeting: 'bg-slate-400',

@@ -209,7 +209,7 @@ export default function Login() {
                     spellCheck={false}
                     value={loginId}
                     onChange={(e) => setLoginId(e.target.value)}
-                    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
+                    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-ring"
                   />
                 </div>
 
@@ -229,13 +229,13 @@ export default function Login() {
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-9 w-full rounded-e-none rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
+                      className="h-9 w-full rounded-e-none rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-ring"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((visible) => !visible)}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      className="flex h-9 w-10 shrink-0 items-center justify-center rounded-e-md border border-l-0 border-slate-300 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-navy"
+                      className="flex h-9 w-10 shrink-0 items-center justify-center rounded-e-md border border-l-0 border-slate-300 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring"
                     >
                       {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                     </button>
@@ -248,7 +248,7 @@ export default function Login() {
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-400 accent-navy"
+                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-400 accent-brand-primary"
                     />
                     <span className="text-sm text-slate-500">Remember Me</span>
                   </label>
@@ -257,7 +257,7 @@ export default function Login() {
                     onClick={() =>
                       setNotice('Ask your school administrator to reset your password.')
                     }
-                    className="text-sm text-navy hover:underline"
+                    className="text-sm text-brand-primary hover:text-brand-hover hover:underline"
                   >
                     I forgot my password
                   </button>
@@ -278,7 +278,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="h-10 w-full rounded-md bg-navy px-8 text-center text-sm font-medium text-white shadow transition-colors hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-10 w-full rounded-md bg-brand-primary px-8 text-center text-sm font-medium text-white shadow transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? 'Logging in...' : 'Login'}
                 </button>
@@ -288,7 +288,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={openRememberedAccount}
-                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40"
+                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40"
                 >
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-slate-600">
                     {remembered ? getInitials(remembered) : ''}
@@ -306,7 +306,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={useAnotherAccount}
-                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-4 text-sm text-slate-500 transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40"
+                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-4 text-sm text-slate-500 transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40"
                 >
                   <FiPlus size={16} />
                   Use another account
@@ -320,7 +320,7 @@ export default function Login() {
                   type="button"
                   onClick={() => setDemoOpen((open) => !open)}
                   aria-expanded={demoOpen}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:border-navy hover:text-navy focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-navy"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:border-brand-primary hover:text-brand-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring"
                 >
                   <FiPlay size={11} />
                   Try a demo
@@ -340,7 +340,7 @@ export default function Login() {
                         key={role}
                         type="button"
                         onClick={() => handleDemo(role)}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-navy hover:bg-navy hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-navy"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-brand-primary hover:bg-brand-primary hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring"
                       >
                         <Icon size={12} />
                         {label}
