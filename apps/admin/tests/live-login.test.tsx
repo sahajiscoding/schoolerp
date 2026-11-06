@@ -15,7 +15,6 @@ vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ auth })) 
 
 import App from '../src/App';
 import { supabase } from '../src/lib/supabase';
-import { readDemoRole } from '../src/lib/demo';
 
 beforeEach(() => {
   localStorage.clear();
@@ -24,21 +23,14 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-it('offers isolated demo links with Supabase configured, including during session restoration', async () => {
-  auth.getSession.mockImplementationOnce(() => new Promise(() => {}));
-  sessionStorage.setItem('pws.showcase.role', 'admin');
-  expect(readDemoRole()).toBeNull(); // Demo storage cannot authenticate the school app.
+it('offers browser-only demo entry with Supabase configured', async () => {
   expect(supabase).not.toBeNull();
   render(<App />);
-  expect(screen.getByRole('button', { name: 'Checking session...' })).toHaveProperty('disabled', true);
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText('Your Email/ UserId'), 'staff1');
-  await user.type(screen.getByLabelText('Your Password'), 'test-input{Enter}');
-  expect(auth.signInWithPassword).not.toHaveBeenCalled();
-  await userEvent.click(screen.getByRole('button', { name: 'Try a demo' }));
+
+  await user.click(await screen.findByRole('button', { name: /try a demo/i }));
   for (const role of ['Admin', 'Teacher', 'Student']) {
-    expect(screen.getByRole('link', { name: role, exact: true }).getAttribute('href'))
-      .toBe(`/demo/dashboard?role=${role.toLowerCase()}`);
+    expect(screen.getByRole('button', { name: role, exact: true })).toBeDefined();
   }
   expect(auth.signInWithPassword).not.toHaveBeenCalled();
   expect(auth.signOut).not.toHaveBeenCalled();
@@ -47,7 +39,7 @@ it('offers isolated demo links with Supabase configured, including during sessio
 it('keeps real password login using Supabase Auth', async () => {
   render(<App />);
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText('Your Email/ UserId'), 'staff1');
+  await user.type(await screen.findByLabelText('Your Email/ UserId'), 'staff1');
   await user.type(screen.getByLabelText('Your Password'), 'test-input');
   await user.click(screen.getByRole('button', { name: 'Login', exact: true }));
   expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Test authentication response');

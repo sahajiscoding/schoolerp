@@ -49,4 +49,24 @@ export default [
       ],
     },
   },
+  {
+    // The demo store must stay browser-only: appData.tsx and seed.ts may never
+    // reach for a Supabase client. Auth (contexts/AuthContext.tsx) and Login
+    // are the only files allowed to import it, and both refuse while a demo
+    // session is active (see lib/demoSession.ts).
+    files: ['src/lib/appData.tsx', 'src/lib/seed.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/supabase', '**/supabase.*'],
+              message: 'Demo store must stay browser-only — never import the Supabase client here.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]

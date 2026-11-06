@@ -1,8 +1,8 @@
 # Project Status — Pacific World School ERP
 
-**Last updated:** 2026-11-05
-**Current milestone:** Milestone 3 — Dashboard modules (admin console complete, backend schema written, mobile pending).
-**Next milestone:** Wire the admin console to Supabase (replace demo store), then Milestone 4 — Messaging.
+**Last updated:** 2026-11-07
+**Current milestone:** PWS clone (owner-approved re-scope beyond Milestone 3, 2026-11-07) — 28-route report parity UI + `0005` clone tables landed on the demo store; live Supabase wiring follows module by module.
+**Next milestone:** Wire clone routes to Supabase queries/RPCs (Homeworks → Library → Fees), then Milestone 4 — Messaging (live).
 
 This file is the single source of truth for project state. Every agent must read it before starting work and update it before finishing. Keep it short, factual, and linked to files. Do not record intentions as completed work.
 
@@ -63,6 +63,8 @@ This file is the single source of truth for project state. Every agent must read
 
 ### Original demo entry + credential removal (2026-11-05; visibility restriction superseded below)
 
+- **2026-11-06 — Demo is browser-only and isolated from Supabase:** `apps/admin/src/lib/demoSession.ts` (new) is the single flag (`sessionStorage`, per-tab) for a demo session. `lib/supabase.ts` returns a null client while it is set, `AuthContext` restores the seeded profile without any `getSession`/profile fetch and blocks real `signIn` while demo is active, `signOut` in demo clears only the flag (never calls Supabase), and `Login` is guarded the same way. All demo mutations stay in `lib/appData.tsx` → `localStorage` (`pws.demo.data.v5`); `appData.tsx`/`seed.ts` carry an eslint guard that forbids importing the Supabase client. "Try a demo" is now available even when Supabase is configured (same URLs — no `/demo` prefix); the sidebar banner reads "Demo mode — sample data only. Changes stay in this browser and never write to Supabase." + Reset / Exit demo. Design decision log updated (supersedes the 2026-11-05 "disabled when Supabase is configured" rule).
+- **2026-11-06 — Demo names anonymized to role labels:** every demo profile that carried a personal name now shows the role only — `p-teacher-2` (`apps/admin/src/lib/seed.ts`, `apps/ios/Sources/PacificWorldSchool/Seed.swift`) became `Teacher` and all seven seeded students became `Student` (admin stays `School Administrator`); `Assigned by …` cards now read `Teacher` everywhere. Name-derived seed emails were also replaced with login-derived `@pws.local` addresses, audit targets now use `Student <admission no.>` identifiers, the iOS message greeting and the seeded submission filename use the generic role, and the People CSV template/placeholder examples (`apps/admin/src/pages/People.tsx`) use `Student`. Web storage bumped to `pws.demo.data.v5` (`apps/admin/src/lib/appData.tsx`) with a migration that refreshes stored seeded ids (people, `aud-2/3/5`, seeded submission) on next load (no reset needed; legacy values are matched by id so they are not kept in the bundle). Verified: admin + shared typecheck clean, eslint 0 errors, production build passes, and a scan of `dist/assets/*.js` finds none of the old demo names. iOS is seed-parity only and was not rebuilt here. The design-spec Owner line is unchanged — it is project metadata, not a demo user.
 - Login page has a small "Try a demo" button that expands into Admin / Teacher / Student options; one click enters that role's dashboard with no login. Shown only in demo mode (no Supabase configured); `signInAsDemo` refuses when a Supabase client exists, so the client never decides identity against a live backend.
 - Demo teacher display name is now **Teacher** (seed profile, sample notification, and teaching-assignment sample row). Existing `v3` demo data migrates to `v4` without resetting other demo edits. Verified: admin typecheck/lint/build clean; 39 role smoke checks and 6 storage-migration checks pass; production bundle contains no old display name.
 - All hardcoded demo passwords removed (GitGuardian): `DEMO_LOGINS` in `AuthContext.tsx`, the split-string credential hint in `Login.tsx`, the hardcoded fallback password in `appData.tsx` (no DOB → no initial password shown), the literal sibling password in `seed.ts` (now derived via `passwordFromDob`), and the example password in `scripts/create-admin.mjs` (password is prompted interactively). The `__DEMO_MODE__` compile flag is gone — there is nothing left to strip. **2026-11-05: the git history was also purged** — `git filter-repo` replaced the demo-password literals across all commits and `main` was force-pushed, so they no longer appear in any reachable commit (GitGuardian may need a re-scan / GitHub GC of dangling objects to fully clear old incidents).
@@ -135,6 +137,25 @@ key, which is safe to ship in a browser bundle. The sandbox cannot reach
 `*.supabase.co`, so the console still runs in demo mode here and the migrations
 have not been applied to that project from this environment.
 
+### Native iOS (`apps/ios`) — 2026-11-05
+
+| Item | Path | State |
+|---|---|---|
+| SwiftUI app (native, xtool / SwiftPM; no Xcode install required) | `apps/ios` | Builds for `arm64-apple-ios17.0` with `xtool dev build` — clean, no warnings; artifact at `apps/ios/xtool/PacificWorldSchool.app` |
+| Scope | `Sources/PacificWorldSchool/` | Role-aware demo (Admin / Teacher / Student) mirroring the web console: login + demo entry, dashboard, leave approvals, assignments (submit / composer / roster review), messages (teacher↔student threads + admin read-only oversight), course progress, notices, declarations, polls, events, study room, library, attendance, fees (50% 2nd-child sibling discount), report cards (shareable), people (add student, DOB-derived password preview), audit log, profile, account deletion request, gallery |
+| Demo parity | `Seed.swift`, `DemoStore.swift` | Live Supabase wiring is not done; same state as the admin console (demo-first, unchanged by this addition) |
+| Verification | `xtool dev build` | Debug build passes on iOS 27.2 SDK; no SwiftUI/Swift 6 errors; not run on a device (no device attached here) |
+
+### PWS clone (2026-11-07, owner-approved re-scope)
+
+- Approach A (evolve in place), spec `docs/superpowers/specs/2026-11-07-pws-clone-design.md`. 28 canonical URLs byte-identical to the report; old routes redirect with query strings preserved verbatim (`QueryRedirect` in `apps/admin/src/App.tsx` — no `/demo` prefix). Deep links to old URLs land on the new page, never 404.
+- New routes: `/homeworks`, `/homeworks/:id/submit`, `/my-library`, `/issue-book`, `/digital-library`, `/examination-report-cards`, `/my-attendance`, `/fee-collections/create`, `/school-gallery`, `/school-gallery/:albumId/:mediaId`, `/circulars`, `/circulars/:id`, `/declaration-forms`, `/messages` (+ `/create`, `/:id`), `/polls`, `/profile` — all wired to the browser-only demo store (`lib/appData.tsx`, `pws.demo.data.v5`); live Supabase queries follow module by module.
+- Reskin: Roboto, Pacific Navy `#1e3a8a` + blue `#2563eb` accent via `packages/shared/src/theme.ts` + `apps/admin/tailwind.config.cjs` (legacy `olive`/`terracotta` classes alias to the report identity so existing pages recolor without edits); daylight auto theme 05:00–18:00 + manual override in `lib/theme.tsx` + `index.html` inline init (`dps-theme-preference`/`dps-theme-mode` keys kept for parity). `dark:` surfaces on new pages + shell.
+- Radius deps added (`lucide-react`, Radix dialog/dropdown/avatar/tabs) per spec §3; `lucide` icons roll out in the shell migration pass.
+- Backend: `supabase/migrations/0005_pws_clone_tables.sql` adds `schools`, `academic_sessions`, fee chain (`fee_cycles` → `fee_installments`), examination family (9 tables, CBSE 9-point), library chain (`library_books`/`transactions`/`rules`/`kiosk_sessions`), `circulars`, `transport_area_routes`, `transport_vehicles`, `parent_links` — each RLS default-deny with policies; private Storage buckets `homework-files`, `submission-files`, `gallery-media`, `avatars`, `circular-files` (signed URLs only). Kiosk sessions are service-role only.
+- Demo isolation unchanged: `sessionStorage` flag + `localStorage` store, null Supabase client while demo, banner "Changes stay in this browser and never write to Supabase". Demo identities stay anonymized (`Teacher`/`Student` only); report PII/S3 URLs never copied into seeds.
+- Verified: admin `typecheck` clean, `lint` 0 errors (4 pre-existing fast-refresh warnings), `build` passes; no secret-like public vars in `apps/`; `dist` scan still clean of old demo names.
+
 ## Known gaps
 
 0. **Functional audit (2026-11-05) — all defects FIXED:** every module was click-tested as admin/teacher/student. The first pass found 12 broken + 4 partial defects (Teaching Assignments stub, four desktop-hidden dialogs, students marking attendance, empty audit log, "View as" trap, Submissions roster, Subjects edit, per-student declarations, event/broadcast targeting). **All 15 were fixed and re-verified: 82 working / 0 broken / 0 partial / 11 notes across 93 runtime checks.** Details: `docs/audits/2026-11-05-functional-audit.md`.
@@ -150,4 +171,4 @@ have not been applied to that project from this environment.
 1. ~~Apply `0001`–`0004`~~ **Done** — applied to the live project and verified. Remaining: run the pgTAP suites (`supabase test db`) when Docker is available, and deploy the `admin-users` Edge Function.
 2. Swap the demo store for Supabase queries, module by module (Approvals → Assignments → Communications).
 3. Deploy `admin-users`; run `scripts/create-admin.mjs` for the first admin.
-4. Mobile: login, assignments, approvals.
+4. Mobile: login, assignments, approvals. (Superseded in part by `apps/ios`; scope pivot recorded there and in the decision log.)

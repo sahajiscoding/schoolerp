@@ -195,8 +195,8 @@ export default function People() {
 
   const downloadTemplate = () => {
     downloadCsv('student-import-template.csv', [
-      { full_name: 'Sahaj Chugh', admission_no: '0185/18', dob: '14/05/2010', class: 'IX', section: 'E' },
-      { full_name: 'Vivaan Chugh', admission_no: '0201/18', dob: '11/03/2015', class: 'V', section: 'A' },
+      { full_name: 'Student', admission_no: '0185/18', dob: '14/05/2010', class: 'IX', section: 'E' },
+      { full_name: 'Student', admission_no: '0201/18', dob: '11/03/2015', class: 'V', section: 'A' },
     ]);
   };
 
@@ -408,7 +408,7 @@ export default function People() {
                 }}
                 rows={6}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs"
-                placeholder={'full_name,admission_no,dob,class,section\nSahaj Chugh,0185/18,14/05/2010,IX,E'}
+                placeholder={'full_name,admission_no,dob,class,section\nStudent,0185/18,14/05/2010,IX,E'}
               />
             </div>
 

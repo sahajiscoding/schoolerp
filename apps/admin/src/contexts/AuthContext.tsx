@@ -9,8 +9,8 @@ import {
 } from 'react';
 import { supabase, configHint, missingSupabaseConfig } from '../lib/supabase';
 import { toAuthEmail } from '../lib/utils';
-import { isDemoPath, readDemoRole, saveDemoRole } from '../lib/demo';
 import { seedPeople } from '../lib/seed';
+import { clearDemoSession, getDemoRole, isDemoSession, setDemoSession } from '../lib/demoSession';
 import type { Profile, Role } from '@schoolerp/shared';
 
 /**
@@ -20,8 +20,11 @@ import type { Profile, Role } from '@schoolerp/shared';
  * attendance and leaves empty.
  *
  * No credentials exist anywhere in the client: the demo button picks a seeded
- * identity only inside the isolated /demo app, where no Supabase client is
- * created. School-account identity always comes from Supabase Auth.
+ * identity directly. A demo session is browser-only (`sessionStorage` flag +
+ * `localStorage` demo store) and never touches Supabase — see
+ * `lib/demoSession.ts` and `lib/supabase.ts`. It is available whether or not
+ * Supabase is configured; a live build can offer both a real sign-in and an
+ * isolated demo, and the two never share a session.
  */
 function demoProfileFor(role: Role): Profile | null {
   const person = seedPeople.find((p) => p.role === role && p.is_active);
@@ -45,7 +48,7 @@ interface AuthContextType {
   demoMode: boolean;
   configError: string | null;
   signIn: (loginId: string, password: string) => Promise<{ error: string | null }>;
-  /** Opens the isolated showcase; never creates a real auth session. */
+  /** Passwordless demo entry; browser-only session, never touches Supabase. */
   signInAsDemo: (role: Role) => { error: string | null };
   signOut: () => Promise<void>;
   requireRole: (roles: Role[]) => boolean;
@@ -54,6 +57,8 @@ interface AuthContextType {
   isStudent: () => boolean;
   viewAsRole: (role: Role | null) => void;
   viewingRole: Role | null;
+  /** True while this tab is in a browser-only demo session. */
+  inDemo: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -65,31 +70,26 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // A persisted demo session restores its seeded profile without touching
+  // Supabase, so a reload mid-demo stays browser-only.
+  const [inDemo, setInDemo] = useState<boolean>(() => isDemoSession());
   const [profile, setProfile] = useState<Profile | null>(() => {
-    const role = readDemoRole();
+    if (!isDemoSession()) return null;
+    const role = getDemoRole();
     return role ? demoProfileFor(role) : null;
   });
-  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  // Without a Supabase client there is no session to wait for, so start out
-  // resolved rather than flipping `loading` inside an effect (which cascades
-  // renders on mount).
-  const [loading, setLoading] = useState(() => !!supabase);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(() => profile?.id ?? null);
+  // Without a Supabase client (unconfigured build or demo session) there is no
+  // session to wait for, so start out resolved rather than flipping `loading`
+  // inside an effect (which cascades renders on mount).
+  const [loading, setLoading] = useState<boolean>(() => !isDemoSession() && Boolean(supabase));
   const [viewingRole, setViewingRole] = useState<Role | null>(null);
 
-  const demoMode = isDemoPath || missingSupabaseConfig();
-  const configError = isDemoPath ? null : configHint();
-
-  useEffect(() => {
-    if (!isDemoPath) return;
-    saveDemoRole(profile?.role ?? null);
-    // The entry URL works even without storage; subsequent navigation uses
-    // tab-local sessionStorage, not the real account's persisted session.
-    const url = new URL(window.location.href);
-    if (url.searchParams.has('role')) {
-      url.searchParams.delete('role');
-      window.history.replaceState(window.history.state, '', url);
-    }
-  }, [profile]);
+  // `demoMode` keeps its historic meaning for callers (demo-only build), while
+  // `inDemo` is the explicit browser-only session flag. Banner/entry UI show
+  // for either; real Supabase auth only runs when neither applies.
+  const demoMode = missingSupabaseConfig() || inDemo;
+  const configError = missingSupabaseConfig() && !inDemo ? configHint() : null;
 
   // Resolve the "effective" role for display/authorisation: explicit view-as
   // override wins, then the real profile role.
@@ -104,9 +104,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requireRole = (roles: Role[]) => !!effectiveRole && roles.includes(effectiveRole);
 
   useEffect(() => {
+    // Demo sessions never init Supabase auth — no getSession, no listener, no
+    // network. The seeded profile from the initial state is the whole session,
+    // and `loading` already starts false (see above).
+    if (inDemo || isDemoSession()) {
+      return undefined;
+    }
     let mounted = true;
-    // Read through a closure: this can change while a profile query awaits.
-    const isMounted = () => mounted;
     const client = supabase;
     if (!client) {
       // `loading` already starts false in this case; nothing to await.
@@ -114,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     client.auth.getSession().then(async ({ data, error }) => {
-      if (!isMounted()) return;
+      if (!mounted || isDemoSession()) return;
       if (error) {
         setLoading(false);
         return;
@@ -126,15 +130,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('id', data.session.user.id)
           .single();
-        if (isMounted()) setProfile(prof ?? null);
+        setProfile(prof ?? null);
       }
       setLoading(false);
     }).catch(() => {
-      if (isMounted()) setLoading(false);
+      if (mounted) setLoading(false);
     });
 
     const { data: sub } = client.auth.onAuthStateChange(async (_event, session) => {
-      if (!isMounted()) return;
+      if (!mounted || isDemoSession()) return;
       setSessionUserId(session?.user.id ?? null);
       if (session?.user) {
         const { data: prof } = await client
@@ -142,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('id', session.user.id)
           .single();
-        if (isMounted()) setProfile(prof ?? null);
+        setProfile(prof ?? null);
       } else {
         setProfile(null);
       }
@@ -152,15 +156,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [inDemo]);
 
   const signIn = useCallback(
     async (loginId: string, password: string) => {
-      // Without a Supabase client there is no real authentication to perform.
-      // Demo identities are local and never passed to Supabase Auth.
-      if (isDemoPath) {
-        return { error: 'You are in the demo. Use School sign in for your real account.' };
+      // Demo sessions are browser-only: never start a real auth session
+      // while one is active. Exit the demo first.
+      if (isDemoSession()) {
+        return {
+          error: 'You are in demo mode. Exit the demo (sign out) to sign in with your school account.',
+        };
       }
+      // Without a Supabase client there is no real authentication to perform.
+      // The passwordless demo button is the only way in — the client must never
+      // decide identity against a live backend in demo mode.
       if (!supabase) {
         return {
           error:
@@ -174,25 +183,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  /** Enter via a full load so live auth callbacks cannot overwrite demo state. */
+  /**
+   * Passwordless demo sign-in for showcasing the console. Always available
+   * (even when Supabase is configured) because it never creates a Supabase
+   * session: the profile is local UI state over the browser-local demo store
+   * (`appData.tsx` + `localStorage`), the `sessionStorage` demo flag blocks
+   * every Supabase call, and no real data is reachable. Exiting the demo
+   * clears the flag and returns to the real sign-in.
+   */
   const signInAsDemo = useCallback((role: Role): { error: string | null } => {
     const demoProfile = demoProfileFor(role);
     if (!demoProfile) {
       return { error: `No demo ${role} account is seeded.` };
     }
-    if (!isDemoPath) {
-      window.location.assign(`/demo/dashboard?role=${role}`);
-      return { error: null };
-    }
-    setSessionUserId(null); // No authenticated backend user in a demo.
-    setViewingRole(null);
+    setDemoSession(role);
+    setInDemo(true);
+    setSessionUserId(demoProfile.id);
     setProfile(demoProfile);
+    setViewingRole(null);
     return { error: null };
   }, []);
 
   const signOut = useCallback(async () => {
-    if (isDemoPath) saveDemoRole(null);
-    else if (supabase) await supabase.auth.signOut();
+    if (isDemoSession()) {
+      // Exit demo: clear the browser-only flag, never touch Supabase auth.
+      clearDemoSession();
+      setInDemo(false);
+      setProfile(null);
+      setSessionUserId(null);
+      setViewingRole(null);
+      return;
+    }
+    if (supabase) await supabase.auth.signOut();
     setProfile(null);
     setSessionUserId(null);
     setViewingRole(null);
@@ -219,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isStudent,
         viewAsRole,
         viewingRole,
+        inDemo,
       }}
     >
       {children}

@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { isDemoPath } from './demo';
 import type { Database } from '@schoolerp/shared';
+import { isDemoSession } from './demoSession';
 
 const url = import.meta.env.SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
 const key =
@@ -8,8 +8,15 @@ const key =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+/**
+ * Demo sessions never create a Supabase client — not even a read-only one —
+ * so demo edits cannot reach the database. `isDemoSession()` is checked at
+ * module load (persisted across reloads) and every consumer also guards its
+ * calls, so a demo entry mid-session ignores the already-created client.
+ */
 export const supabase = (() => {
-  if (isDemoPath || !url || !key) return null;
+  if (isDemoSession()) return null;
+  if (!url || !key) return null;
   try {
     return createClient<Database>(url, key);
   } catch {

@@ -13,16 +13,18 @@ import {
 } from 'react-icons/fi';
 import type { Role } from '@schoolerp/shared';
 import { useAuth } from '../contexts/AuthContext';
-import { isDemoPath } from '../lib/demo';
 import { supabase } from '../lib/supabase';
+import { isDemoSession } from '../lib/demoSession';
 
 const REMEMBERED_ACCOUNT_KEY = 'pws.rememberedAccount';
 
 /**
  * Passwordless demo entry: one small button that reveals the three roles.
  * No credentials are stored or shown anywhere — picking a role signs in as
- * the matching seeded person in the isolated /demo app, with or without
- * production Supabase configuration. See `signInAsDemo` in AuthContext.
+ * the matching seeded person in a browser-only demo session. The demo is
+ * available even when Supabase is configured; while active it never creates
+ * a Supabase session and every edit stays in this browser. See
+ * `signInAsDemo` in AuthContext and `lib/demoSession.ts`.
  */
 const DEMO_ROLES: { role: Role; label: string; Icon: typeof FiShield }[] = [
   { role: 'admin', label: 'Admin', Icon: FiShield },
@@ -36,7 +38,6 @@ type RememberedAccount = {
 };
 
 function readRememberedAccount(): RememberedAccount | null {
-  if (isDemoPath) return null;
   try {
     const raw = localStorage.getItem(REMEMBERED_ACCOUNT_KEY);
     if (!raw) return null;
@@ -59,11 +60,11 @@ function getInitials(account: RememberedAccount) {
 }
 
 export default function Login() {
-  const { signIn, signInAsDemo, loading: restoringSession } = useAuth();
+  const { signIn, signInAsDemo, inDemo } = useAuth();
   const navigate = useNavigate();
   const [remembered] = useState<RememberedAccount | null>(readRememberedAccount);
   const [showForm, setShowForm] = useState(() => !readRememberedAccount());
-  const [demoOpen, setDemoOpen] = useState(isDemoPath);
+  const [demoOpen, setDemoOpen] = useState(false);
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -77,7 +78,9 @@ export default function Login() {
   const rememberAccount = async (id: string) => {
     let fullName = '';
     try {
-      if (supabase) {
+      // Demo sessions never fetch from Supabase — the login ID alone is
+      // remembered when in demo.
+      if (supabase && !isDemoSession()) {
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
           const { data } = await supabase
@@ -104,7 +107,6 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (restoringSession) return;
     const id = loginId.trim();
     if (!id) {
       setError('Enter your login ID.');
@@ -141,7 +143,7 @@ export default function Login() {
       setShowForm(true);
       return;
     }
-    if (isDemoPath) navigate('/dashboard');
+    navigate('/dashboard');
   };
 
   const openRememberedAccount = () => {
@@ -164,8 +166,8 @@ export default function Login() {
   };
 
   return (
-    <div className="grid min-h-screen w-full grid-cols-1 bg-white text-ink md:grid-cols-2">
-      <div className="flex min-h-screen flex-col justify-between bg-white p-4 md:p-8">
+    <div className="grid min-h-screen w-full grid-cols-1 bg-white text-ink dark:bg-slate-900 dark:text-white md:grid-cols-2">
+      <div className="flex min-h-screen flex-col justify-between bg-white p-4 dark:bg-slate-900 md:p-8">
         <h1 className="text-xl font-bold text-ink md:text-2xl">PACIFIC WORLD SCHOOL</h1>
 
         <div className="mx-auto flex w-full max-w-lg flex-grow flex-col items-center justify-center">
@@ -177,14 +179,14 @@ export default function Login() {
                 className="mx-auto h-auto w-[80px] select-none md:w-[100px]"
               />
               <h3 className="mb-1 text-xl font-semibold text-ink md:text-2xl">
-                {isDemoPath ? 'Explore the school demo' : 'Login to your account'}
+                Login to your account
               </h3>
               <p className="text-xs text-slate-500 md:text-sm">
-                {isDemoPath ? 'Choose a role below. No account or password required.' : 'Welcome back, Please enter your email & password to continue.'}
+                Welcome back, Please enter your email &amp; password to continue.
               </p>
             </div>
 
-            {!isDemoPath && (showForm ? (
+            {showForm ? (
               <form
                 onSubmit={handleSubmit}
                 className="mx-auto w-full max-w-[400px] space-y-6"
@@ -207,7 +209,7 @@ export default function Login() {
                     spellCheck={false}
                     value={loginId}
                     onChange={(e) => setLoginId(e.target.value)}
-                    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-olive focus:outline-none focus:ring-1 focus:ring-olive"
+                    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
                   />
                 </div>
 
@@ -227,13 +229,13 @@ export default function Login() {
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-9 w-full rounded-e-none rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-olive focus:outline-none focus:ring-1 focus:ring-olive"
+                      className="h-9 w-full rounded-e-none rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((visible) => !visible)}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      className="flex h-9 w-10 shrink-0 items-center justify-center rounded-e-md border border-l-0 border-slate-300 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
+                      className="flex h-9 w-10 shrink-0 items-center justify-center rounded-e-md border border-l-0 border-slate-300 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-navy"
                     >
                       {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                     </button>
@@ -246,7 +248,7 @@ export default function Login() {
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-400 accent-olive"
+                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-400 accent-navy"
                     />
                     <span className="text-sm text-slate-500">Remember Me</span>
                   </label>
@@ -255,7 +257,7 @@ export default function Login() {
                     onClick={() =>
                       setNotice('Ask your school administrator to reset your password.')
                     }
-                    className="text-sm text-olive hover:underline"
+                    className="text-sm text-navy hover:underline"
                   >
                     I forgot my password
                   </button>
@@ -275,10 +277,10 @@ export default function Login() {
 
                 <button
                   type="submit"
-                  disabled={loading || restoringSession}
-                  className="h-10 w-full rounded-md bg-olive px-8 text-center text-sm font-medium text-white shadow transition-colors hover:bg-olive/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={loading}
+                  className="h-10 w-full rounded-md bg-navy px-8 text-center text-sm font-medium text-white shadow transition-colors hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {restoringSession ? 'Checking session...' : loading ? 'Logging in...' : 'Login'}
+                  {loading ? 'Logging in...' : 'Login'}
                 </button>
               </form>
             ) : (
@@ -286,7 +288,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={openRememberedAccount}
-                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive/40"
+                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40"
                 >
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-slate-600">
                     {remembered ? getInitials(remembered) : ''}
@@ -304,65 +306,54 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={useAnotherAccount}
-                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-4 text-sm text-slate-500 transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive/40"
+                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-4 text-sm text-slate-500 transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40"
                 >
                   <FiPlus size={16} />
                   Use another account
                 </button>
               </div>
-            ))}
+            )}
 
-            <div className="mx-auto mt-6 w-full max-w-[400px] text-center">
-              <button
-                type="button"
-                onClick={() => setDemoOpen((open) => !open)}
-                aria-expanded={demoOpen}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-olive shadow-sm transition-colors hover:border-olive hover:text-olive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
-              >
-                <FiPlay size={11} />
-                Try a demo
-                <FiChevronDown
-                  size={12}
-                  className={`transition-transform ${demoOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              {demoOpen && (
-                <div
-                  role="group"
-                  aria-label="Choose a demo role"
-                  className="mt-3 flex items-center justify-center gap-2"
+            {!inDemo && (
+              <div className="mx-auto mt-6 w-full max-w-[400px] text-center">
+                <button
+                  type="button"
+                  onClick={() => setDemoOpen((open) => !open)}
+                  aria-expanded={demoOpen}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:border-navy hover:text-navy focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-navy"
                 >
-                  {DEMO_ROLES.map(({ role, label, Icon }) => isDemoPath ? (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => handleDemo(role)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-olive hover:bg-olive hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
-                    >
-                      <Icon size={12} />
-                      {label}
-                    </button>
-                  ) : (
-                    <a
-                      key={role}
-                      href={`/demo/dashboard?role=${role}`}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-olive hover:bg-olive hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
-                    >
-                      <Icon size={12} />
-                      {label}
-                    </a>
-                  ))}
-                </div>
-              )}
-              <p className="mt-2 text-[11px] text-slate-400">
-                Explore with sample data — no login needed.
-              </p>
-              {isDemoPath && (
-                <a href="/login" className="mt-3 inline-block text-sm font-medium text-olive underline">
-                  School sign in
-                </a>
-              )}
-            </div>
+                  <FiPlay size={11} />
+                  Try a demo
+                  <FiChevronDown
+                    size={12}
+                    className={`transition-transform ${demoOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {demoOpen && (
+                  <div
+                    role="group"
+                    aria-label="Choose a demo role"
+                    className="mt-3 flex items-center justify-center gap-2"
+                  >
+                    {DEMO_ROLES.map(({ role, label, Icon }) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => handleDemo(role)}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-navy hover:bg-navy hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-navy"
+                      >
+                        <Icon size={12} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-2 text-[11px] text-slate-400">
+                  Explore with sample data — no login needed. Changes stay in this browser only; nothing is
+                  written to Supabase.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

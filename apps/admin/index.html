@@ -1,1 +1,29 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="icon" type="image/png" href="/brand/pws-logo.png" /><title>Pacific World School ERP - Admin</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/brand/pws-logo.png" />
+    <title>Pacific World School ERP - Admin</title>
+    <script>
+      // Report-parity theme init (spec §3): time-aware daylight schedule with
+      // manual override. Keys kept byte-identical to the report contract.
+      (function () {
+        try {
+          var saved = localStorage.getItem("dps-theme-preference");
+          var now = new Date();
+          var minutes = now.getHours() * 60 + now.getMinutes();
+          var auto = minutes >= 300 && minutes < 1080 ? "light" : "dark";
+          var mode = saved === "light" || saved === "dark" ? saved : auto;
+          document.documentElement.classList.toggle("dark", mode === "dark");
+          document.documentElement.style.colorScheme = mode;
+          localStorage.setItem("dps-theme-mode", mode);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

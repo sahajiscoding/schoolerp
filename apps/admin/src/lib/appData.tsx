@@ -1,4 +1,11 @@
-import { isDemoPath } from './demo';
+/**
+ * Browser-only demo store. Every mutation in this file writes to
+ * `localStorage` under `pws.demo.data.v5` and nothing else — this module must
+ * never import `lib/supabase` or call any Supabase API, in any mode. It is
+ * the only store the admin console reads from today, so real (Supabase)
+ * sign-ins still see sample data; wiring this store to Supabase is a separate
+ * milestone and must keep the demo session isolated (see `demoSession.ts`).
+ */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ACADEMIC_YEAR,
@@ -81,8 +88,29 @@ interface AppState {
   audit: AuditEntry[];
 }
 
-const STORAGE_KEY = isDemoPath ? 'pws.showcase.data.v1' : 'pws.demo.data.v4';
-const PREVIOUS_STORAGE_KEY = 'pws.demo.data.v3';
+const STORAGE_KEY = 'pws.demo.data.v5';
+const PREVIOUS_STORAGE_KEYS = ['pws.demo.data.v4', 'pws.demo.data.v3'];
+
+/**
+ * Seeded demo profiles that now use role labels only. On migration from
+ * `v4`/`v3` their stored display name/email is refreshed from the seed
+ * (by id, without keeping legacy values in the bundle). User-added people
+ * keep their names — only these seeded ids are refreshed.
+ */
+const ANONYMIZED_PEOPLE_IDS = new Set([
+  'p-teacher-1',
+  'p-teacher-2',
+  'p-student-1',
+  'p-student-2',
+  'p-student-3',
+  'p-student-4',
+  'p-student-5',
+  'p-student-6',
+  'p-student-7',
+]);
+
+/** Seeded display strings refreshed by id on migration (audit targets, submission file). */
+const ANONYMIZED_AUDIT_IDS = new Set(['aud-2', 'aud-3', 'aud-5']);
 
 /** Class teacher for IX-E owns door-to-door leave approvals in the demo. */
 export const CLASS_TEACHER_ID = 'p-teacher-1';
@@ -126,7 +154,9 @@ function loadData(): AppState {
   const fresh = initialData();
   try {
     const currentRaw = localStorage.getItem(STORAGE_KEY);
-    const raw = currentRaw ?? (isDemoPath ? null : localStorage.getItem(PREVIOUS_STORAGE_KEY));
+    const raw =
+      currentRaw ??
+      PREVIOUS_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find((value) => value !== null);
     if (!raw) return fresh;
     const parsed = JSON.parse(raw) as Partial<AppState>;
     // Any collection that is empty in storage but seeded by a newer build is
@@ -144,12 +174,26 @@ function loadData(): AppState {
         (merged as unknown as Record<string, unknown>)[key] = seeded;
       }
     }
-    // Carry existing demo edits forward, but refresh the seeded teacher label
-    // and its sample notification without resetting the rest of the demo.
+    // Carry existing demo edits forward, but refresh anonymized demo identities
+    // and seeded display strings without resetting the rest of the demo.
     if (!currentRaw) {
-      merged.people = merged.people.map((person) =>
-        person.id === 'p-teacher-1' ? { ...person, full_name: 'Teacher' } : person,
-      );
+      merged.people = merged.people.map((person) => {
+        if (!ANONYMIZED_PEOPLE_IDS.has(person.id)) return person;
+        const seeded = fresh.people.find((candidate) => candidate.id === person.id);
+        if (!seeded) return person;
+        return { ...person, full_name: seeded.full_name, email: seeded.email };
+      });
+      merged.audit = merged.audit.map((entry) => {
+        if (!ANONYMIZED_AUDIT_IDS.has(entry.id)) return entry;
+        const seeded = fresh.audit.find((candidate) => candidate.id === entry.id);
+        return seeded ? { ...entry, target: seeded.target } : entry;
+      });
+      merged.submissions = merged.submissions.map((submission) => {
+        const seeded = fresh.submissions.find((candidate) => candidate.id === submission.id);
+        return seeded && seeded.id === 'sub-1'
+          ? { ...submission, file_name: seeded.file_name }
+          : submission;
+      });
       const teacherNotification = fresh.notifications.find((n) => n.id === 'notif-2');
       if (teacherNotification) {
         merged.notifications = merged.notifications.map((notification) =>
@@ -854,6 +898,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const resetDemoData = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    for (const key of PREVIOUS_STORAGE_KEYS) localStorage.removeItem(key);
     setState(initialData());
     notify('Demo data reset.');
   }, [notify]);

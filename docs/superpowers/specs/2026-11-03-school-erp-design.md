@@ -88,6 +88,7 @@ Every table has RLS enabled with default-deny. Clients query Postgres directly u
 schoolerp/
   apps/
     mobile/            Expo + expo-router + NativeWind
+    ios/               Native SwiftUI (xtool / SwiftPM, no Xcode install needed)
     admin/             React + Vite + Tailwind + TanStack Query
   packages/
     shared/            types, Zod schemas, targeting logic, Supabase client factory
@@ -337,3 +338,9 @@ No calendar estimates. A status document that lies is worse than none.
 | 2026-11-04 | Demo mode (seeded data, no Supabase keys) is a first-class state of the admin console | Lets the owner review every screen before the backend is wired; shows a banner and never writes to a database |
 | 2026-11-05 | Passwordless demo entry (Admin / Teacher / Student picker on the login page) replaces demo credentials | Owner needs a one-click showcase for school leadership; hardcoded demo passwords tripped GitGuardian. Demo entry stays disabled whenever Supabase is configured, so identity against a live backend always comes from Supabase Auth |
 | 2026-11-05 | Isolated `/demo` showcase available even with Supabase configured (supersedes the earlier demo-entry restriction) | Owner needs passwordless Admin / Teacher / Student demonstrations on the production website. Full-page navigation enters a separate router base; no Supabase client is constructed there, the demo identity is tab-local, and sample edits use their own storage key. Real login and RLS remain unchanged. |
+| 2026-11-05 | Native SwiftUI app is added as a parallel client at `apps/ios` (xtool / SwiftPM, no Xcode on Linux or WSL required) | Owner asked for the School ERP to ship on iPhone as a native app matching the web console; Expo is kept until Milestone 6 is replanned. Demo-mode parity first — live Supabase wiring is carried by the same Milestone-3 plan as the admin console |
+| 2026-11-06 | Demo is an explicit browser-only session available even when Supabase is configured; it never creates a Supabase client or calls any Supabase API | Owner asked that demo edits never change Supabase data and stay in the user's own browser. Supersedes the 2026-11-05 "disabled when Supabase is configured" rule: one build can offer both real sign-in and an isolated demo, guarded by the `sessionStorage` flag in `lib/demoSession.ts` and banner text stating changes stay in this browser |
+| 2026-11-07 | In-place Supabase clone of the report (Approach A, `docs/superpowers/specs/2026-11-07-pws-clone-design.md`) with byte-identical URLs; old routes redirect, query strings preserved verbatim | Owner approved re-scope beyond Milestone 3; keeps RLS, demo isolation, and school auth rule while matching the vendor UI |
+| 2026-11-07 | Supabase-only backend; S3→Storage (private + signed URLs), Mongo→UUID/text, SSE→Realtime | Owner requirement; avoids new external services per AGENTS.md |
+| 2026-11-07 | Keep admission-no+DOB auth; add parent switch + library kiosk | School rule stays primary; parent/kiosk are additive, audited flows |
+| 2026-11-07 | Navy/Roboto/Radix replaces olive/terracotta in shared tokens (`packages/shared/src/theme.ts`, `apps/admin/tailwind.config.cjs`); legacy class aliases resolve to report identity | Owner-approved complete UI change; logos still school-supplied only |

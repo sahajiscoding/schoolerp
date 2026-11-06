@@ -1,10 +1,10 @@
-import { useState, useMemo, type ReactNode } from 'react';
-import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
-import { isDemoPath } from '../lib/demo';
-import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../lib/appData';
-import { cn, initials } from '../lib/utils';
-import { Badge, Breadcrumbs, NotificationsDropdown, RoleSwitcher } from './ui';
+import { useState, useMemo, type ReactNode } from "react";
+import { useNavigate, useLocation, Link, Outlet } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { useAppData } from "../lib/appData";
+import { useTheme } from "../lib/theme";
+import { cn, initials } from "../lib/utils";
+import { Badge, Breadcrumbs, NotificationsDropdown, RoleSwitcher } from "./ui";
 import {
   FiHome,
   FiClipboard,
@@ -15,18 +15,22 @@ import {
   FiCreditCard,
   FiFolder,
   FiImage,
-  FiUsers,
   FiLayout,
   FiBarChart2,
   FiPieChart,
   FiLogOut,
-  FiShield,
   FiMenu,
   FiAward,
   FiX,
-} from 'react-icons/fi';
+  FiSun,
+  FiMoon,
+  FiMessageSquare,
+  FiLayers,
+  FiBook,
+  FiUser,
+} from "react-icons/fi";
 
-type Role = 'admin' | 'teacher' | 'student';
+type Role = "admin" | "teacher" | "student";
 
 type NavItem = {
   to: string;
@@ -37,148 +41,119 @@ type NavItem = {
   roles: Role[];
 };
 
+// Canonical report nav (spec §2). Old URLs are redirect-only now.
 const NAV: NavItem[] = [
-  { to: '/dashboard', label: 'Dashboard', icon: FiHome, roles: ['admin', 'teacher', 'student'] },
+  { to: "/dashboard", label: "Dashboard", icon: FiHome, roles: ["admin", "teacher", "student"] },
   {
-    to: '/approvals',
-    label: 'Approvals',
-    labelByRole: { student: 'My Leaves', teacher: 'Leave Approvals', admin: 'Leave Approvals' },
+    to: "/approvals",
+    label: "Approvals",
+    labelByRole: { student: "My Leaves", teacher: "Leave Approvals", admin: "Leave Approvals" },
     icon: FiClipboard,
-    roles: ['admin', 'teacher', 'student'],
+    roles: ["admin", "teacher", "student"],
   },
   {
-    to: '/course-progress',
-    label: 'Course Progress',
-    labelByRole: { student: 'My Progress', teacher: 'Course Progress', admin: 'Course Progress' },
+    to: "/course-progress",
+    label: "Course Progress",
+    labelByRole: { student: "My Progress", teacher: "Course Progress", admin: "Course Progress" },
     icon: FiBarChart2,
-    roles: ['admin', 'teacher', 'student'],
+    roles: ["admin", "teacher", "student"],
   },
+  { to: "/events", label: "Events & Calendar", icon: FiCalendar, roles: ["admin", "teacher", "student"] },
   {
-    to: '/communications',
-    label: 'Communications',
-    labelByRole: { student: 'Inbox', teacher: 'Communications', admin: 'Communications' },
-    icon: FiSend,
-    roles: ['admin', 'teacher', 'student'],
-  },
-  {
-    to: '/events',
-    label: 'Events & Calendar',
-    icon: FiCalendar,
-    roles: ['admin', 'teacher', 'student'],
-  },
-  {
-    to: '/assignments',
-    label: 'Assignments',
-    labelByRole: {
-      student: 'Assignments / Homework',
-      teacher: 'Class Assignments',
-      admin: 'Assignments',
-    },
+    to: "/homeworks",
+    label: "Homeworks",
+    labelByRole: { student: "My Homework", teacher: "Class Homework", admin: "Homeworks" },
     icon: FiFileText,
-    roles: ['admin', 'teacher', 'student'],
+    roles: ["admin", "teacher", "student"],
   },
-  { to: '/study-room', label: 'Study Room', icon: FiFolder, roles: ['admin', 'teacher', 'student'] },
+  { to: "/study-room", label: "Study Room", icon: FiFolder, roles: ["admin", "teacher", "student"] },
   {
-    to: '/library',
-    label: 'My Library',
-    labelByRole: { teacher: 'Library', admin: 'Library' },
+    to: "/my-library",
+    label: "My Library",
+    labelByRole: { teacher: "Library", admin: "Library" },
     icon: FiBookOpen,
-    roles: ['admin', 'teacher', 'student'],
+    roles: ["admin", "teacher", "student"],
   },
+  { to: "/issue-book?member_able_type=students", label: "Issue Book", icon: FiBook, roles: ["admin", "teacher", "student"] },
+  { to: "/digital-library", label: "Digital Library", icon: FiLayers, roles: ["admin", "teacher", "student"] },
   {
-    to: '/report-card',
-    label: 'My Report Card',
-    labelByRole: { teacher: 'Report Cards', admin: 'Report Cards' },
+    to: "/examination-report-cards?page=1&limit=10",
+    label: "Report Cards",
+    labelByRole: { student: "My Report Card", teacher: "Report Cards", admin: "Report Cards" },
     icon: FiAward,
-    roles: ['admin', 'teacher', 'student'],
+    roles: ["admin", "teacher", "student"],
   },
   {
-    to: '/attendance',
-    label: 'My Attendance',
-    labelByRole: { teacher: 'Attendance', admin: 'Attendance' },
+    to: "/my-attendance",
+    label: "My Attendance",
+    labelByRole: { teacher: "Attendance", admin: "Attendance" },
     icon: FiPieChart,
-    roles: ['admin', 'teacher', 'student'],
+    roles: ["admin", "teacher", "student"],
   },
   {
-    to: '/fees',
-    label: 'My Fee',
-    labelByRole: { teacher: 'Fees', admin: 'Fee Collection' },
+    to: "/fee-collections/create",
+    label: "Fee Collections",
+    labelByRole: { student: "My Fee", teacher: "Fees", admin: "Fee Collection" },
     icon: FiCreditCard,
-    roles: ['admin', 'teacher', 'student'],
+    roles: ["admin", "teacher", "student"],
   },
-  { to: '/gallery', label: 'School Gallery', icon: FiImage, roles: ['admin', 'teacher', 'student'] },
-  // Administration — never shown to student view.
-  { to: '/people', label: 'People', icon: FiUsers, roles: ['admin'] },
-  { to: '/classes', label: 'Classes', icon: FiLayout, roles: ['admin'] },
-  { to: '/subjects', label: 'Subjects', icon: FiBookOpen, roles: ['admin'] },
+  { to: "/school-gallery?page=1", label: "School Gallery", icon: FiImage, roles: ["admin", "teacher", "student"] },
+  { to: "/circulars?page=1&limit=10", label: "Circulars", icon: FiSend, roles: ["admin", "teacher", "student"] },
+  { to: "/declaration-forms?page=1&limit=10", label: "Declaration Forms", icon: FiClipboard, roles: ["admin", "teacher", "student"] },
   {
-    to: '/teaching-assignments',
-    label: 'Teaching Assignments',
-    icon: FiSend,
-    roles: ['admin'],
+    to: "/messages?box=inbox&page=1&limit=10",
+    label: "Messages",
+    labelByRole: { student: "Inbox", teacher: "Messages", admin: "Messages" },
+    icon: FiMessageSquare,
+    roles: ["admin", "teacher", "student"],
   },
-  { to: '/enrollments', label: 'Enrollments', icon: FiClipboard, roles: ['admin'] },
-  { to: '/audit-log', label: 'Audit Log', icon: FiShield, roles: ['admin'] },
+  { to: "/polls", label: "Polls", icon: FiLayout, roles: ["admin", "teacher", "student"] },
+  { to: "/profile", label: "Profile", icon: FiUser, roles: ["admin", "teacher", "student"] },
 ];
 
-const GROUP_LABEL: Record<string, string> = {
-  main: 'My school',
-  admin: 'Administration',
-};
-
-/** Breadcrumb/sidebar labels for a role. Extracted so the memo can depend on it. */
+/** Breadcrumb/sidebar labels for a role. */
 function labelFor(role: Role): Record<string, string> {
   return {
-    '/dashboard': 'Dashboard',
-    '/approvals': role === 'student' ? 'My Leaves' : 'Leave Approvals',
-    '/course-progress': role === 'student' ? 'My Progress' : 'Course Progress',
-    '/communications': role === 'student' ? 'Inbox' : 'Communications',
-    '/events': 'Events & Calendar',
-    '/assignments': 'Assignments',
-    '/study-room': 'Study Room',
-    '/library': 'Library',
-    '/report-card': 'Report Cards',
-    '/attendance': 'Attendance',
-    '/fees': role === 'student' ? 'My Fee' : 'Fee Collection',
-    '/gallery': 'School Gallery',
-    '/people': 'People',
-    '/classes': 'Classes',
-    '/subjects': 'Subjects',
-    '/teaching-assignments': 'Teaching Assignments',
-    '/enrollments': 'Enrollments',
-    '/audit-log': 'Audit Log',
+    "/dashboard": "Dashboard",
+    "/approvals": role === "student" ? "My Leaves" : "Leave Approvals",
+    "/course-progress": role === "student" ? "My Progress" : "Course Progress",
+    "/events": "Events & Calendar",
+    "/homeworks": "Homeworks",
+    "/study-room": "Study Room",
+    "/my-library": "Library",
+    "/issue-book": "Issue Book",
+    "/digital-library": "Digital Library",
+    "/examination-report-cards": "Report Cards",
+    "/my-attendance": "Attendance",
+    "/fee-collections/create": role === "student" ? "My Fee" : "Fee Collection",
+    "/school-gallery": "School Gallery",
+    "/circulars": "Circulars",
+    "/declaration-forms": "Declaration Forms",
+    "/messages": "Messages",
+    "/polls": "Polls",
+    "/profile": "Profile",
   };
 }
 
 export default function AppShell({ children }: { children?: ReactNode }) {
-  const { profile, viewAsRole, viewingRole, demoMode, configError, signOut } = useAuth();
+  const { profile, viewAsRole, viewingRole, demoMode, inDemo, configError, signOut } = useAuth();
+  const { mode, toggle } = useTheme();
   const data = useAppData();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const role: Role = viewingRole ?? profile?.role ?? 'student';
+  const role: Role = viewingRole ?? profile?.role ?? "student";
 
-  // Closing the mobile drawer / notification popover on navigation is handled by
-  // keying this component on the pathname in its parent (a state reset), which
-  // avoids a synchronous setState inside an effect.
-
-  const mainNav = useMemo(
-    () => NAV.filter((item) => item.roles.includes(role) && !item.to.match(/^\/(people|classes|subjects|teaching-assignments|enrollments|audit-log)$/)),
-    [role],
-  );
-  const adminNav = useMemo(
-    () => NAV.filter((item) => item.roles.includes(role) && item.to.match(/^\/(people|classes|subjects|teaching-assignments|enrollments|audit-log)$/)),
-    [role],
-  );
+  const mainNav = NAV.filter((item) => item.roles.includes(role));
 
   const routeLabels = labelFor(role);
 
   const breadcrumbItems = useMemo(() => {
-    const segments = location.pathname.split('/').filter(Boolean);
-    const parts: { label: string; to?: string }[] = [{ label: 'Home', to: '/dashboard' }];
-    let path = '';
+    const segments = location.pathname.split("/").filter(Boolean);
+    const parts: { label: string; to?: string }[] = [{ label: "Home", to: "/dashboard" }];
+    let path = "";
     for (const seg of segments) {
       path += `/${seg}`;
       parts.push({
@@ -191,10 +166,12 @@ export default function AppShell({ children }: { children?: ReactNode }) {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/login');
+    navigate("/login");
   };
 
-  const pendingLeaves = data.leaves.filter((l) => l.status === 'pending').length;
+  const showDemoCard = inDemo || demoMode;
+
+  const pendingLeaves = data.leaves.filter((l) => l.status === "pending").length;
   // Broadcasts target a section: students only see notifications addressed to
   // their own section (or to everyone). Admins and teachers see everything.
   const mySectionLabel = (() => {
@@ -202,18 +179,19 @@ export default function AppShell({ children }: { children?: ReactNode }) {
     return me?.class_label && me?.section_label ? `${me.class_label} - ${me.section_label}` : undefined;
   })();
   const visibleNotifications = data.notifications.filter(
-    (n) => role !== 'student' || !n.audience || n.audience === mySectionLabel,
+    (n) => role !== "student" || !n.audience || n.audience === mySectionLabel,
   );
   const unread = visibleNotifications.filter((n) => !n.read).length;
 
   const badgeFor = (to: string) => {
-    if (to === '/approvals' && role !== 'student' && pendingLeaves > 0) return pendingLeaves;
+    if (to === "/approvals" && role !== "student" && pendingLeaves > 0) return pendingLeaves;
     return undefined;
   };
 
   const renderNav = (items: NavItem[]) =>
     items.map((item) => {
-      const active = location.pathname === item.to;
+      const itemPath = item.to.split("?")[0];
+      const active = location.pathname === itemPath || location.pathname.startsWith(`${itemPath}/`);
       const label = item.labelByRole?.[role] ?? item.label;
       const count = badgeFor(item.to);
       return (
@@ -221,21 +199,21 @@ export default function AppShell({ children }: { children?: ReactNode }) {
           key={item.to}
           to={item.to}
           className={cn(
-            'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+            "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
             active
-              ? 'bg-olive text-white shadow-sm'
-              : 'text-slate-600 hover:bg-olive/5 hover:text-olive',
+              ? "bg-navy text-white shadow-sm"
+              : "text-slate-600 hover:bg-navy/5 hover:text-navy dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-300",
           )}
         >
           <item.icon
-            className={cn('h-[18px] w-[18px] shrink-0', active ? 'text-white' : 'text-slate-400 group-hover:text-olive')}
+            className={cn("h-[18px] w-[18px] shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-navy dark:group-hover:text-blue-300")}
           />
           <span className="truncate">{label}</span>
           {count !== undefined && (
             <span
               className={cn(
-                'ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-                active ? 'bg-white/20 text-white' : 'bg-terracotta/10 text-terracotta',
+                "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                active ? "bg-white/20 text-white" : "bg-blue-600/10 text-blue-600 dark:text-blue-300",
               )}
             >
               {count}
@@ -247,15 +225,15 @@ export default function AppShell({ children }: { children?: ReactNode }) {
 
   const sidebarBody = (
     <>
-      <div className="flex items-center gap-3 border-b border-sand/60 px-5 py-5">
+      <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-5 dark:border-slate-800">
         <img src="/brand/pws-logo.png" alt="" className="h-9 w-9 rounded-full object-contain" />
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold leading-tight text-ink">Pacific World</div>
+          <div className="truncate text-sm font-bold leading-tight text-ink dark:text-white">Pacific World</div>
           <div className="truncate text-[10px] uppercase tracking-wider text-muted">School ERP</div>
         </div>
         <button
           onClick={() => setSidebarOpen(false)}
-          className="ml-auto text-slate-400 hover:text-ink md:hidden"
+          className="ml-auto text-slate-400 hover:text-ink dark:hover:text-white md:hidden"
           aria-label="Close menu"
         >
           <FiX size={18} />
@@ -265,42 +243,42 @@ export default function AppShell({ children }: { children?: ReactNode }) {
       <nav className="scroll-slim flex-1 space-y-4 overflow-y-auto px-3 py-4">
         <div>
           <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-            {GROUP_LABEL.main}
+            My school
           </div>
           <div className="space-y-0.5">{renderNav(mainNav)}</div>
         </div>
-        {adminNav.length > 0 && (
-          <div>
-            <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-              {GROUP_LABEL.admin}
-            </div>
-            <div className="space-y-0.5">{renderNav(adminNav)}</div>
-          </div>
-        )}
       </nav>
 
-      <div className="border-t border-sand/60 px-4 py-3">
-        {demoMode && (
-          <div className="mb-3 rounded-lg border border-amber-100 bg-amber-50 p-2.5">
-            <div className="text-[11px] font-semibold text-amber-800">Demo data</div>
-            <div className="mt-0.5 text-[10px] leading-snug text-amber-700">
-              Sample data only. Changes stay in this browser and never affect school records.
+      <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+        {showDemoCard && (
+          <div className="mb-3 rounded-lg border border-amber-100 bg-amber-50 p-2.5 dark:border-amber-900 dark:bg-amber-950">
+            <div className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">Demo mode</div>
+            <div className="mt-0.5 text-[10px] leading-snug text-amber-700 dark:text-amber-400">
+              Sample data only — changes stay in this browser and never write to Supabase.
             </div>
-            <button
-              onClick={() => data.resetDemoData()}
-              className="mt-1.5 text-[10px] font-medium text-amber-800 underline decoration-amber-300 underline-offset-2"
-            >
-              Reset demo data
-            </button>
+            <div className="mt-1.5 flex flex-wrap gap-3">
+              <button
+                onClick={() => data.resetDemoData()}
+                className="text-[10px] font-medium text-amber-800 underline decoration-amber-300 underline-offset-2 dark:text-amber-300"
+              >
+                Reset demo data
+              </button>
+              <button
+                onClick={handleLogout}
+                className="text-[10px] font-medium text-amber-800 underline decoration-amber-300 underline-offset-2 dark:text-amber-300"
+              >
+                Exit demo
+              </button>
+            </div>
           </div>
         )}
-        <div className="flex items-center gap-2.5 rounded-lg bg-sand/50 px-2.5 py-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-olive text-[10px] font-bold text-white">
-            {initials(profile?.full_name ?? 'U')}
+        <div className="flex items-center gap-2.5 rounded-lg bg-slate-50 px-2.5 py-2 dark:bg-slate-800">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy text-[10px] font-bold text-white">
+            {initials(profile?.full_name ?? "U")}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-medium text-ink">{profile?.full_name ?? 'User'}</div>
-            <div className="truncate text-[10px] text-muted">{profile?.login_id ?? ''}</div>
+            <div className="truncate text-xs font-medium text-ink dark:text-white">{profile?.full_name ?? "User"}</div>
+            <div className="truncate text-[10px] text-muted">{profile?.login_id ?? ""}</div>
           </div>
           <Badge variant="olive" className="text-[9px] capitalize">
             {role}
@@ -308,7 +286,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
         </div>
         <button
           onClick={handleLogout}
-          className="mt-2 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-terracotta transition-colors hover:bg-terracotta/5"
+          className="mt-2 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-blue-600 transition-colors hover:bg-blue-600/5 dark:text-blue-300"
         >
           <FiLogOut size={14} /> Sign out
         </button>
@@ -317,7 +295,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-sand text-ink">
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-ink dark:bg-slate-900 dark:text-slate-100">
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-ink/40 backdrop-blur-sm md:hidden"
@@ -328,18 +306,18 @@ export default function AppShell({ children }: { children?: ReactNode }) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-72 transform flex-col border-r border-sand/60 bg-white transition-transform duration-200 md:relative md:z-0 md:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          "fixed inset-y-0 left-0 z-40 flex w-72 transform flex-col border-r border-slate-200 bg-white transition-transform duration-200 dark:border-slate-800 dark:bg-slate-800 md:relative md:z-0 md:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         {sidebarBody}
       </aside>
 
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        <header className="z-20 flex shrink-0 items-center gap-3 border-b border-sand/60 bg-white px-4 py-3 md:px-6">
+        <header className="z-20 flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-800 md:px-6">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="rounded-lg p-2 text-slate-500 hover:bg-sand hover:text-ink md:hidden"
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-ink dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white md:hidden"
             aria-label="Open menu"
           >
             <FiMenu size={20} />
@@ -347,8 +325,8 @@ export default function AppShell({ children }: { children?: ReactNode }) {
 
           <div className="hidden md:block">
             <div className="text-[10px] uppercase tracking-widest text-muted">Pacific World School</div>
-            <div className="text-sm font-semibold text-ink">
-              {routeLabels[location.pathname] ?? 'Dashboard'}
+            <div className="text-sm font-semibold text-ink dark:text-white">
+              {routeLabels[location.pathname] ?? "Dashboard"}
             </div>
           </div>
 
@@ -358,16 +336,18 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                 Config
               </Badge>
             )}
-            {!isDemoPath && (
-              <a href="/demo/login" className="text-xs font-medium text-olive underline underline-offset-2">Try a demo</a>
-            )}
-            {/* Gate on the real profile so an admin can always switch back. */}
-            {profile?.role === 'admin' && (
-              <RoleSwitcher
-                roles={['admin', 'teacher', 'student']}
-                current={viewingRole}
-                onChange={viewAsRole}
-              />
+            <button
+              onClick={toggle}
+              className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-ink dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+              aria-label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={mode === "dark" ? "Light mode" : "Dark mode"}
+            >
+              {mode === "dark" ? <FiSun size={18} /> : <FiMoon size={18} />}
+            </button>
+            {/* Gate on the REAL profile role, not the view-as override, so an
+                admin previewing another role can always switch back. */}
+            {profile?.role === "admin" && (
+              <RoleSwitcher roles={["admin", "teacher", "student"]} current={viewingRole} onChange={viewAsRole} />
             )}
             <div className="relative">
               <NotificationsDropdown
@@ -379,18 +359,12 @@ export default function AppShell({ children }: { children?: ReactNode }) {
               />
               {unread === 0 && <span className="sr-only">No unread notifications</span>}
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-olive/10 text-xs font-bold text-olive">
-              {initials(profile?.full_name ?? 'U')}
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-navy/10 text-xs font-bold text-navy dark:bg-blue-950 dark:text-blue-300">
+              {initials(profile?.full_name ?? "U")}
             </div>
           </div>
         </header>
 
-        {isDemoPath && (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900 md:px-6">
-            <span><strong>Demo mode</strong> · Sample data only — no school records are changed.</span>
-            <a href="/login" className="font-semibold underline underline-offset-2">Exit demo · School sign in</a>
-          </div>
-        )}
         <div className="shrink-0 px-4 pt-3 md:px-6">
           <Breadcrumbs items={breadcrumbItems} />
         </div>
@@ -399,8 +373,9 @@ export default function AppShell({ children }: { children?: ReactNode }) {
           {children ?? <Outlet />}
         </main>
 
-        <footer className="shrink-0 border-t border-sand/60 bg-white px-6 py-2 text-[10px] text-muted">
-          Pacific World School ERP · {new Date().getFullYear()} · Demo build
+        <footer className="shrink-0 border-t border-slate-200 bg-white px-6 py-2 text-[10px] text-muted dark:border-slate-800 dark:bg-slate-800">
+          Pacific World School ERP · {new Date().getFullYear()}
+          {showDemoCard ? " · Demo build" : ""}
         </footer>
       </div>
     </div>

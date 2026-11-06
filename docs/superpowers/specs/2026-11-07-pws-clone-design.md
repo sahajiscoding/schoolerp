@@ -1,12 +1,12 @@
 # PWS Supabase Clone — v1 Design (report parity, in-place)
 
 - **Date:** 2026-11-07
-- **Status:** Approved §§1–4, pending written-spec review
+- **Status:** Approved (owner approved §§1–4 + full spec, 2026-11-07); Phase 1 (theme + 28-route UI + 0005 tables) implemented, live Supabase wiring pending
 - **Owner:** Sahaj Chugh
 - **School:** Pacific World School
 - **Source report:** `C:\Users\kids\Downloads\REVERSE_ENGINEERING_REPORT_PWS.md` (reverse-engineering of `https://pws.schoolforschools.ai/`, 2026-11)
 - **Target:** Evolve the existing monorepo in place (Approach A) to a Supabase-only frontend/backend that looks, feels, and functions like the report, with byte-identical URLs.
-- **Milestone note:** Owner approved re-scope on 2026-11-07. This expands beyond Milestone 3 (dashboard modules → Supabase wiring). `PROJECT_STATUS.md` and the v1 decision log record the expansion; no implementation until the writing-plans step.
+- **Milestone note:** Owner approved re-scope on 2026-11-07. This expands beyond Milestone 3 (dashboard modules → Supabase wiring). `PROJECT_STATUS.md` and the v1 decision log record the expansion; implementation Phase 1 started 2026-11-07 at owner direction ("start building the new UI").
 
 ---
 

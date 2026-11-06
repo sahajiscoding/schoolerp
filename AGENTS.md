@@ -47,6 +47,7 @@ Populated in Milestone 0. Until then, no build or test commands exist.
 
 ```
 apps/mobile/        Expo app (teachers, students)
+apps/ios/           Native SwiftUI app (Pacific World School) — xtool / SwiftPM, no Xcode install needed
 apps/admin/         React + Vite admin console
 packages/shared/    Types, Zod schemas, targeting logic, theme, Supabase client factory
 supabase/           Migrations, Edge Functions, seed, pgTAP tests
