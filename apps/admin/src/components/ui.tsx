@@ -14,15 +14,15 @@ export function Button({ className, variant = "olive", size = "md", children, ..
   const base =
     "inline-flex items-center justify-center rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-50";
   const variants: Record<string, string> = {
-    // Reference roles: primary olive + red hover; accent (lighter olive) darkens to primary.
-    olive: "bg-brand-primary text-white hover:bg-brand-hover active:bg-brand-hover/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40",
+    // Reference roles: olive primary stays green on hover; accent (lighter olive) darkens to primary. Red only for danger.
+    olive: "bg-brand-primary text-white hover:bg-olive-600 active:bg-olive-600/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40",
     terracotta: "bg-brand-accent text-white hover:bg-brand-primary active:bg-brand-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40",
-    navy: "bg-brand-primary text-white hover:bg-brand-hover active:bg-brand-hover/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40",
+    navy: "bg-brand-primary text-white hover:bg-olive-600 active:bg-olive-600/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40",
     accent: "bg-brand-accent text-white hover:bg-brand-primary active:bg-brand-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40",
     outline:
       "border border-slate-300 bg-white text-ink hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700",
     ghost: "bg-transparent text-ink hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800",
-    danger: "bg-brand-hover text-white hover:bg-brand-hover/90 active:bg-brand-hover/80",
+    danger: "bg-[#FE1616] text-white hover:bg-[#cc1111] active:bg-[#cc1111]/90",
   };
   const sizes: Record<string, string> = {
     sm: "px-3 py-1.5 text-xs",

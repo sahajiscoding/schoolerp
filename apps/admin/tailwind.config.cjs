@@ -37,7 +37,7 @@ module.exports = {
           sidebarPrimary: "#5A6638",
           accent: "#7C8D4E",
           accentSoft: "#7C8D4E",
-          hover: "#FE1616",
+          hover: "#4B562F",
           hoverText: "#FE1616",
           ring: "#687641",
           sidebarRing: "#687641",
