@@ -254,7 +254,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
           <div className="mb-3 rounded-lg border border-amber-100 bg-amber-50 p-2.5 dark:border-amber-900 dark:bg-amber-950">
             <div className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">Demo mode</div>
             <div className="mt-0.5 text-[10px] leading-snug text-amber-700 dark:text-amber-400">
-              Sample data only — changes stay in this browser and never write to Supabase.
+              Sample data only.
             </div>
             <div className="mt-1.5 flex flex-wrap gap-3">
               <button

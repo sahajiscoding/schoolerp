@@ -349,8 +349,7 @@ export default function Login() {
                   </div>
                 )}
                 <p className="mt-2 text-[11px] text-slate-400">
-                  Explore with sample data — no login needed. Changes stay in this browser only; nothing is
-                  written to Supabase.
+                  Explore with sample data — no login needed.
                 </p>
               </div>
             )}
