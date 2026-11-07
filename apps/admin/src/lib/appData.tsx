@@ -217,6 +217,12 @@ interface AppDataContextValue extends AppState {
   applyLeave: (input: { student_id: string; start_date: string; end_date: string; leave_type: LeaveType; reason: string; attachment_name?: string }) => void;
   reviewLeave: (id: string, status: LeaveStatus, reviewerId: string, note?: string) => void;
   addProgress: (input: Omit<CourseProgressEntry, 'id' | 'updated_at'>) => void;
+  updateCourseGoal: (
+    goalId: string,
+    currentPercent: number | null,
+    grade: string | null,
+    remarks: string | null,
+  ) => void;
   signDeclaration: (id: string, studentId: string) => void;
   createPoll: (input: { question: string; audience: string; created_by: string; closes_at: string; options: string[] }) => void;
   votePoll: (pollId: string, optionId: string, studentId: string) => void;
@@ -416,6 +422,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     pushAudit('Updated course progress', `${input.subject} · ${input.title}`);
     notify('Course progress saved.');
   }, [notify, pushAudit]);
+
+  const updateCourseGoal: AppDataContextValue['updateCourseGoal'] = useCallback(
+    (goalId, currentPercent, grade, remarks) => {
+      setState((current) => ({
+        ...current,
+        courseProgress: current.courseProgress.map((g) =>
+          g.id === goalId
+            ? {
+                ...g,
+                percent: currentPercent ?? g.percent,
+                grade: grade ?? g.grade,
+                remarks: remarks ?? g.remarks,
+                updated_at: new Date().toISOString(),
+              }
+            : g,
+        ),
+      }));
+      pushAudit('Updated course progress', `Goal ${goalId}`);
+      notify('Course progress updated.');
+    },
+    [notify, pushAudit],
+  );
 
   const signDeclaration: AppDataContextValue['signDeclaration'] = useCallback((id, studentId) => {
     setState((current) => ({
@@ -913,6 +941,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       applyLeave,
       reviewLeave,
       addProgress,
+      updateCourseGoal,
       signDeclaration,
       createPoll,
       votePoll,
@@ -959,6 +988,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       applyLeave,
       reviewLeave,
       addProgress,
+      updateCourseGoal,
       signDeclaration,
       createPoll,
       votePoll,

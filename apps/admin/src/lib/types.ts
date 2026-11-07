@@ -63,6 +63,7 @@ export interface Submission {
   student_id: string;
   body: string;
   file_name?: string;
+  file_path?: string;
   submitted_at: string;
   status: 'submitted' | 'reviewed';
 }

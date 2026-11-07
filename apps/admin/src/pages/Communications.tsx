@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData as useData } from '../lib/appData';
+import { useCommunicationsData } from '../lib/useCommunicationsData';
 import {
   Card,
   Button,
@@ -11,15 +11,17 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
-import { FiCheckCircle, FiPlus, FiSend, FiUsers } from 'react-icons/fi';
+import { FiCheckCircle, FiPlus, FiSend } from 'react-icons/fi';
 import { cn, formatDateLong } from '../lib/utils';
+import { supabase } from '../lib/supabase';
+import { useAppData } from '../lib/appData';
 
 const DECLARATION_TYPES = ['Transport', 'Registration', 'Academic', 'Medical', 'Discipline'];
 const AUDIENCES = ['Whole school', 'IX - E', 'IX - A', 'V - A'];
 
 export default function Communications() {
   const { profile, isAdmin, isTeacher, isStudent } = useAuth();
-  const data = useData();
+  const data = useCommunicationsData();
 
   const [openDeclaration, setOpenDeclaration] = useState(false);
   const [openMessage, setOpenMessage] = useState(false);
@@ -43,38 +45,64 @@ export default function Communications() {
   });
 
   const canAuthor = isAdmin() || isTeacher();
-  const canCreatePoll = canAuthor;
+  const demo = useAppData();
+  const demoPeople = demo.people;
   const mySection =
-    data.people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'IX - E';
+    demoPeople.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'IX - E';
+    demoPeople.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'IX - E';
 
-  const handleSign = (id: string) => {
+  const handleSign = async (id: string) => {
     if (!profile) return;
-    data.signDeclaration(id, profile.id);
+    await data.signDeclaration(id);
+    data.notify('Declaration signed.');
   };
 
-  const handleCreateDeclaration = (e: React.FormEvent) => {
+  const handleCreateDeclaration = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!declarationForm.name.trim()) {
       data.notify('Give the declaration a name before publishing.');
       return;
     }
-    data.addDeclaration({
-      name: declarationForm.name.trim(),
-      description: declarationForm.description.trim() || declarationForm.name.trim(),
-      type: declarationForm.type,
-    });
+    if (data.isLive) {
+      // Live mode: create via Supabase directly since publish RPC for declarations
+      // isn't in scope for this slice.
+      const { error } = await (supabase.from('declaration_forms') as any)
+        .insert({
+          title: declarationForm.name.trim(),
+          body: declarationForm.description.trim() || declarationForm.name.trim(),
+          audience: declarationForm.type,
+          section_ids: [],
+          created_by: profile.id,
+          due_date: null,
+        });
+      if (error) {
+        data.notify('Could not publish the declaration. Please try again.');
+        return;
+      }
+    } else {
+      demo.addDeclaration({
+        name: declarationForm.name.trim(),
+        description: declarationForm.description.trim() || declarationForm.name.trim(),
+        type: declarationForm.type,
+      });
+    }
     setDeclarationForm({ name: '', description: '', type: 'Transport' });
     setOpenDeclaration(false);
+    data.notify('Declaration published.');
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
     if (!messageForm.body.trim()) {
       data.notify('Write a message first.');
       return;
     }
-    data.broadcastMessage({
+    if (data.isLive) {
+      data.notify('Message send via live threads is coming in the next slice.');
+      return;
+    }
+    demo.broadcastMessage({
       title: messageForm.title.trim() || 'Message from your teacher',
       body: messageForm.body.trim(),
       section_label: messageForm.section_label,
@@ -84,14 +112,14 @@ export default function Communications() {
     setOpenMessage(false);
   };
 
-  const handleCreatePoll = (e: React.FormEvent) => {
+  const handleCreatePoll = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
     if (!pollForm.question.trim()) {
       data.notify('A poll needs a question.');
       return;
     }
-    data.createPoll({
+    await data.createPoll({
       question: pollForm.question.trim(),
       audience: pollForm.audience,
       created_by: profile.id,
@@ -100,11 +128,13 @@ export default function Communications() {
     });
     setPollForm({ question: '', audience: 'Whole class', closes_at: '', options: ['Option A', 'Option B'] });
     setOpenPoll(false);
+    data.notify('Poll published.');
   };
 
-  const handleVote = (pollId: string, optionId: string) => {
+  const handleVote = async (pollId: string, optionId: string) => {
     if (!profile) return;
-    data.votePoll(pollId, optionId, profile.id);
+    await data.votePoll(pollId, optionId, profile.id);
+    data.notify('Vote recorded.');
   };
 
   // Per-student: a form is "to sign" only if THIS student has not signed it.
@@ -137,6 +167,17 @@ export default function Communications() {
           </div>
         )}
       </div>
+
+      {data.loading && <p className="text-sm text-muted">Loading communications…</p>}
+
+      {data.error && (
+        <Card className="flex items-center gap-3 border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950" role="alert">
+          <p className="text-sm text-red-700 dark:text-red-300">{data.error}</p>
+          <Button size="sm" variant="outline" className="ml-auto" onClick={() => void data.refresh()}>
+            Try again
+          </Button>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -173,9 +214,13 @@ export default function Communications() {
                       <TableCell>{form.type}</TableCell>
                       <TableCell>
                         {isStudent() ? (
-                          <Badge variant={iSigned ? 'success' : 'pending'}>{iSigned ? 'signed' : 'pending'}</Badge>
+                          <Badge variant={iSigned ? 'success' : 'pending'}>
+                            {iSigned ? 'signed' : 'pending'}
+                          </Badge>
                         ) : (
-                          <Badge variant={signedBy.length ? 'olive' : 'pending'}>{signedBy.length} signed</Badge>
+                          <Badge variant={signedBy.length ? 'olive' : 'pending'}>
+                            {signedBy.length} signed
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -185,7 +230,11 @@ export default function Communications() {
                               Signed {form.signed_at ? formatDateLong(form.signed_at.slice(0, 10)) : ''}
                             </span>
                           ) : (
-                            <Button variant="outline" size="sm" onClick={() => handleSign(form.id)}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSign(form.id)}
+                            >
                               <FiCheckCircle size={14} /> Sign
                             </Button>
                           )
@@ -201,7 +250,7 @@ export default function Communications() {
                 {data.declarations.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="py-4 text-center text-muted">
-                      No declaration forms.
+                      No declaration forms yet.
                     </TableCell>
                   </TableRow>
                 )}
@@ -210,305 +259,188 @@ export default function Communications() {
           </div>
         </Card>
 
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
+        <Card className="lg:col-span-1">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <h3 className="text-lg font-bold text-ink">Polls</h3>
-            {canCreatePoll && (
+            {canAuthor ? (
               <Button size="sm" onClick={() => setOpenPoll(true)}>
-                <FiPlus size={14} /> New
+                <FiPlus size={14} /> Create poll
               </Button>
-            )}
+            ) : null}
           </div>
           <div className="space-y-3">
             {data.polls.map((poll) => {
-              const totalVotes = Object.values(poll.votes).length;
-              const optionVotes = (id: string) =>
-                Object.values(poll.votes).filter((v) => v === id).length;
-              const hasVoted = profile ? poll.votes[profile.id] : false;
+              const myVote = profile ? poll.votes[profile.id] : undefined;
+              const totalVotes = Object.keys(poll.votes).length;
               return (
-                <div key={poll.id} className="rounded-lg border border-sand/40 p-4">
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <div className="font-medium text-ink">{poll.question}</div>
-                    <Badge variant="olive">{poll.audience}</Badge>
+                <Card key={poll.id}>
+                  <div className="font-semibold text-ink dark:text-white">{poll.question}</div>
+                  <div className="text-xs text-muted">
+                    {poll.audience} · closes {formatDateLong(poll.closes_at)} · {totalVotes} vote(s)
                   </div>
-                  <div className="mb-3 text-xs text-muted">
-                    {totalVotes} vote{totalVotes === 1 ? '' : 's'} · closes{' '}
-                    {formatDateLong(poll.closes_at)}
+                  <div className="mt-3 space-y-2">
+                    {poll.options.map((opt) => {
+                      const count = Object.values(poll.votes).filter((v) => v === opt.id).length;
+                      const pct = totalVotes ? Math.round((count / totalVotes) * 100) : 0;
+                      const alreadyVoted = myVote !== undefined;
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => handleVote(poll.id, opt.id)}
+                          disabled={alreadyVoted}
+                          className={cn(
+                            'flex items-center gap-2 w-full px-3 py-2 rounded-lg border text-left transition-colors',
+                            alreadyVoted
+                              ? 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 cursor-not-allowed'
+                              : 'border-slate-300 bg-white text-ink hover:border-navy hover:bg-navy/5 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-olive dark:hover:bg-olive/5',
+                          )}
+                        >
+                          <span className="flex-1 text-sm">{opt.label}</span>
+                          <span className="text-xs font-medium">
+                            {count} ({pct}%)
+                          </span>
+                          {alreadyVoted && (
+                            <span className="text-[10px] text-emerald-600">Voted</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                  {poll.options.map((opt) => {
-                    const voted = hasVoted === opt.id;
-                    const share = totalVotes > 0 ? Math.round((optionVotes(opt.id) / totalVotes) * 100) : 0;
-                    return (
-                      <div key={opt.id} className="mb-2">
-                        <div className="mb-1 flex justify-between text-xs">
-                          <span className={voted ? 'font-medium text-olive' : ''}>{opt.label}</span>
-                          <span className="text-muted">{share}%</span>
-                        </div>
-                        <div className="h-2 w-full rounded-full bg-slate-200">
-                          <div
-                            className={cn('h-2 rounded-full transition-all duration-300', voted ? 'bg-olive' : 'bg-slate-300')}
-                            style={{ width: `${share}%` }}
-                          />
-                        </div>
-                        {!hasVoted && isStudent() && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleVote(poll.id, opt.id)}
-                            className="mt-2 w-full text-[10px]"
-                          >
-                            Vote
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {hasVoted && <span className="mt-1 block text-xs text-olive">Your vote is recorded</span>}
-                </div>
+                </Card>
               );
             })}
             {data.polls.length === 0 && (
-              <div className="py-6 text-center text-sm text-muted">
-                No polls yet. {canCreatePoll && 'Create one to get started.'}
-              </div>
+              <p className="text-sm text-muted text-center">No polls yet.</p>
             )}
           </div>
         </Card>
       </div>
 
-      {canAuthor && (
+      {openDeclaration && canAuthor && (
         <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-ink">Recent messages</h3>
-              <p className="text-sm text-muted">Broadcasts land in the student notification bell.</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setOpenMessage(true)}>
-              <FiSend size={14} /> Send
-            </Button>
-          </div>
-          <div className="space-y-2">
-            {data.notifications
-              .filter((n) => n.kind === 'notice')
-              .slice(0, 6)
-              .map((n) => (
-                <div key={n.id} className="flex items-start gap-3 rounded-lg border border-sand/40 p-3">
-                  <span className="mt-0.5 rounded bg-olive/10 p-1.5 text-olive">
-                    <FiUsers size={14} />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-ink">{n.title}</div>
-                    <div className="truncate text-xs text-muted">{n.body}</div>
-                  </div>
-                  <span className="ml-auto shrink-0 text-[10px] text-slate-400">
-                    {formatDateLong(n.created_at.slice(0, 10))}
-                  </span>
-                </div>
-              ))}
-            {data.notifications.filter((n) => n.kind === 'notice').length === 0 && (
-              <div className="py-4 text-center text-sm text-muted">No messages sent yet.</div>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {openDeclaration && (
-        <Modal title="Publish declaration form" onClose={() => setOpenDeclaration(false)}>
-          <form onSubmit={handleCreateDeclaration} className="space-y-3">
-            <Field label="Form name">
+          <form onSubmit={handleCreateDeclaration} className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-muted">
+              Name
               <input
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 value={declarationForm.name}
-                onChange={(e) => setDeclarationForm({ ...declarationForm, name: e.target.value })}
-                className={inputCls}
-                placeholder="Transport Norms Declaration"
+                onChange={(e) => setDeclarationForm((v) => ({ ...v, name: e.target.value }))}
+                required
               />
-            </Field>
-            <Field label="Description">
-              <textarea
-                value={declarationForm.description}
-                onChange={(e) => setDeclarationForm({ ...declarationForm, description: e.target.value })}
-                rows={3}
-                className={inputCls}
-                placeholder="What the student or parent is agreeing to"
-              />
-            </Field>
-            <Field label="Type">
+            </label>
+            <label className="text-xs font-medium text-muted">
+              Type
               <select
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 value={declarationForm.type}
-                onChange={(e) => setDeclarationForm({ ...declarationForm, type: e.target.value })}
-                className={inputCls}
+                onChange={(e) => setDeclarationForm((v) => ({ ...v, type: e.target.value }))}
               >
                 {DECLARATION_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
+                  <option key={t}>{t}</option>
                 ))}
               </select>
-            </Field>
-            <ModalActions onCancel={() => setOpenDeclaration(false)} submitLabel="Publish" />
+            </label>
+            <label className="text-xs font-medium text-muted sm:col-span-2">
+              Description
+              <textarea
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                rows={2}
+                value={declarationForm.description}
+                onChange={(e) => setDeclarationForm((v) => ({ ...v, description: e.target.value }))}
+              />
+            </label>
+            <div className="sm:col-span-2">
+              <Button type="submit" disabled={data.loading}>
+                {data.loading ? 'Publishing…' : 'Publish declaration'}
+              </Button>
+            </div>
           </form>
-        </Modal>
+        </Card>
       )}
 
-      {openMessage && (
-        <Modal title="Send a message" onClose={() => setOpenMessage(false)}>
-          <form onSubmit={handleSendMessage} className="space-y-3">
-            <Field label="Subject">
+      {openMessage && canAuthor && (
+        <Card>
+          <form onSubmit={handleSendMessage} className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-muted sm:col-span-2">
+              Title
               <input
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 value={messageForm.title}
-                onChange={(e) => setMessageForm({ ...messageForm, title: e.target.value })}
-                className={inputCls}
-                placeholder="Revision schedule for the half-yearly"
+                onChange={(e) => setMessageForm((v) => ({ ...v, title: e.target.value }))}
               />
-            </Field>
-            <Field label="Message">
-              <textarea
-                value={messageForm.body}
-                onChange={(e) => setMessageForm({ ...messageForm, body: e.target.value })}
-                rows={5}
-                className={inputCls}
-                placeholder="Write your message to the class…"
-              />
-            </Field>
-            <Field label="Send to">
+            </label>
+            <label className="text-xs font-medium text-muted sm:col-span-2">
+              Section
               <select
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 value={messageForm.section_label}
-                onChange={(e) => setMessageForm({ ...messageForm, section_label: e.target.value })}
-                className={inputCls}
+                onChange={(e) => setMessageForm((v) => ({ ...v, section_label: e.target.value }))}
               >
                 {AUDIENCES.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
+                  <option key={a}>{a}</option>
                 ))}
               </select>
-            </Field>
-            <ModalActions onCancel={() => setOpenMessage(false)} submitLabel="Send message" />
-          </form>
-        </Modal>
-      )}
-
-      {openPoll && (
-        <Modal title="Create poll" onClose={() => setOpenPoll(false)}>
-          <form onSubmit={handleCreatePoll} className="space-y-3">
-            <Field label="Question">
-              <input
-                value={pollForm.question}
-                onChange={(e) => setPollForm({ ...pollForm, question: e.target.value })}
-                className={inputCls}
-                placeholder="What topic should we revise next?"
+            </label>
+            <label className="text-xs font-medium text-muted sm:col-span-2">
+              Body
+              <textarea
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                rows={3}
+                value={messageForm.body}
+                onChange={(e) => setMessageForm((v) => ({ ...v, body: e.target.value }))}
               />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Audience">
-                <select
-                  value={pollForm.audience}
-                  onChange={(e) => setPollForm({ ...pollForm, audience: e.target.value })}
-                  className={inputCls}
-                >
-                  <option value="Whole class">Whole class</option>
-                  <option value="Section E">Section E</option>
-                  <option value="Selected students">Selected students</option>
-                </select>
-              </Field>
-              <Field label="Closes on">
-                <input
-                  type="date"
-                  value={pollForm.closes_at}
-                  onChange={(e) => setPollForm({ ...pollForm, closes_at: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+            </label>
+            <div className="sm:col-span-2">
+              <Button type="submit" disabled={data.loading}>
+                {data.loading ? 'Sending…' : 'Send message'}
+              </Button>
             </div>
-            <Field label="Options">
-              <div className="space-y-2">
-                {pollForm.options.map((opt, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input
-                      value={opt}
-                      onChange={(e) => {
-                        const opts = [...pollForm.options];
-                        opts[i] = e.target.value;
-                        setPollForm({ ...pollForm, options: opts });
-                      }}
-                      className={inputCls}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPollForm({
-                          ...pollForm,
-                          options: pollForm.options.filter((_, index) => index !== i),
-                        })
-                      }
-                      className="text-terracotta hover:text-terracotta/80"
-                      aria-label="Remove option"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </Field>
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => setPollForm({ ...pollForm, options: [...pollForm.options, ''] })}
-            >
-              <FiPlus size={14} /> Add option
-            </Button>
-            <ModalActions onCancel={() => setOpenPoll(false)} submitLabel="Publish poll" />
           </form>
-        </Modal>
+        </Card>
       )}
-    </div>
-  );
-}
 
-const inputCls =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-olive focus:outline-none focus:ring-1 focus:ring-olive';
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-muted">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-ink" aria-label="Close">
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function ModalActions({ onCancel, submitLabel }: { onCancel: () => void; submitLabel: string }) {
-  return (
-    <div className="mt-4 flex justify-end gap-2">
-      <Button variant="ghost" type="button" onClick={onCancel}>
-        Cancel
-      </Button>
-      <Button type="submit">{submitLabel}</Button>
+      {openPoll && canAuthor && (
+        <Card>
+          <form onSubmit={handleCreatePoll} className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-muted sm:col-span-2">
+              Question
+              <input
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={pollForm.question}
+                onChange={(e) => setPollForm((v) => ({ ...v, question: e.target.value }))}
+                required
+              />
+            </label>
+            <label className="text-xs font-medium text-muted">
+              Closes on
+              <input
+                type="date"
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={pollForm.closes_at}
+                onChange={(e) => setPollForm((v) => ({ ...v, closes_at: e.target.value }))}
+                required
+              />
+            </label>
+            {pollForm.options.map((opt, i) => (
+              <label key={i} className="text-xs font-medium text-muted">
+                Option {i + 1}
+                <input
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  value={opt}
+                  onChange={(e) =>
+                    setPollForm((v) => ({ ...v, options: v.options.map((o, j) => (j === i ? e.target.value : o)) }))
+                  }
+                />
+              </label>
+            ))}
+            <div className="sm:col-span-2">
+              <Button type="submit" disabled={data.loading}>
+                {data.loading ? 'Publishing…' : 'Publish poll'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
     </div>
   );
 }

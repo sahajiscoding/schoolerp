@@ -1,23 +1,18 @@
-import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppData as useData } from "../lib/appData";
-import { Card, Table, TableHeader, TableRow, TableHead, TableCell } from "../components/ui";
+import { useLibraryData } from "../lib/useLibraryData";
+import { Button, Card, Table, TableHeader, TableRow, TableHead, TableCell } from "../components/ui";
 import { formatDateLong } from "../lib/utils";
 
 /** Report-parity `/my-library?page=1&limit=10` — borrowed-books ledger + fines. */
 export default function MyLibrary() {
   const { profile } = useAuth();
-  const data = useData();
+  const data = useLibraryData();
   const [params] = useSearchParams();
   const page = Math.max(1, Number(params.get("page") ?? "1") || 1);
   const limit = Math.min(100, Math.max(1, Number(params.get("limit") ?? "10") || 10));
 
-  const mine = useMemo(
-    () => data.bookIssues.filter((i) => i.student_id === profile?.id),
-    [data.bookIssues, profile?.id],
-  );
-  const paged = mine.slice((page - 1) * limit, page * limit);
+  const paged = data.issues.slice((page - 1) * limit, page * limit);
 
   return (
     <div className="space-y-4">
@@ -36,6 +31,18 @@ export default function MyLibrary() {
           Digital library
         </Link>
       </div>
+
+      {data.loading && <p className="text-sm text-muted">Loading library…</p>}
+
+      {data.error && (
+        <Card className="flex items-center gap-3 border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950" role="alert">
+          <p className="text-sm text-red-700 dark:text-red-300">{data.error}</p>
+          <Button size="sm" variant="outline" className="ml-auto" onClick={() => void data.refresh()}>
+            Try again
+          </Button>
+        </Card>
+      )}
+
       <Card padded={false}>
         <Table>
           <TableHeader>
@@ -70,6 +77,19 @@ export default function MyLibrary() {
                       {issue.status}
                     </span>
                   </TableCell>
+                  {data.isLive && issue.status === 'issued' && profile?.role === 'student' && (
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          data.returnBook(issue.id);
+                        }}
+                      >
+                        Return
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
@@ -79,7 +99,7 @@ export default function MyLibrary() {
       </Card>
       <div className="flex items-center gap-2 text-xs text-muted">
         <span>
-          Page {page} · showing {paged.length} of {mine.length}
+          Page {page} · showing {paged.length} of {data.issues.length}
         </span>
         <Link className="underline" to={`/my-library?page=${page + 1}&limit=${limit}`}>
           Next →

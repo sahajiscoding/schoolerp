@@ -6,9 +6,9 @@ both backend/rich-text, not visual deltas:
 1. Live Supabase wiring module by module (demo store only — declared next milestone).
 2. Homework submit uses textarea; Tiptap rich-text pending.
 
-Layout score: not machine-scored this pass (headless browser cannot capture
-screenshots; no `imgdiff.py` run). S01 was verified by DOM measurement instead
-(see token table below). S02+ internals are guess-marked (login-walled).
+Layout score: not screenshot-scored (the browser desktop window is not visible, so
+`imgdiff.py` cannot run). S01–S03 were verified by live DOM/computed-style measurement
+instead; S04+ internals remain guess-marked until owner-session review.
 
 ## Token table: reference vs clone
 
@@ -20,11 +20,11 @@ screenshots; no `imgdiff.py` run). S01 was verified by DOM measurement instead
 | hover-primary | hsl(0,99%,54%) = `#FE1616` (`--hover-primary`) | `#FE1616` (`brand.hover`, `hoverText`) | exact |
 | on-accent | white (`--primary-foreground`) | `#FFFFFF` (`onPrimary`, `onAccent`) | exact |
 | light bg | `#f8fafc` (spec) | `#f8fafc` (`bgLight`, `sand`) | exact (clone measured `rgb(248,250,252)`) |
-| dark bg | `hsl(222.2,84%,4.9%)` ≈ `#020817` (`rgb(2,8,23)`) | `#0f172a` (slate-900) + `#1e293b` surface | **delta: clone is ~1 step lighter** |
-| dark card | `hsl(222.2,84%,4.9%)` ≈ `#020817` | `#1e293b` (slate-800) | **delta** |
-| dark border | `hsl(217.2,32.6%,17.5%)` | `slate-800` `#1e293b` | **delta (lighter)** |
-| dark text | `hsl(210,40%,98%)` | `white` / `text-ink` on light | match (dark text-white) |
-| dark muted | `hsl(215,20.2%,65.1%)` | `muted` `#64748b` | **delta: clone muted darker in dark mode** |
+| dark bg | `hsl(222.2,84%,4.9%)` ≈ `#020817` (`rgb(2,8,23)`) | `#020817` (`brand.dark`, shared `bgDark`) | exact for login/shell/dashboard |
+| dark card | `hsl(222.2,84%,4.9%)` ≈ `#020817` | `#020817` (`brand.dark`, shared `surfaceDark`) | exact for login/dashboard hero |
+| dark border | `hsl(217.2,32.6%,17.5%)` = `#1e293b` | `#1e293b` (`brand.darkBorder`) | exact |
+| dark text | `hsl(210,40%,98%)` = `#f8fafc` | `slate-50` | exact |
+| dark muted | `hsl(215,20.2%,65.1%)` = `#94a3b8` | `#94a3b8` (`brand.darkMuted`) | exact |
 | font | system-ui on `/login` (measured) | Roboto (spec §3) | **delta: spec-mandated, keep Roboto** |
 | S01 button | "Login" bg `rgb(90,102,56)` white text; "I forgot my password" olive link | identical classes/behavior | exact |
 
@@ -42,21 +42,17 @@ Primary pair: white on `#5A6638` = 6.19:1 AAA. Text on bg: 17.06:1 AAA.
 
 ## Punch list (remaining visible deltas)
 
-1. **Dark chrome one step lighter than reference** — clone `#0f172a`/`#1e293b` vs
-   reference `#020817` (both bg and card). Fix: align `bgDark`/`surfaceDark` +
-   dark `Card` surface toward `hsl(222.2,84%,4.9%)`; also dark border toward
-   `hsl(217.2,32.6%,17.5%)` and dark muted toward `hsl(215,20.2%,65.1%)`.
-   Owner decision needed before touching (concurrent accent work).
-   **S01/login itself is now exempt** — rebuilt 2026-11-07 against the live
-   reference with exact `#020817` light/dark tokens (see PROJECT_STATUS.md);
-   this item covers the rest of the app shell only.
+1. ~~**Dark shell/dashboard chrome one step lighter than reference**~~ — fixed 2026-11-07:
+   shell, footer, body, and dashboard hero now use measured `#020817` / `#1e293b` /
+   `#94a3b8`. Untouched module cards may still use the older slate-800 surface until
+   each S04+ page receives its live-reference review.
 2. **S01 font**: reference renders system-ui, clone renders Roboto. Spec §3
    mandates Roboto — keep clone font; noting for completeness.
 3. **S01 capture mode**: reference measured in dark (local night), clone in light.
    Mode difference is expected (daylight auto 05:00–18:00); not a delta in code.
-4. **Login-walled screens** (S02–S25 internals): unknown by design — marked
-   "guess" in `replica/recon.md`; verified only after Marion's own account
-   observation. Not scraped, not bypassed.
+4. **Remaining login-walled module screens** (S04–S25 internals): still guess-marked.
+   S02 shell and S03 student dashboard were measured through the owner's authorized
+   session on 2026-11-07; no bundle/private API was copied.
 5. **Tiptap editor** (S08): textarea today — functional, visual delta vs
    rich-text reference (guess-marked).
 6. **Demo banner** is a clone addition ("Try a demo", banner). Supersedes
@@ -66,11 +62,16 @@ Primary pair: white on `#5A6638` = 6.19:1 AAA. Text on bg: 17.06:1 AAA.
 
 - `npm run typecheck --workspace=apps/admin` — clean (exit 0).
 - `npm run lint --workspace=apps/admin` — 0 errors, 4 pre-existing fast-refresh warnings.
-- `npm run build --workspace=apps/admin` — passes (428 modules).
-- `npm run test --workspace=apps/admin` — 6/6 vitest pass.
+- `npm run build --workspace=apps/admin` — passes (2,472 modules after lucide shell rollout).
+- `npm run test --workspace=apps/admin` — 7/7 vitest pass (includes multi-day dashboard event expansion).
 - `contrast.py` — 0 AA failures (see above).
 - Code change this pass: `apps/admin/src/pages/DigitalLibrary.tsx` (Open e-book fix).
 - 2026-11-07 follow-up: `apps/admin/src/pages/Login.tsx` + `src/index.css`
   rebuilt to live-reference parity (owner-confirmed). All S01 measurements in
   the table above now match exactly except the Roboto/system-ui font delta
   (item 2) and the documented mode difference (item 3).
+- 2026-11-07 S02/S03 follow-up: authenticated shell + student dashboard rebuilt
+  from the owner's live session. DOM/computed-style geometry and light/dark surfaces
+  match at identical viewports; browser console clean; Lighthouse accessibility and
+  best-practices scores 100. Screenshot diff remains unavailable because the desktop
+  browser window is hidden.

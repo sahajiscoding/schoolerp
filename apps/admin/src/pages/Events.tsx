@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData as useData } from '../lib/appData';
+import { useAppData } from '../lib/appData';
+import { useEventsData } from '../lib/useEventsData';
 import {
   Card,
   Button,
@@ -54,7 +55,8 @@ const MONTH_NAMES = [
 
 export default function Events() {
   const { profile, isAdmin, isTeacher, isStudent } = useAuth();
-  const data = useData();
+  const data = useEventsData();
+  const demoData = useAppData();
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState({ year: 2026, month: 10 });
   const [form, setForm] = useState({
@@ -68,12 +70,13 @@ export default function Events() {
 
   /** Teachers may only publish inside their own section; admins own the calendar. */
   const canManage = isAdmin() || isTeacher();
+  const people = demoData.people;
   const teacherSection =
-    data.people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'IX - E';
+    people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'IX - E';
 
   const studentView = isStudent();
   const mySectionLabel = (() => {
-    const me = data.people.find((p) => p.id === profile?.id);
+    const me = people.find((p) => p.id === profile?.id);
     return me?.class_label && me?.section_label ? `${me.class_label} - ${me.section_label}` : undefined;
   })();
 
@@ -91,7 +94,7 @@ export default function Events() {
   const todayIso = '2026-11-04';
   const upcoming = events.filter((e) => e.end_date >= todayIso).slice(0, 8);
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
     if (!form.title.trim() || !form.start_date) {
@@ -103,15 +106,14 @@ export default function Events() {
       data.notify('Teachers can only publish events for their own class.');
       return;
     }
-    data.addEvent({
+    await data.publishEvent({
       title: form.title.trim(),
       description: form.description.trim(),
-      type: form.type,
+      kind: form.type,
       start_date: form.start_date,
       end_date: form.end_date || form.start_date,
+      section_ids: audience === 'Class only' ? [people.find((p) => p.id === profile?.id)?.class_teacher_of ?? ''] : [],
       audience,
-      section_label: audience === 'Class only' ? teacherSection : undefined,
-      created_by: profile.id,
     });
     setForm({
       title: '',
@@ -165,6 +167,17 @@ export default function Events() {
           </Button>
         )}
       </div>
+
+      {data.loading && <p className="text-sm text-muted">Loading events…</p>}
+
+      {data.error && (
+        <Card className="flex items-center gap-3 border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950" role="alert">
+          <p className="text-sm text-red-700 dark:text-red-300">{data.error}</p>
+          <Button size="sm" variant="outline" className="ml-auto" onClick={() => void data.refresh()}>
+            Try again
+          </Button>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
@@ -298,7 +311,7 @@ export default function Events() {
       </div>
 
       <Card>
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-lg font-bold text-ink">All events</h3>
           <p className="text-sm text-muted">{events.length} entries on the calendar</p>
         </div>
@@ -327,7 +340,7 @@ export default function Events() {
                   </TableCell>
                   <TableCell className="text-sm">{ev.audience}</TableCell>
                   <TableCell className="text-sm text-muted">
-                    {data.people.find((p) => p.id === ev.created_by)?.full_name ?? 'Admin'}
+                    {people.find((p) => p.id === ev.created_by)?.full_name ?? 'Admin'}
                   </TableCell>
                 </TableRow>
               ))}
@@ -401,40 +414,41 @@ export default function Events() {
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Start date</label>
-                  <input
-                    type="date"
-                    value={form.start_date}
-                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">End date</label>
-                  <input
-                    type="date"
-                    value={form.end_date}
-                    onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  />
-                </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">Start date</label>
+                <input
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
               </div>
               <div>
+                <label className="mb-1 block text-xs font-medium text-muted">End date</label>
+                <input
+                  type="date"
+                  value={form.end_date}
+                  onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="col-span-2">
                 <label className="mb-1 block text-xs font-medium text-muted">Description</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={2}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  rows={3}
                 />
               </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Add to calendar</Button>
+                <Button type="submit" disabled={data.loading}>
+                  {data.loading ? 'Publishing…' : 'Publish event'}
+                </Button>
               </div>
             </form>
           </div>

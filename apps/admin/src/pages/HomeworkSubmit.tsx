@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppData as useData } from "../lib/appData";
+import { useHomeworksData } from "../lib/useHomeworksData";
 import { Card, Button, Badge } from "../components/ui";
 import { formatDateLong } from "../lib/utils";
 
@@ -13,14 +13,37 @@ import { formatDateLong } from "../lib/utils";
 export default function HomeworkSubmit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { profile, isStudent } = useAuth();
-  const data = useData();
+  const { profile } = useAuth();
+  const data = useHomeworksData();
   const [tab, setTab] = useState<"text" | "file">("text");
   const [body, setBody] = useState("");
-  const [fileName, setFileName] = useState("");
+  const [file, setFile] = useState<File | undefined>();
+  const [hydratedSubmissionId, setHydratedSubmissionId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const homework = data.homework.find((h) => h.id === id);
   const existing = data.submissions.find((s) => s.assignment_id === id && s.student_id === profile?.id);
+
+  useEffect(() => {
+    if (existing && hydratedSubmissionId !== existing.id) {
+      const timer = setTimeout(() => {
+        setBody(existing.body);
+        setHydratedSubmissionId(existing.id);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [existing, hydratedSubmissionId]);
+
+  if (data.loading) return <p className="text-sm text-muted">Loading homework…</p>;
+
+  if (data.error) {
+    return (
+      <div className="space-y-3" role="alert">
+        <p className="text-sm text-red-700 dark:text-red-300">{data.error}</p>
+        <Button size="sm" variant="outline" onClick={() => void data.refresh()}>Try again</Button>
+      </div>
+    );
+  }
 
   if (!homework) {
     return (
@@ -33,20 +56,28 @@ export default function HomeworkSubmit() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-    if (!body.trim() && !fileName.trim()) {
+    if (!body.trim() && !file && !existing?.file_name) {
       data.notify("Write a response or attach a file before submitting.");
       return;
     }
-    data.submitAssignment({
-      assignment_id: homework.id,
-      student_id: profile.id,
-      body: body.trim(),
-      file_name: fileName.trim() || undefined,
-    });
-    navigate("/homeworks");
+    setSaving(true);
+    try {
+      await data.submitAssignment({
+        assignment_id: homework.id,
+        student_id: profile.id,
+        body: body.trim(),
+        file,
+        existing_file_path: existing?.file_path,
+      });
+      navigate("/homeworks");
+    } catch (reason) {
+      data.notify(reason instanceof Error ? reason.message : "Could not submit the assignment.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -67,7 +98,7 @@ export default function HomeworkSubmit() {
         </div>
       </Card>
 
-      {isStudent() && (
+      {profile?.role === "student" && (
         <Card>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="flex gap-2">
@@ -96,7 +127,7 @@ export default function HomeworkSubmit() {
             </div>
             {tab === "text" ? (
               <label className="block text-xs font-medium text-muted">
-                Your answer (Tiptap editor on live build; plain text in demo)
+                Your answer
                 <textarea
                   className="mt-1 min-h-40 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   value={body}
@@ -106,19 +137,26 @@ export default function HomeworkSubmit() {
               </label>
             ) : (
               <label className="block text-xs font-medium text-muted">
-                File name (demo — no upload; live uses private Storage + signed URLs)
+                Choose a file
                 <input
-                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  value={fileName}
-                  onChange={(e) => setFileName(e.target.value)}
-                  placeholder="e.g. homework-answers.pdf"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.docx,application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-brand-primary file:px-3 file:py-1 file:text-xs file:font-medium file:text-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  onChange={(e) => setFile(e.target.files?.[0])}
                 />
+                {(file?.name || existing?.file_name) && (
+                  <span className="mt-1 block text-[11px] text-muted">
+                    {file ? `Selected: ${file.name}` : `Current file: ${existing?.file_name}`}
+                  </span>
+                )}
                 <span className="mt-1 block text-[11px] text-muted">
-                  PDF/JPEG/PNG/DOCX up to 10 MB on the live build.
+                  PDF/JPEG/PNG/DOCX up to 10 MB.
                 </span>
               </label>
             )}
-            <Button type="submit">{existing ? "Update submission" : "Submit now"}</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Submitting…" : existing ? "Update submission" : "Submit now"}
+            </Button>
           </form>
         </Card>
       )}

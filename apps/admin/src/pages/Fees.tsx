@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData as useData } from '../lib/appData';
+import { useFeesData } from '../lib/useFeesData';
+import { useAppData } from '../lib/appData';
 import {
   Card,
   Button,
@@ -12,7 +13,7 @@ import {
   TableCell,
 } from '../components/ui';
 import { FiCreditCard, FiLink, FiSend, FiUsers, FiX } from 'react-icons/fi';
-import { cn, formatDateLong, inr } from '../lib/utils';
+import { formatDateLong, inr } from '../lib/utils';
 
 /**
  * Fee module.
@@ -23,8 +24,9 @@ import { cn, formatDateLong, inr } from '../lib/utils';
  * correct everywhere.
  */
 export default function Fees() {
-  const { profile, isAdmin, isStudent } = useAuth();
-  const data = useData();
+  const { profile } = useAuth();
+  const data = useFeesData();
+  const demo = useAppData();
   const [openSibling, setOpenSibling] = useState(false);
   const [openPay, setOpenPay] = useState(false);
   const [siblingForm, setSiblingForm] = useState({
@@ -35,10 +37,11 @@ export default function Fees() {
   const [payForm, setPayForm] = useState({ invoice_id: '', amount: '' });
 
   // Fee collection and sibling discounts are admin-only, matching the
-  // fee_records_admin_write / sibling_links_admin_write RLS policies.
-  const canManage = isAdmin();
-  const students = data.people.filter((p) => p.role === 'student');
-  const myFees = isStudent() ? data.fees.filter((f) => f.student_id === profile?.id) : data.fees;
+  // fee_installments_admin_write / sibling_links_admin_write RLS policies.
+  const canManage = profile?.role === 'admin';
+  const isStudent = profile?.role === 'student';
+
+  const myFees = isStudent ? data.fees.filter((f) => f.student_id === profile?.id) : data.fees;
 
   /** sibling student id → link, so a row can say "sibling of X". */
   const siblingByStudent = useMemo(() => {
@@ -59,7 +62,17 @@ export default function Fees() {
     return { billed, paid, discounts, due: Math.max(0, billed - paid) };
   }, [myFees]);
 
-  const handleLinkSibling = (e: React.FormEvent) => {
+  const studentName = (studentId: string) => {
+    const person = demo.people.find((p) => p.id === studentId);
+    return person?.full_name ?? studentId;
+  };
+
+  const studentLabel = (studentId: string) => {
+    const person = demo.people.find((p) => p.id === studentId);
+    return person ? `${person.class_label ?? ''} ${person.section_label ?? ''}` : '';
+  };
+
+  const handleLinkSibling = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
     if (!siblingForm.student_id || !siblingForm.sibling_id) {
@@ -70,32 +83,34 @@ export default function Fees() {
       data.notify('A student cannot be their own sibling.');
       return;
     }
-    data.linkSibling(
-      siblingForm.student_id,
-      siblingForm.sibling_id,
-      Number(siblingForm.discount_percent) || 50,
-    );
+    await data.linkSibling({
+      student_id: siblingForm.student_id,
+      sibling_id: siblingForm.sibling_id,
+      discount_percent: Number(siblingForm.discount_percent) || 50,
+    });
     setSiblingForm({ student_id: '', sibling_id: '', discount_percent: 50 });
     setOpenSibling(false);
+    data.notify('Sibling discount linked.');
   };
 
-  const handleRecordPayment = (e: React.FormEvent) => {
+  const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
     if (!payForm.invoice_id || !payForm.amount) {
       data.notify('Pick an invoice and enter the amount received.');
       return;
     }
-    data.recordPayment(payForm.invoice_id, Number(payForm.amount) || 0);
+    await data.recordPayment({ invoice_id: payForm.invoice_id, amount: Number(payForm.amount) || 0 });
     setPayForm({ invoice_id: '', amount: '' });
     setOpenPay(false);
+    data.notify('Payment recorded.');
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-ink">{isStudent() ? 'My Fee' : 'Fee Collection'}</h1>
+          <h1 className="text-2xl font-bold text-ink">{isStudent ? 'My Fee' : 'Fee Collection'}</h1>
           <p className="text-muted">
             {canManage
               ? 'Link siblings so the 50% discount lands on the second child, then record payments.'
@@ -114,6 +129,17 @@ export default function Fees() {
         )}
       </div>
 
+      {data.loading && <p className="text-sm text-muted">Loading fees…</p>}
+
+      {data.error && (
+        <Card className="flex items-center gap-3 border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950" role="alert">
+          <p className="text-sm text-red-700 dark:text-red-300">{data.error}</p>
+          <Button size="sm" variant="outline" className="ml-auto" onClick={() => void data.refresh()}>
+            Try again
+          </Button>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MoneyCard label="Billed (after discount)" value={inr(totals.billed)} />
         <MoneyCard label="Collected" value={inr(totals.paid)} tone="olive" />
@@ -124,7 +150,7 @@ export default function Fees() {
       <Card>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-lg font-bold text-ink">
-            {isStudent() ? 'My fee invoices' : 'Fee invoices'}
+            {isStudent ? 'My fee invoices' : 'Fee invoices'}
           </h3>
           <Badge variant="olive">{myFees.length} invoices</Badge>
         </div>
@@ -145,21 +171,22 @@ export default function Fees() {
             </TableHeader>
             <tbody>
               {myFees.map((fee) => {
-                const student = data.people.find((p) => p.id === fee.student_id);
+                const studentNameVal = studentName(fee.student_id);
+                const studentLabelVal = studentLabel(fee.student_id);
                 const siblingInfo = siblingByStudent.get(fee.student_id);
                 const firstChild = siblingInfo
-                  ? data.people.find((p) => p.id === siblingInfo.firstChildId)
+                  ? studentName(siblingInfo.firstChildId)
                   : null;
                 const payable = fee.amount - fee.discount;
                 return (
                   <TableRow key={fee.id}>
                     <TableCell>
-                      <div className="font-medium">{student?.full_name ?? '—'}</div>
+                      <div className="font-medium">{studentNameVal}</div>
                       <div className="text-xs text-muted">
-                        {student?.class_label} {student?.section_label}
+                        {studentLabelVal}
                         {siblingInfo && (
                           <span className="ml-1 text-terracotta">
-                            · sibling of {firstChild?.full_name ?? 'another student'}
+                            · sibling of {firstChild ?? 'another student'}
                           </span>
                         )}
                       </div>
@@ -249,21 +276,23 @@ export default function Fees() {
             </TableHeader>
             <tbody>
               {data.siblings.map((link) => {
-                const first = data.people.find((p) => p.id === link.student_id);
-                const sib = data.people.find((p) => p.id === link.sibling_id);
+                const first = studentName(link.student_id);
+                const sib = studentName(link.sibling_id);
+                const firstLabel = studentLabel(link.student_id);
+                const sibLabel = studentLabel(link.sibling_id);
                 const invoice = data.fees.find((f) => f.student_id === link.sibling_id);
                 return (
                   <TableRow key={link.id}>
                     <TableCell>
-                      <div className="font-medium">{first?.full_name ?? '—'}</div>
+                      <div className="font-medium">{first ?? '—'}</div>
                       <div className="text-xs text-muted">
-                        {first?.class_label} {first?.section_label} · {first?.admission_no}
+                        {firstLabel} · {demo.people.find((p) => p.id === link.student_id)?.admission_no ?? ''}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium">{sib?.full_name ?? '—'}</div>
+                      <div className="font-medium">{sib ?? '—'}</div>
                       <div className="text-xs text-muted">
-                        {sib?.class_label} {sib?.section_label} · {sib?.admission_no}
+                        {sibLabel} · {demo.people.find((p) => p.id === link.sibling_id)?.admission_no ?? ''}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -317,54 +346,45 @@ export default function Fees() {
                 onChange={(e) => setSiblingForm({ ...siblingForm, student_id: e.target.value })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
               >
-                <option value="">Select first child</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.full_name} · {s.class_label} {s.section_label} ({s.admission_no})
+                <option value="">Select first child…</option>
+                {myFees.map((f) => (
+                  <option key={f.student_id} value={f.student_id}>
+                    {f.student_id}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">
-                Sibling (receives discount)
-              </label>
+              <label className="mb-1 block text-xs font-medium text-muted">Sibling (discounted)</label>
               <select
                 value={siblingForm.sibling_id}
                 onChange={(e) => setSiblingForm({ ...siblingForm, sibling_id: e.target.value })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
               >
-                <option value="">Select sibling</option>
-                {students
-                  .filter((s) => s.id !== siblingForm.student_id)
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.full_name} · {s.class_label} {s.section_label} ({s.admission_no})
-                    </option>
-                  ))}
+                <option value="">Select sibling…</option>
+                {myFees.map((f) => (
+                  <option key={f.student_id} value={f.student_id}>
+                    {f.student_id}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Sibling discount (%)</label>
+              <label className="mb-1 block text-xs font-medium text-muted">Discount %</label>
               <input
                 type="number"
-                min={0}
-                max={100}
                 value={siblingForm.discount_percent}
-                onChange={(e) =>
-                  setSiblingForm({ ...siblingForm, discount_percent: Number(e.target.value) })
-                }
+                onChange={(e) => setSiblingForm({ ...siblingForm, discount_percent: Number(e.target.value) || 50 })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                min="0"
+                max="100"
               />
-              <p className="mt-1 text-xs text-muted">
-                Campus policy is 50%. The discount is written onto the sibling’s invoice only.
-              </p>
             </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="ghost" type="button" onClick={() => setOpenSibling(false)}>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setOpenSibling(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Link &amp; apply discount</Button>
+              <Button type="submit">Link sibling</Button>
             </div>
           </form>
         </Modal>
@@ -372,6 +392,9 @@ export default function Fees() {
 
       {canManage && openPay && (
         <Modal title="Record payment" onClose={() => setOpenPay(false)}>
+          <p className="mb-3 text-sm text-muted">
+            Enter the amount received for the selected invoice.
+          </p>
           <form onSubmit={handleRecordPayment} className="space-y-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">Invoice</label>
@@ -380,29 +403,27 @@ export default function Fees() {
                 onChange={(e) => setPayForm({ ...payForm, invoice_id: e.target.value })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
               >
-                <option value="">Select invoice</option>
-                {myFees.map((f) => {
-                  const student = data.people.find((p) => p.id === f.student_id);
-                  return (
-                    <option key={f.id} value={f.id}>
-                      {student?.full_name ?? f.student_id} · {f.term} ·{' '}
-                      {inr(f.amount - f.discount - f.paid)} due
-                    </option>
-                  );
-                })}
+                <option value="">Select invoice…</option>
+                {myFees.filter((f) => f.status !== 'paid').map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.term} — {inr(f.amount - f.paid)} due
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Amount received (₹)</label>
+              <label className="mb-1 block text-xs font-medium text-muted">Amount received</label>
               <input
                 type="number"
                 value={payForm.amount}
                 onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                min="0"
+                step="0.01"
               />
             </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="ghost" type="button" onClick={() => setOpenPay(false)}>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setOpenPay(false)}>
                 Cancel
               </Button>
               <Button type="submit">Record payment</Button>
@@ -417,23 +438,29 @@ export default function Fees() {
 function MoneyCard({
   label,
   value,
-  tone = 'neutral',
+  tone,
 }: {
   label: string;
   value: string;
-  tone?: 'olive' | 'terracotta' | 'neutral' | 'danger';
+  tone?: 'olive' | 'danger' | 'neutral';
 }) {
-  const tones = {
-    olive: 'border-olive/15 bg-olive/5 text-olive',
-    terracotta: 'border-terracotta/15 bg-terracotta/5 text-terracotta',
-    danger: 'border-red-200 bg-red-50 text-red-700',
-    neutral: 'border-sand/60 bg-white text-ink',
-  };
+  const toneClass = tone === 'olive'
+    ? 'bg-olive/10 text-olive border border-olive/20'
+    : tone === 'danger'
+      ? 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-900'
+      : 'border-slate-200 bg-slate-50 text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
   return (
-    <div className={cn('rounded-xl border p-4', tones[tone])}>
-      <div className="text-xs text-muted">{label}</div>
-      <div className="mt-0.5 text-xl font-bold">{value}</div>
-    </div>
+    <Card padded={false} className="p-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs text-muted">{label}</p>
+          <p className="text-lg font-bold">{value}</p>
+        </div>
+        <div className={`rounded-lg px-3 py-1.5 text-xs font-medium ${toneClass}`}>
+          {tone === 'olive' ? 'Collected' : tone === 'danger' ? 'Outstanding' : 'Neutral'}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -447,16 +474,19 @@ function Modal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-ink" aria-label="Close">
-            ✕
-          </button>
-        </div>
-        {children}
+    <Card>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-ink dark:text-white">{title}</h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+        >
+          <FiX size={14} />
+        </Button>
       </div>
-    </div>
+      {children}
+    </Card>
   );
 }

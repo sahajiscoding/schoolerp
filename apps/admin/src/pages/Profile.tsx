@@ -5,12 +5,7 @@ import { useAppData as useData } from "../lib/appData";
 import { Card, Button, Badge } from "../components/ui";
 import { cn } from "../lib/utils";
 
-/**
- * Report-parity `/profile` — 7-tab student master dossier + change password.
- * Demo tabs read the browser store; live build reads `profiles` + linked
- * tables. Parent switch lists sibling links (additive, audited on live via
- * `parent_links` RLS).
- */
+/** Report-parity `/profile` — 7-tab student master dossier + change password. */
 const TABS = ["Overview", "Personal", "Academic", "Attendance", "Fees", "Library", "Security"] as const;
 
 export default function Profile() {
@@ -21,7 +16,6 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState("");
 
   const me = data.people.find((p) => p.id === profile?.id);
-  const siblings = data.siblings.filter((s) => s.student_id === profile?.id || s.sibling_id === profile?.id);
 
   return (
     <div className="space-y-4">
@@ -43,29 +37,6 @@ export default function Profile() {
           </Badge>
         )}
       </Card>
-
-      {siblings.length > 0 && (
-        <Card>
-          <h3 className="mb-2 font-semibold text-ink dark:text-white">Switch student (parent)</h3>
-          <div className="flex flex-wrap gap-2">
-            {siblings.map((s) => {
-              const otherId = s.student_id === profile?.id ? s.sibling_id : s.student_id;
-              const other = data.people.find((p) => p.id === otherId);
-              return (
-                <button
-                  key={s.id}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs dark:border-slate-700 dark:text-slate-200"
-                >
-                  Switch to {other?.full_name ?? "Student"}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-2 text-[11px] text-muted">
-            Parent switch swaps the active student context only — never a different Supabase user (spec §4).
-          </p>
-        </Card>
-      )}
 
       <div className="flex flex-wrap gap-1">
         {TABS.map((t) => (

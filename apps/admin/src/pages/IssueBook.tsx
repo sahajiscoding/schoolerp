@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppData as useData } from "../lib/appData";
+import { useLibraryData } from "../lib/useLibraryData";
 import { Card, Button } from "../components/ui";
 
 /**
@@ -11,7 +11,7 @@ import { Card, Button } from "../components/ui";
  */
 export default function IssueBook() {
   const { profile } = useAuth();
-  const data = useData();
+  const data = useLibraryData();
   const [params] = useSearchParams();
   const memberAbleType = params.get("member_able_type") ?? "students";
   const [query, setQuery] = useState("");
@@ -30,13 +30,22 @@ export default function IssueBook() {
       : data.books;
   }, [data.books, query]);
 
-  const handleIssue = (bookId: string) => {
+  const handleIssue = async (bookId: string) => {
     if (!profile) return;
     if (!dueDate) {
       data.notify("Pick a due date before issuing.");
       return;
     }
-    data.issueBook({ book_id: bookId, student_id: profile.id, due_at: dueDate });
+    if (!data.isLive) {
+      data.notify("Issue is live-mode only in this build.");
+      return;
+    }
+    await data.issueBook({
+      book_id: bookId,
+      student_id: profile.id,
+      due_at: dueDate,
+    });
+    data.notify('Book issued.');
   };
 
   return (
@@ -78,7 +87,7 @@ export default function IssueBook() {
             <div className="mt-auto flex gap-2 pt-2">
               <Button
                 size="sm"
-                disabled={book.available_copies <= 0}
+                disabled={book.available_copies <= 0 || !data.isLive}
                 onClick={() => handleIssue(book.id)}
               >
                 Issue
@@ -86,7 +95,7 @@ export default function IssueBook() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={book.available_copies <= 0}
+                disabled={book.available_copies <= 0 || !data.isLive}
                 onClick={() => profile && data.reserveBook(book.id, profile.id)}
               >
                 Reserve
@@ -94,8 +103,13 @@ export default function IssueBook() {
             </div>
           </Card>
         ))}
+        {books.length === 0 && <p className="text-sm text-muted">No books match your search.</p>}
       </div>
-      {books.length === 0 && <p className="text-sm text-muted">No books match your search.</p>}
+      {!data.isLive && (
+        <p className="text-xs text-muted">
+          Issue/reserve requires live Supabase mode. Demo uses My Library instead.
+        </p>
+      )}
     </div>
   );
 }

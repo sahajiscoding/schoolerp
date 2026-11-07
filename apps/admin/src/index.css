@@ -6,14 +6,25 @@
 
 :root {
   color-scheme: light;
+  --pws-primary: 76 29% 31%;
+  --pws-primary-foreground: 0 0% 100%;
+  --pws-hover-primary: 0 99% 54%;
 }
 
 .dark {
   color-scheme: dark;
 }
 
+@layer base {
+  *,
+  ::before,
+  ::after {
+    @apply border-slate-200 dark:border-slate-800;
+  }
+}
+
 body {
-  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100;
+  @apply bg-white text-brand-foreground antialiased dark:bg-brand-dark dark:text-slate-50;
   font-family: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -29,6 +40,38 @@ body {
 .scroll-slim::-webkit-scrollbar-thumb {
   border-radius: 9999px;
   background: rgb(100 116 139 / 0.3);
+}
+
+.pws-dashboard-hero {
+  background-image:
+    radial-gradient(circle at 12% 18%, hsl(var(--pws-primary-foreground) / 0.55), transparent 42%),
+    radial-gradient(circle at 88% 8%, hsl(var(--pws-primary) / 0.55), transparent 38%),
+    radial-gradient(circle at 78% 88%, hsl(var(--pws-hover-primary) / 0.45), transparent 40%),
+    linear-gradient(
+      135deg,
+      hsl(var(--pws-primary) / 0.35),
+      hsl(var(--pws-primary) / 0.85),
+      hsl(var(--pws-hover-primary))
+    );
+  box-shadow: 0 20px 40px -18px hsl(var(--pws-primary) / 0.45);
+}
+
+.dashboard-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dashboard-scrollbar::-webkit-scrollbar-track {
+  border-radius: 10px;
+  background: rgb(0 0 0 / 0.03);
+}
+
+.dashboard-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
+}
+
+.dashboard-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
 }
 
 /*
@@ -81,6 +124,10 @@ body {
   .campus-crossfade-base {
     animation: none;
     opacity: 1;
+  }
+
+  .pws-event-pulse {
+    animation: none;
   }
 }
 

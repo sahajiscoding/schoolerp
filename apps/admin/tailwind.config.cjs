@@ -35,6 +35,7 @@ module.exports = {
           main: "#5A6638",
           primary: "#5A6638",
           sidebarPrimary: "#5A6638",
+          sidebar: "#FAFAFA",
           accent: "#7C8D4E",
           accentSoft: "#7C8D4E",
           hover: "#4B562F",
@@ -43,6 +44,10 @@ module.exports = {
           sidebarRing: "#687641",
           onPrimary: "#FFFFFF",
           onAccent: "#FFFFFF",
+          foreground: "#020817",
+          dark: "#020817",
+          darkBorder: "#1E293B",
+          darkMuted: "#94A3B8",
         },
         status: {
           present: "#10b981",

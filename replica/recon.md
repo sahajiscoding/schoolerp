@@ -4,9 +4,9 @@ Scope: 1:1 functional + visual copy of the reference ERP at `https://pws.schoolf
 against the live clone at `https://schoolerp-desktop.vercel.app/login`.
 For: Pacific World School (single-school ERP, teachers + students + admin).
 Date: 2026-11-07
-Method: replica-recon (clean-room: public pages + Marion's own account only;
-no scraping behind login, no others' accounts). Dashboard is login-gated —
-everything behind `/login` is marked **guess** below.
+Method: replica-recon (clean-room: public pages + the owner's authorized student session;
+no bundles/private APIs copied, no other accounts). Login plus the authenticated shell and
+student dashboard are live-DOM measured; unvisited module internals remain **guess** below.
 
 ## OLIVE LOCK — owner decision (2026-11-07)
 
@@ -54,39 +54,40 @@ role-gated (admin / teacher / student), demo-isolated in the clone.
 ## Screens
 
 Legend: **[measured]** = read live via DOM, **[spec]** = from owner specs,
-**[guess]** = behind login, inferred, NOT scraped. Dashboard is login-gated — all
-S02+ layout details are guesses until Marion's own account is observed.
+**[guess]** = behind login, inferred, NOT scraped. Login plus the authenticated shell
+and student dashboard are live-DOM measured; S07–S08 are live-Supabase wired; other
+module internals remain **guess** below.
 
 | ID | screen | route / how to reach | purpose | key components | states seen |
 | --- | --- | --- | --- | --- | --- |
 | S01 | Login | `/login` **[measured]** | account picker + school form | identity button, login form, password toggle, "I forgot my password" link, remembered account | filled (dark mode), empty **[guess]**, error **[guess]** |
-| S02 | AppShell | sidebar/topbar on every authed page **[spec+guess]** | role-aware nav, notifications, profile menu, mobile drawer | sidebar nav, topbar, notification badge, avatar dropdown, theme toggle | filled **[guess]**, mobile drawer **[guess]** |
-| S03 | Dashboard | `/dashboard` **[guess]** | student executive summary + upcoming events | greeting banner, StatCards, homework list, events list | filled, empty **[guess]** |
+| S02 | AppShell | sidebar/topbar on every authed page **[measured: student]** | role-aware nav, notifications, profile menu, mobile drawer | olive sticky header, 20% fixed sidebar, lucide nav, numeric notification badge, account dropdown, theme toggle, collapse controls, fixed footer, assistant tab | filled measured; staff/mobile variants code-verified |
+| S03 | Dashboard | `/dashboard` **[measured: student]** | student executive summary + upcoming events | profile/greeting hero, recent-actions empty state, four-row scrollable event card | filled measured in light/dark; anonymized clone content |
 | S04 | Approvals | `/approvals?page=1&limit=10` **[spec]** | leave status + approvals table | table w/ pagination, approve/reject | filled, empty **[guess]** |
 | S05 | Course Progress | `/course-progress` **[spec]** | syllabus + chapter progress | progress bars, goal list | filled, empty **[guess]** |
 | S06 | Events | `/events` **[spec]** | academic calendar | month calendar, event list | filled, empty **[guess]** |
-| S07 | Homeworks | `/homeworks` **[spec]** | assignment hub + worksheets | hub cards, worksheets filter | filled, empty **[guess]** |
-| S08 | Homework Submit | `/homeworks/:id/submit` **[spec]** | two-tab submission + rich-text editor | tabs, Tiptap editor, file attach | filled, error **[guess]** |
+| S07 | Homeworks | `/homeworks` **[measured: live-wired]** | assignment hub + worksheets | hub cards, worksheets filter, publish RPC, Storage upload | filled measured in demo; live Supabase wired (0006) |
+| S08 | Homework Submit | `/homeworks/:id/submit` **[measured: live-wired]** | two-tab submission + rich-text editor | tabs, file attach, submission RPC, signed URL | filled measured in demo; live Supabase wired (0006) |
 | S09 | Study Room | `/study-room` **[spec]** | study materials & booklets | material list, share PDF | filled, empty **[guess]** |
-| S10 | My Library | `/my-library?page=1&limit=10` **[spec]** | borrowed-books ledger + fines | ledger table, fine badges | filled, empty **[guess]** |
-| S11 | Issue Book | `/issue-book?member_able_type=students` **[spec]** | book catalog + reservation | search, reserve | filled, empty **[guess]** |
+| S10 | My Library | `/my-library?page=1&limit=10` **[measured: live-wired]** | borrowed-books ledger + fines | ledger table, fine badges, issue/reserve/return RPCs | filled measured in demo; live Supabase wired (0007) |
+| S11 | Issue Book | `/issue-book?member_able_type=students` **[measured: live-wired]** | book catalog + reservation | search, reserve RPC | filled measured in demo; live Supabase wired (0007) |
 | S12 | Digital Library | `/digital-library` **[spec]** | digital e-books catalog | search + e-book cards | filled, empty **[guess]** |
 | S13 | Report Cards | `/examination-report-cards?page=1&limit=10` **[spec]** | report-card PDFs + marksheets | table, PDF links, grade badges | filled, empty **[guess]** |
 | S14 | Attendance | `/my-attendance` **[spec]** | attendance matrix + gauge + Apply Leave | matrix, radial gauge, dialog | filled **[guess]** |
-| S15 | Fees | `/fee-collections/create?student=:id` **[spec]** | fee dashboard + payment ledger | ledger, pay actions, sibling discount | filled **[guess]** |
+| S15 | Fees | `/fee-collections/create?student=:id` **[measured: live-wired]** | fee dashboard + payment ledger | ledger, pay actions RPC, sibling link RPC | filled measured in demo; live Supabase wired (0008) |
 | S16 | Gallery | `/school-gallery?page=1` **[spec]** | albums + galleries | album grid, pagination | filled, empty **[guess]** |
 | S17 | Album viewer | `/school-gallery/:albumId/:mediaId` **[spec]** | single media viewer | large media, prev/next | filled **[guess]** |
 | S18 | Circulars | `/circulars?page=1&limit=10` **[spec]** | notices + circulars | list w/ pagination | filled **[guess]** |
 | S19 | Circular detail | `/circulars/:id` **[spec]** | detail + download | body, download | filled **[guess]** |
-| S20 | Declaration forms | `/declaration-forms?page=1&limit=10` **[spec]** | legal undertakings + consents | sign flow | filled **[guess]** |
+| S20 | Declaration forms | `/declaration-forms?page=1&limit=10` **[measured: live-wired]** | legal undertakings + consents | sign flow, sign RPC | filled measured in demo; live Supabase wired (0009) |
 | S21 | Messages inbox | `/messages?box=inbox&page=1&limit=10` **[spec]** | inbox/sent | thread list | filled, empty **[guess]** |
 | S22 | Message create | `/messages/create` **[spec]** | compose to teachers/admins | recipient picker, body | filled, error **[guess]** |
 | S23 | Message thread | `/messages/:id` **[spec]** | thread detail + reply | thread, reply box | filled **[guess]** |
-| S24 | Polls | `/polls` **[spec]** | active surveys | vote cards | filled, empty **[guess]** |
+| S24 | Polls | `/polls` **[measured: live-wired]** | active surveys | vote cards, vote RPC | filled measured in demo; live Supabase wired (0009) |
 | S25 | Profile | `/profile` **[spec]** | 7-tab dossier + change password | tabs, password form | filled **[guess]** |
 | S26 | Demo banner | persistent in demo sessions **[spec]** | "sample data only" notice + Reset/Exit | banner, reset | demo only |
 
-Counts: 26 screens (S01 measured; S02–S26 spec-scoped with guess-marked internals).
+Counts: 26 screens (S01–S03, S07–S08, S10–S12, S15, S20, S24 measured: live-wired; S04–S06, S09, S13–S14, S16–S19, S21–S23, S25–S26 spec-scoped with guess-marked internals).
 
 ## Flows
 
@@ -181,7 +182,7 @@ parent_links, transport_area_routes, transport_vehicles
 
 Relationships: student 1-n submissions; teacher 1-n homework; homework 1-n submissions;
 section 1-n students; student 1-n leaves; student 1-n fees; album 1-n media.
-ALL of S02+ internals are **guesses** (login-gated).
+S02–S03 are measured from the owner's authorized student session. S04+ internals remain **guesses** until visited and measured.
 
 ## Feature matrix
 

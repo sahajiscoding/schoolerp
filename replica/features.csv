@@ -3,13 +3,13 @@ School login form with olive primary button,login,must,yes,yes,strict parity: bg
 Account picker + use another account,login,must,yes,yes,remembered account in localStorage
 I forgot my password link,login,must,yes,yes,button shows admin-reset notice
 Try a demo Admin/Teacher/Student,login,must,yes,yes,browser-only sessionStorage demo; supersedes reference (clone addition)
-Dashboard greeting banner + StatCards,dashboard,must,yes,yes,role-aware greeting
-Dashboard homework + upcoming events,dashboard,must,yes,yes,student assignments + events
+Dashboard greeting banner + StatCards,dashboard,must,yes,yes,student hero/recent-actions live-DOM matched 2026-11-07; staff dashboards retained
+Dashboard homework + upcoming events,dashboard,must,yes,yes,reference four-row events card matched; multi-day seed event expands per day
 Approvals leave table with pagination,approvals,must,yes,yes,class-teacher routing; page/limit honored
 Course progress goals,progress,must,yes,yes,teacher adds goals per student
 Events month calendar + scoping,events,must,yes,yes,admin school-wide / teacher class-only
-Homework hub + worksheets,homeworks,must,yes,yes,teacher name on cards; attachments
-Homework submit two-tab editor,homeworks,must,yes,partial,rich text via textarea; Tiptap pending
+Homework hub + worksheets,homeworks,must,yes,yes,live Supabase wired: teacher publishes to taught sections via RPC; student sees targeted section assignments only
+Homework submit two-tab editor,homeworks,must,yes,yes,live Supabase wired: student-owned submission RPC, private Storage signed URLs (10MB + MIME); Tiptap pending
 Study room share PDF,study-room,must,yes,yes,teacher/admin share; student opens
 My Library borrowed ledger + fines,library,must,yes,yes,issue/return/reserve
 Issue Book catalog + reservation,library,must,yes,yes,member_able_type honored
@@ -24,9 +24,9 @@ Declaration forms sign, declarations,must,yes,yes,compose + sign
 Messages inbox/sent + compose + thread,messages,must,yes,yes,teacher<->student only; admin read-only
 Polls create + vote,polls,must,yes,yes,active surveys
 Profile 7-tab dossier + change password,profile,must,yes,yes,tabbed dossier
-AppShell sidebar/topbar + notifications + theme,shell,must,yes,yes,role-aware nav; daylight auto 05:00-18:00
+AppShell sidebar/topbar + notifications + theme,shell,must,yes,yes,live-DOM matched 2026-11-07; role-aware nav; daylight auto; safe no-token assistant fallback
 Old->new route redirects with query strings,routes,must,yes,yes,QueryRedirect preserves search verbatim
-Live Supabase wiring module by module,backend,must,yes,no,not yet; demo store only (PROJECT_STATUS next)
+Live Supabase wiring module by module,backend,must,yes,yes,Homeworks/Library/Fees/Communications/Approvals/Events/Course Progress done (0006-0012 + rls tests); Study Room → Digital Library → Gallery → Circulars → Declarations → Messages → Polls → Profile → Attendance → People → Classes → Subjects → Teaching Assignments → Enrollments → Audit Log next
 Storage signed uploads 10MB + MIME,backend,should,yes,partial,client limit enforced; signed URLs pending
 Notifications push + unread counts,notifications,should,yes,partial,in-app counts yes; push pending
 Parent session + switch-student,auth,should,yes,no,parent_links table exists; UI pending

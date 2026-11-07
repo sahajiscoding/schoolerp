@@ -57,6 +57,8 @@ export interface Assignment {
   instructions: string | null;
   due_at: string | null;
   attachment_path: string | null;
+  kind: 'HOMEWORK' | 'ASSIGNMENT';
+  subject_id: string | null;
   published_at: string;
   created_at: string;
 }
@@ -172,11 +174,33 @@ export interface Database {
       unread_counts: { Row: { user_id: string; unread_notices: number; unread_messages: number }; Relationships: [] };
     };
     Functions: {
-      current_role: { Args: never; Returns: string };
+      app_role: { Args: never; Returns: string };
       is_admin: { Args: never; Returns: boolean };
-      teaches_section: { Args: { section_id: string }; Returns: boolean };
-      is_enrolled: { Args: { student_id: string }; Returns: boolean };
-      is_thread_participant: { Args: { thread_id: string }; Returns: boolean };
+      teaches_section: { Args: { p_section_id: string }; Returns: boolean };
+      is_enrolled: { Args: { p_student_id: string }; Returns: boolean };
+      is_thread_participant: { Args: { p_thread_id: string }; Returns: boolean };
+      is_assignment_recipient: {
+        Args: { p_assignment_id: string; p_student_id: string };
+        Returns: boolean;
+      };
+      publish_assignment: {
+        Args: {
+          p_title: string;
+          p_instructions: string | null;
+          p_due_at: string;
+          p_kind: 'HOMEWORK' | 'ASSIGNMENT';
+          p_subject_id: string;
+          p_section_ids: string[];
+          p_student_ids: string[];
+          p_attachment_path: string | null;
+        };
+        Returns: Assignment;
+      };
+      submit_assignment: {
+        Args: { p_assignment_id: string; p_body: string | null; p_file_path: string | null };
+        Returns: Submission;
+      };
+      review_submission: { Args: { p_submission_id: string }; Returns: Submission };
     };
     CompositeTypes: Record<string, unknown>;
     Enums: Record<string, unknown>;

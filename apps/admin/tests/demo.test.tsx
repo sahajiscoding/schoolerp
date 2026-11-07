@@ -56,3 +56,13 @@ it('keeps an existing demo session isolated from real sign-in', async () => {
   expect(window.location.pathname).toBe('/dashboard');
   expect(createClient).not.toHaveBeenCalled();
 });
+
+it('keeps administrators read-only on academic homework content', async () => {
+  sessionStorage.setItem('pws.demo.session', '1');
+  sessionStorage.setItem('pws.demo.role', 'admin');
+  window.history.replaceState(null, '', '/homeworks');
+  render(<App />);
+
+  await screen.findByRole('heading', { name: 'Homeworks' });
+  expect(screen.queryByRole('button', { name: 'New homework' })).toBeNull();
+});

@@ -1,9 +1,10 @@
 import * as React from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { BellDot } from "lucide-react";
 import type { Role } from "../lib/types";
 import { cn } from "../lib/utils";
-import { FiBell, FiAlertCircle, FiUser, FiChevronDown } from "react-icons/fi";
+import { FiAlertCircle, FiUser, FiChevronDown, FiX } from "react-icons/fi";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "olive" | "terracotta" | "navy" | "accent" | "outline" | "ghost" | "danger";
@@ -245,6 +246,8 @@ interface NotificationsDropdownProps {
   onMarkAllRead: () => void;
   open?: boolean;
   onToggle?: () => void;
+  showCount?: boolean;
+  triggerClassName?: string;
 }
 
 export function NotificationsDropdown({
@@ -253,6 +256,8 @@ export function NotificationsDropdown({
   onMarkAllRead,
   open,
   onToggle,
+  showCount = false,
+  triggerClassName,
 }: NotificationsDropdownProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = open ?? internalOpen;
@@ -269,14 +274,24 @@ export function NotificationsDropdown({
     <div className="relative">
       <button
         onClick={toggle}
-        className="relative shrink-0 rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-ink dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-        aria-label="Notifications"
+        className={cn(
+          "relative shrink-0 rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-ink dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white",
+          triggerClassName,
+        )}
+        aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
         aria-expanded={isOpen}
       >
-        <FiBell size={18} />
+        <BellDot className="h-[18px] w-[18px]" />
         {unread > 0 && (
-          <span className="absolute right-1 top-1 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-            {unread > 9 ? "9+" : unread}
+          <span
+            className={cn(
+              "absolute flex items-center justify-center rounded-full bg-rose-500 font-semibold leading-none text-white",
+              showCount
+                ? "-right-0.5 -top-0.5 h-[18px] min-w-[18px] px-1 text-[10px] shadow-sm ring-2 ring-brand-primary"
+                : "right-1 top-1 h-2 w-2 text-[10px]",
+            )}
+          >
+            {showCount ? unread : null}
           </span>
         )}
       </button>
@@ -382,5 +397,30 @@ export function RoleSwitcher({ roles, current, onChange }: RoleSwitcherProps) {
         </div>
       )}
     </div>
+  );
+}
+
+interface ModalProps {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+export function Modal({ title, onClose, children }: ModalProps) {
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-ink dark:text-white">{title}</h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+        >
+          <FiX size={14} />
+        </Button>
+      </div>
+      {children}
+    </Card>
   );
 }

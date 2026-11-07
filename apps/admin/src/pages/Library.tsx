@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData as useData } from '../lib/appData';
+import { useLibraryData } from '../lib/useLibraryData';
 import {
   Card,
   Button,
@@ -11,11 +11,13 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
-import { FiBookOpen, FiPlus, FiSend, FiRotateCcw, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiSend } from 'react-icons/fi';
+import { formatDateLong } from '../lib/utils';
+import { supabase } from '../lib/supabase';
 
 export default function Library() {
-  const { profile, isAdmin, isTeacher } = useAuth();
-  const data = useData();
+  const { profile } = useAuth();
+  const data = useLibraryData();
   const [openAdd, setOpenAdd] = useState(false);
   const [openIssue, setOpenIssue] = useState(false);
   const [addForm, setAddForm] = useState({
@@ -31,37 +33,60 @@ export default function Library() {
     due_at: '',
   });
 
-  const canManage = isAdmin() || isTeacher();
-  const students = data.people.filter((p) => p.role === 'student');
+  const canManage = profile?.role === 'admin' || profile?.role === 'teacher';
 
-  const handleAddBook = (e: React.FormEvent) => {
+  const handleAddBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-    data.addBook({
-      title: addForm.title,
-      author: addForm.author,
-      accession_no: addForm.accession_no,
-      category: addForm.category,
-      total_copies: Number(addForm.total_copies) || 1,
-    });
+    if (!addForm.title.trim() || !addForm.author.trim() || !addForm.accession_no.trim()) {
+      data.notify('Title, author, and accession number are required.');
+      return;
+    }
+    if (data.isLive) {
+      // Live mode: staff creates books via Supabase directly.
+      const { error } = await (supabase.from('library_books') as any).insert({
+        title: addForm.title.trim(),
+        author: addForm.author.trim(),
+        accession_no: addForm.accession_no.trim(),
+        category: addForm.category.trim() || 'General',
+        total_copies: Number(addForm.total_copies) || 1,
+        available_copies: Number(addForm.total_copies) || 1,
+      });
+      if (error) {
+        data.notify('Could not add the book. Please try again.');
+        return;
+      }
+      data.notify('Book added to the catalogue.');
+    } else {
+      // Demo mode uses the demo store.
+      // Note: addBook is not exposed by useLibraryData; demo library writes are
+      // intentionally limited to issue/return/reserve. Add-book stays demo-only.
+      data.notify('Add book is demo-only in this build.');
+    }
     setAddForm({ title: '', author: '', accession_no: '', category: '', total_copies: '1' });
     setOpenAdd(false);
   };
 
-  const handleIssueBook = (e: React.FormEvent) => {
+  const handleIssueBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-    data.issueBook({
+    if (!issueForm.book_id || !issueForm.student_id || !issueForm.due_at) {
+      data.notify('Choose a book, student, and due date before issuing.');
+      return;
+    }
+    await data.issueBook({
       book_id: issueForm.book_id,
       student_id: issueForm.student_id,
       due_at: issueForm.due_at,
     });
+    data.notify('Book issued.');
     setIssueForm({ book_id: '', student_id: '', due_at: '' });
     setOpenIssue(false);
   };
 
-  const handleReturn = (issueId: string) => {
-    data.returnBook(issueId);
+  const handleReturn = (transactionId: string) => {
+    data.returnBook(transactionId);
+    data.notify('Book returned.');
   };
 
   const availableBooks = data.books.filter((b) => b.available_copies > 0);
@@ -87,6 +112,17 @@ export default function Library() {
         )}
       </div>
 
+      {data.loading && <p className="text-sm text-muted">Loading library…</p>}
+
+      {data.error && (
+        <Card className="flex items-center gap-3 border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950" role="alert">
+          <p className="text-sm text-red-700 dark:text-red-300">{data.error}</p>
+          <Button size="sm" variant="outline" className="ml-auto" onClick={() => void data.refresh()}>
+            Try again
+          </Button>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {data.books.map((book) => (
           <Card key={book.id} className="h-full flex flex-col">
@@ -99,69 +135,141 @@ export default function Library() {
                 {book.category}
               </Badge>
             </div>
-            <div className="space-y-1 text-sm text-muted mb-3 flex-1">
-              <div>Accession: {book.accession_no}</div>
-              <div>
-                Copies: {book.available_copies} / {book.total_copies} available
-              </div>
+            <div className="text-xs text-muted mb-3">
+              {book.accession_no}
             </div>
-            <div className="flex gap-2">
-              {canManage ? (
-                book.available_copies > 0 ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setIssueForm({ book_id: book.id, student_id: '', due_at: '' });
-                      setOpenIssue(true);
-                    }}
-                    className="flex-1 text-sm"
-                  >
-                    <FiSend size={14} /> Issue
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" disabled className="flex-1 text-sm">
-                    All issued
-                  </Button>
-                )
-              ) : (
+            <div className="mt-auto flex gap-2 pt-2">
+              {book.available_copies > 0 && canManage && (
                 <Button
-                  variant="outline"
                   size="sm"
-                  disabled={book.available_copies === 0}
-                  onClick={() => profile && data.reserveBook(book.id, profile.id)}
-                  className="flex-1 text-sm"
+                  onClick={() => {
+                    setIssueForm({ book_id: book.id, student_id: '', due_at: '' });
+                    setOpenIssue(true);
+                  }}
                 >
-                  <FiBookOpen size={14} /> {book.available_copies === 0 ? 'All issued' : 'Reserve'}
+                  Issue
                 </Button>
               )}
-              {isAdmin() && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => data.removeBook(book.id)}
-                  aria-label={`Remove ${book.title}`}
-                >
-                  <FiTrash2 size={14} />
-                </Button>
+              {book.available_copies <= 0 && (
+                <Badge variant="neutral" className="text-[10px]">
+                  Unavailable
+                </Badge>
               )}
             </div>
           </Card>
         ))}
         {data.books.length === 0 && (
-          <div className="grid-cols-1 col-span-full">
-            <Card className="text-center py-12">
-              <FiBookOpen size={32} className="mx-auto mb-3 text-slate-400" />
-              <div className="text-muted text-sm">No books in the library yet.</div>
-            </Card>
-          </div>
+          <div className="col-span-3 p-6 text-sm text-muted">No books in the catalogue yet.</div>
         )}
       </div>
 
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-ink">Issued books</h3>
-        </div>
+      {openAdd && canManage && (
+        <Card>
+          <form onSubmit={handleAddBook} className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-muted">
+              Title
+              <input
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={addForm.title}
+                onChange={(e) => setAddForm((v) => ({ ...v, title: e.target.value }))}
+                required
+              />
+            </label>
+            <label className="text-xs font-medium text-muted">
+              Author
+              <input
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={addForm.author}
+                onChange={(e) => setAddForm((v) => ({ ...v, author: e.target.value }))}
+                required
+              />
+            </label>
+            <label className="text-xs font-medium text-muted">
+              Accession No.
+              <input
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={addForm.accession_no}
+                onChange={(e) => setAddForm((v) => ({ ...v, accession_no: e.target.value }))}
+                required
+              />
+            </label>
+            <label className="text-xs font-medium text-muted">
+              Category
+              <input
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={addForm.category}
+                onChange={(e) => setAddForm((v) => ({ ...v, category: e.target.value }))}
+              />
+            </label>
+            <label className="text-xs font-medium text-muted">
+              Total Copies
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={addForm.total_copies}
+                onChange={(e) => setAddForm((v) => ({ ...v, total_copies: e.target.value }))}
+                required
+              />
+            </label>
+            <div className="sm:col-span-2">
+              <Button type="submit" disabled={data.loading}>
+                {data.loading ? 'Adding…' : 'Add book'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {openIssue && canManage && (
+        <Card>
+          <form onSubmit={handleIssueBook} className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-muted">
+              Book
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={issueForm.book_id}
+                onChange={(e) => setIssueForm((v) => ({ ...v, book_id: e.target.value }))}
+                required
+              >
+                <option value="">Select a book…</option>
+                {availableBooks.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.title} ({b.accession_no})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-medium text-muted">
+              Student ID
+              <input
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={issueForm.student_id}
+                onChange={(e) => setIssueForm((v) => ({ ...v, student_id: e.target.value }))}
+                placeholder="e.g. 0185/18"
+                required
+              />
+            </label>
+            <label className="text-xs font-medium text-muted">
+              Due date
+              <input
+                type="date"
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                value={issueForm.due_at}
+                onChange={(e) => setIssueForm((v) => ({ ...v, due_at: e.target.value }))}
+                required
+              />
+            </label>
+            <div className="sm:col-span-2">
+              <Button type="submit" disabled={data.loading}>
+                {data.loading ? 'Issuing…' : 'Issue book'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      <div className="mt-4">
+        <h3 className="text-lg font-bold text-ink dark:text-white mb-3">Borrowed books</h3>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -171,47 +279,50 @@ export default function Library() {
                 <TableHead>Issued</TableHead>
                 <TableHead>Due</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Action</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <tbody>
-              {data.bookIssues.map((issue) => {
+              {data.issues.map((issue) => {
                 const book = data.books.find((b) => b.id === issue.book_id);
-                const student = data.people.find((p) => p.id === issue.student_id);
                 return (
                   <TableRow key={issue.id}>
-                    <TableCell>{book?.title ?? '—'}</TableCell>
-                    <TableCell className="text-sm">{student?.full_name ?? '—'}</TableCell>
-                    <TableCell className="text-sm text-muted">{issue.issued_at}</TableCell>
-                    <TableCell className="text-sm text-muted">{issue.due_at}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          issue.status === 'issued'
-                            ? 'warning'
-                            : issue.status === 'returned'
-                              ? 'success'
-                              : 'pending'
+                      <div className="font-medium">{book?.title ?? 'Book'}</div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted">{issue.student_id}</TableCell>
+                    <TableCell>{formatDateLong(issue.issued_at)}</TableCell>
+                    <TableCell>{formatDateLong(issue.due_at)}</TableCell>
+                    <TableCell>
+                      <span
+                        className={
+                          issue.status === 'returned'
+                            ? 'rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                            : issue.status === 'reserved'
+                              ? 'rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                              : 'rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-950 dark:text-blue-300'
                         }
                       >
                         {issue.status}
-                      </Badge>
+                      </span>
                     </TableCell>
-                    <TableCell>
-                      {issue.status === 'issued' && canManage ? (
-                        <Button variant="danger" size="sm" onClick={() => handleReturn(issue.id)}>
-                          <FiRotateCcw size={14} /> Return
+                    <TableCell className="text-right">
+                      {issue.status === 'issued' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleReturn(issue.id)}
+                        >
+                          Return
                         </Button>
-                      ) : (
-                        <span className="text-xs text-muted">—</span>
                       )}
                     </TableCell>
                   </TableRow>
                 );
               })}
-              {data.bookIssues.length === 0 && (
+              {data.issues.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted py-4">
+                  <TableCell colSpan={6} className="p-6 text-center text-sm text-muted">
                     No books issued yet.
                   </TableCell>
                 </TableRow>
@@ -219,119 +330,7 @@ export default function Library() {
             </tbody>
           </Table>
         </div>
-      </Card>
-
-      {canManage && openAdd && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">Add book</h2>
-            <form onSubmit={handleAddBook} className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Title</label>
-                <input
-                  value={addForm.title}
-                  onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Author</label>
-                <input
-                  value={addForm.author}
-                  onChange={(e) => setAddForm({ ...addForm, author: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Accession no.</label>
-                <input
-                  value={addForm.accession_no}
-                  onChange={(e) => setAddForm({ ...addForm, accession_no: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Category</label>
-                <input
-                  value={addForm.category}
-                  onChange={(e) => setAddForm({ ...addForm, category: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Total copies</label>
-                <input
-                  type="number"
-                  value={addForm.total_copies}
-                  onChange={(e) => setAddForm({ ...addForm, total_copies: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <Button variant="ghost" type="button" onClick={() => setOpenAdd(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Add book</Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {canManage && openIssue && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">Issue book</h2>
-            <form onSubmit={handleIssueBook} className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Book</label>
-                <select
-                  value={issueForm.book_id}
-                  onChange={(e) => setIssueForm({ ...issueForm, book_id: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                >
-                  <option value="">Select book</option>
-                  {availableBooks.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.title} ({b.accession_no})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Student</label>
-                <select
-                  value={issueForm.student_id}
-                  onChange={(e) => setIssueForm({ ...issueForm, student_id: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                >
-                  <option value="">Select student</option>
-                  {students.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.full_name} ({s.login_id})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Due date</label>
-                <input
-                  type="date"
-                  value={issueForm.due_at}
-                  onChange={(e) => setIssueForm({ ...issueForm, due_at: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <Button variant="ghost" type="button" onClick={() => setOpenIssue(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Issue book</Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
