@@ -31,13 +31,19 @@ body {
   background: rgb(100 116 139 / 0.3);
 }
 
+/*
+ * Campus photo crossfade — timed to the reference site's measured cadence:
+ * 12s cycle, each photo visible ~6s, 700ms ease-in-out blend, both layers
+ * animating (the base layer carries the complementary phase so exactly one
+ * photo is opaque at any moment).
+ */
 @keyframes campus-crossfade {
   0%,
-  40% {
+  5.83% {
     opacity: 0;
   }
   50%,
-  90% {
+  55.83% {
     opacity: 1;
   }
   100% {
@@ -45,8 +51,26 @@ body {
   }
 }
 
+@keyframes campus-crossfade-base {
+  0%,
+  5.83% {
+    opacity: 1;
+  }
+  50%,
+  55.83% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .campus-crossfade {
-  animation: campus-crossfade 16s ease-in-out infinite;
+  animation: campus-crossfade 12s ease-in-out infinite;
+}
+
+.campus-crossfade-base {
+  animation: campus-crossfade-base 12s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -54,4 +78,58 @@ body {
     animation: none;
     opacity: 0;
   }
+  .campus-crossfade-base {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/*
+ * Login "Remember Me" checkbox — mirrors the reference site's `.form-checkbox`
+ * (appearance:none, white box, gray border, #2563eb blue check). Defined in
+ * plain CSS because the check glyph is a background image.
+ */
+.pws-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  height: 1rem;
+  width: 1rem;
+  user-select: none;
+  color: #2563eb;
+  background-color: #fff;
+  border: 1px solid #6b7280;
+  border-radius: 0;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pws-checkbox:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2563eb;
+}
+
+.pws-checkbox:checked {
+  background-color: #2563eb;
+  border-color: #2563eb;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L1.22 8.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.dark .pws-checkbox {
+  background-color: #1e293b;
+  border-color: #475569;
+}
+
+.dark .pws-checkbox:checked {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.dark .pws-checkbox:focus {
+  box-shadow: 0 0 0 2px #020817, 0 0 0 4px #2563eb;
 }

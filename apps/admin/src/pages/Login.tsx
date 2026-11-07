@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FiBookOpen,
@@ -17,6 +17,9 @@ import { supabase } from '../lib/supabase';
 import { isDemoSession } from '../lib/demoSession';
 
 const REMEMBERED_ACCOUNT_KEY = 'pws.rememberedAccount';
+
+/** Reference site's document title (owner's own property). */
+const REFERENCE_TITLE = 'Login - Pacific world school - School for Schools';
 
 /**
  * Passwordless demo entry: one small button that reveals the three roles.
@@ -74,6 +77,16 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const loginIdRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+
+  // Reference-parity tab title; restored on unmount so other routes keep
+  // the app-wide title from index.html.
+  useEffect(() => {
+    const previous = document.title;
+    document.title = REFERENCE_TITLE;
+    return () => {
+      document.title = previous;
+    };
+  }, []);
 
   const rememberAccount = async (id: string) => {
     let fullName = '';
@@ -166,22 +179,24 @@ export default function Login() {
   };
 
   return (
-    <div className="grid min-h-screen w-full grid-cols-1 bg-white text-ink dark:bg-slate-900 dark:text-white md:grid-cols-2">
-      <div className="flex min-h-screen flex-col justify-between bg-white p-4 dark:bg-slate-900 md:p-8">
-        <h1 className="text-xl font-bold text-ink md:text-2xl">PACIFIC WORLD SCHOOL</h1>
+    <div className="grid min-h-screen w-full grid-cols-1 bg-white text-[#020817] dark:bg-[#020817] dark:text-slate-50 md:grid-cols-2">
+      <div className="flex min-h-screen flex-col justify-between bg-white p-4 dark:bg-[#020817] md:p-8">
+        <h1 className="text-xl font-bold text-[#020817] dark:text-slate-50 md:text-2xl">
+          PACIFIC WORLD SCHOOL
+        </h1>
 
         <div className="mx-auto flex w-full max-w-lg flex-grow flex-col items-center justify-center">
-          <div className="w-full">
+          <div>
             <div className="mb-4 flex flex-col items-center justify-center text-center md:mb-6">
               <img
                 src="/brand/pws-logo.png"
                 alt="Pacific World School"
-                className="mx-auto h-auto w-[80px] select-none md:w-[100px]"
+                className="mx-auto h-auto w-[80px] md:w-[100px]"
               />
-              <h3 className="mb-1 text-xl font-semibold text-ink md:text-2xl">
+              <h3 className="mb-1 text-xl font-semibold text-[#020817] dark:text-slate-50 md:text-2xl">
                 Login to your account
               </h3>
-              <p className="text-xs text-slate-500 md:text-sm">
+              <p className="text-xs text-slate-500 dark:text-slate-400 md:text-sm">
                 Welcome back, Please enter your email &amp; password to continue.
               </p>
             </div>
@@ -195,7 +210,7 @@ export default function Login() {
                 <div>
                   <label
                     htmlFor="login-id"
-                    className="mb-2 block text-sm font-medium text-ink"
+                    className="mb-2 block cursor-pointer break-words text-sm font-semibold text-[#020817] dark:text-slate-400 sm:truncate"
                   >
                     Your Email/ UserId
                   </label>
@@ -209,95 +224,101 @@ export default function Login() {
                     spellCheck={false}
                     value={loginId}
                     onChange={(e) => setLoginId(e.target.value)}
-                    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-ring"
+                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-[#020817] shadow-sm transition-colors placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring dark:border-slate-400 dark:bg-[#020817] dark:text-slate-50 dark:placeholder:text-slate-400"
                   />
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="password"
-                    className="mb-2 block text-sm font-medium text-ink"
-                  >
-                    Your Password
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      ref={passwordRef}
-                      id="password"
-                      name="password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-9 w-full rounded-e-none rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-ring"
-                    />
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="mb-2 block cursor-pointer break-words text-sm font-semibold text-[#020817] dark:text-slate-400 sm:truncate"
+                    >
+                      Your Password
+                    </label>
+                    <div className="flex items-center">
+                      <input
+                        ref={passwordRef}
+                        id="password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="h-9 w-full rounded-md rounded-e-none border border-e-0 border-slate-200 bg-white px-3 text-sm text-[#020817] shadow-sm transition-colors placeholder:text-slate-500 focus-visible:outline-none dark:border-slate-400 dark:bg-[#020817] dark:text-slate-50 dark:placeholder:text-slate-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((visible) => !visible)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        className="flex h-9 shrink-0 items-center justify-center rounded-e-md border border-l-0 border-slate-200 bg-white px-4 py-2 text-[#020817] shadow-sm transition-colors hover:bg-brand-accent hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring dark:border-slate-800 dark:bg-[#020817] dark:text-slate-50 dark:hover:border-brand-primary dark:hover:bg-brand-primary dark:hover:text-white"
+                      >
+                        {showPassword ? <FiEye size={24} /> : <FiEyeOff size={24} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between">
+                    <label className="flex cursor-pointer items-start gap-2">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="pws-checkbox"
+                      />
+                      <span className="text-sm font-semibold text-[#020817] dark:text-slate-400">
+                        Remember Me
+                      </span>
+                    </label>
                     <button
                       type="button"
-                      onClick={() => setShowPassword((visible) => !visible)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      className="flex h-9 w-10 shrink-0 items-center justify-center rounded-e-md border border-l-0 border-slate-300 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring"
+                      onClick={() =>
+                        setNotice('Ask your school administrator to reset your password.')
+                      }
+                      className="text-sm text-brand-primary hover:underline"
                     >
-                      {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                      I forgot my password
                     </button>
                   </div>
                 </div>
 
-                <div className="mt-2 flex items-center justify-between">
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-400 accent-brand-primary"
-                    />
-                    <span className="text-sm text-slate-500">Remember Me</span>
-                  </label>
+                <div className="flex flex-col space-y-6 justify-between">
+                  {notice && (
+                    <p role="status" className="text-sm text-slate-500 dark:text-slate-400">
+                      {notice}
+                    </p>
+                  )}
+
+                  {error && (
+                    <p role="alert" className="text-sm text-red-600">
+                      {error}
+                    </p>
+                  )}
+
                   <button
-                    type="button"
-                    onClick={() =>
-                      setNotice('Ask your school administrator to reset your password.')
-                    }
-                    className="text-sm text-brand-primary hover:text-brand-hover hover:underline"
+                    type="submit"
+                    disabled={loading}
+                    className="h-10 w-full rounded-md bg-brand-primary px-8 text-center text-sm font-medium text-white shadow transition-colors hover:bg-brand-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    I forgot my password
+                    {loading ? 'Logging in...' : 'Login'}
                   </button>
                 </div>
-
-                {notice && (
-                  <p role="status" className="text-sm text-slate-500">
-                    {notice}
-                  </p>
-                )}
-
-                {error && (
-                  <p role="alert" className="text-sm text-red-600">
-                    {error}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="h-10 w-full rounded-md bg-brand-primary px-8 text-center text-sm font-medium text-white shadow transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {loading ? 'Logging in...' : 'Login'}
-                </button>
               </form>
             ) : (
               <div className="mx-auto w-full max-w-[400px]">
                 <button
                   type="button"
                   onClick={openRememberedAccount}
-                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40"
+                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                 >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-slate-600">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                     {remembered ? getInitials(remembered) : ''}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium uppercase text-ink">
+                    <span className="block truncate text-sm font-medium uppercase text-[#020817] dark:text-white">
                       {remembered?.fullName.trim() || remembered?.loginId}
                     </span>
-                    <span className="block truncate text-xs text-slate-500">
+                    <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
                       {remembered?.loginId}
                     </span>
                   </span>
@@ -306,7 +327,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={useAnotherAccount}
-                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-4 text-sm text-slate-500 transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40"
+                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-4 text-sm text-slate-500 transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
                 >
                   <FiPlus size={16} />
                   Use another account
@@ -320,7 +341,7 @@ export default function Login() {
                   type="button"
                   onClick={() => setDemoOpen((open) => !open)}
                   aria-expanded={demoOpen}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:border-brand-primary hover:text-brand-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:border-brand-primary hover:text-brand-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400"
                 >
                   <FiPlay size={11} />
                   Try a demo
@@ -340,7 +361,7 @@ export default function Login() {
                         key={role}
                         type="button"
                         onClick={() => handleDemo(role)}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-brand-primary hover:bg-brand-primary hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-brand-primary hover:bg-brand-primary hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-ring dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
                       >
                         <Icon size={12} />
                         {label}
@@ -348,7 +369,7 @@ export default function Login() {
                     ))}
                   </div>
                 )}
-                <p className="mt-2 text-[11px] text-slate-400">
+                <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
                   Explore with sample data — no login needed.
                 </p>
               </div>
@@ -356,33 +377,33 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="text-xs capitalize text-slate-500 md:text-sm">
+        <p className="text-xs capitalize text-slate-500 dark:text-slate-400 md:text-sm">
           Pacific World School ©2026
         </p>
       </div>
 
       <section
         aria-label="Pacific World School campus"
-        className="relative hidden min-h-screen flex-col items-start justify-start overflow-hidden md:flex"
+        className="relative hidden min-h-screen flex-col items-center justify-start overflow-hidden md:flex"
       >
         <div className="absolute inset-0">
           <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/brand/campus-2.jpg')" }}
+            className="absolute inset-0 bg-cover bg-center campus-crossfade-base"
+            style={{ backgroundImage: "url('/brand/campus-1.jpg')" }}
           />
           <div
             className="absolute inset-0 bg-cover bg-center campus-crossfade"
-            style={{ backgroundImage: "url('/brand/campus-1.jpg')" }}
+            style={{ backgroundImage: "url('/brand/campus-2.jpg')" }}
           />
           <div className="absolute inset-0 bg-black/40" />
         </div>
 
         <div className="relative z-10 w-full px-6 pt-4 lg:px-10 lg:pt-6">
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-md transition-all duration-300 hover:bg-white/15 lg:p-8">
-            <h1 className="mb-4 border-b border-white/30 pb-4 text-2xl font-semibold text-white md:text-3xl">
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-6 shadow-2xl transition-all duration-300 hover:bg-white/15 lg:p-8">
+            <h1 className="mb-4 border-b border-white/30 pb-4 text-2xl font-semibold text-white transition-colors duration-300 md:text-3xl">
               Digital Excellence in Every Student&apos;s Achievement
             </h1>
-            <p className="pt-5 text-sm font-normal text-white md:text-base">
+            <p className="pt-5 text-sm font-normal text-white transition-colors duration-300 md:text-base">
               Tailored for PACIFIC WORLD SCHOOL, our innovative platform transforms the way
               student report cards are created, offering a seamless and efficient digital
               solution. Empowering teachers and students with technology that celebrates

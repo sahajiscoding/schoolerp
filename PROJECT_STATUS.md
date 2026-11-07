@@ -23,7 +23,7 @@ This file is the single source of truth for project state. Every agent must read
 | Helpers | `src/lib/utils.ts` | Dates, INR, CSV parser, `normalizeDob` (rejects 31 Feb), `passwordFromDob`, `gradeFor`, `printHtml` |
 | Supabase client | `src/lib/supabase.ts` | Reads `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`; `configHint()` names the missing pair |
 | Build config | `vite.config.ts` | `loadEnv(mode, cwd, '')` so **unprefixed** `SUPABASE_URL` works from `.env`; inlines both names via `define` |
-| Login | `src/pages/Login.tsx` | School design; always-visible **"Try a demo"** button (Admin / Teacher / Student), including with Supabase configured; remembered account |
+| Login | `src/pages/Login.tsx` | Rebuilt to reference parity (owner's site, 2026-11-07): layout, copy, logo/photos, `#020817` tokens, `.pws-checkbox`, measured crossfade, reference tab title; always-visible **"Try a demo"** button (Admin / Teacher / Student) including with Supabase configured; remembered account |
 | Demo entry | `src/contexts/AuthContext.tsx` | `signInAsDemo(role)` opens isolated `/demo` with a seeded role; `src/lib/demo.ts` defines the route boundary; no Supabase client is created inside `/demo` |
 
 ### Dashboard modules
@@ -168,6 +168,12 @@ have not been applied to that project from this environment.
 - Code change: `apps/admin/src/pages/DigitalLibrary.tsx` — no-op "Open e-book" fixed (navigates to `/study-room`).
 - Verified: admin `typecheck` clean, `lint` 0 errors (4 pre-existing warnings), `build` passes (428 modules), `test` 6/6 vitest pass; `contrast.py` exit 0; `parity.py` 85.2.
 - Remaining deltas in `replica/diff-report.md` punch list: dark chrome one step lighter than reference (`#0f172a`/`#1e293b` vs `#020817`), S01 font (spec-mandated Roboto vs reference system-ui), Tiptap pending (textarea today), live Supabase wiring pending.
+
+### Login page rebuilt against the owner's reference (2026-11-07)
+
+- Owner confirmed they own `https://pws.schoolforschools.ai/login` (full licenses), so `apps/admin/src/pages/Login.tsx` was rebuilt to match it from live DOM/computed-style recon (reference bundle not copied; original code per project convention). Brand assets needed no work: `apps/admin/public/brand/{pws-logo.png,campus-1.jpg,campus-2.jpg}` are SHA256-identical to the reference's S3 assets.
+- Matched: shrink-to-fit content column, 24/8/24px form gaps, labels 14px/600, foreground `#020817` (exact reference HSL token — Tailwind `slate-950` is `#020617`, 2 units off), `slate-200` input borders, seamless password field (`border-e-0` + `border-l-0` eye button, no focus ring), 24px eye icon in a 57px button, forgot-link olive + underline-only hover (reference never uses `--hover-primary` red), submit `hover:bg-brand-primary/90` (`#5a6638e6`) with `ring-1 ring-brand-ring`, `.pws-checkbox` custom blue `#2563eb` check mirroring the reference's `.form-checkbox`, crossfade retuned to the measured 12s cycle / ~6s per photo / 700ms blend (both layers animate; `campus-1.jpg` first), right glass card without `backdrop-blur-md`, dark mode to reference tokens (`#020817` panels/inputs, slate-400 borders/labels, slate-50 text), and the tab title `Login - Pacific world school - School for Schools` (restored on unmount). Clone-only features kept: demo picker, remembered-account card, notice/error states, `prefers-reduced-motion`.
+- Verified: `typecheck` clean, `lint` 0 errors (4 pre-existing warnings), `build` passes (dist CSS contains `#020817`, `#5a6638e6`, 12s crossfade, `pws-checkbox`), `test` 6/6 pass; live DOM diff of `localhost:5173/login` vs the reference matches on every measured property (light and dark). Note for future recon: in this environment the browser window does not render frames, so `transition-colors` elements report their pre-change value — inject `transition:none` before reading computed styles.
 
 ## Known gaps
 

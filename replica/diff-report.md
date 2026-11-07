@@ -47,6 +47,9 @@ Primary pair: white on `#5A6638` = 6.19:1 AAA. Text on bg: 17.06:1 AAA.
    dark `Card` surface toward `hsl(222.2,84%,4.9%)`; also dark border toward
    `hsl(217.2,32.6%,17.5%)` and dark muted toward `hsl(215,20.2%,65.1%)`.
    Owner decision needed before touching (concurrent accent work).
+   **S01/login itself is now exempt** — rebuilt 2026-11-07 against the live
+   reference with exact `#020817` light/dark tokens (see PROJECT_STATUS.md);
+   this item covers the rest of the app shell only.
 2. **S01 font**: reference renders system-ui, clone renders Roboto. Spec §3
    mandates Roboto — keep clone font; noting for completeness.
 3. **S01 capture mode**: reference measured in dark (local night), clone in light.
@@ -67,3 +70,7 @@ Primary pair: white on `#5A6638` = 6.19:1 AAA. Text on bg: 17.06:1 AAA.
 - `npm run test --workspace=apps/admin` — 6/6 vitest pass.
 - `contrast.py` — 0 AA failures (see above).
 - Code change this pass: `apps/admin/src/pages/DigitalLibrary.tsx` (Open e-book fix).
+- 2026-11-07 follow-up: `apps/admin/src/pages/Login.tsx` + `src/index.css`
+  rebuilt to live-reference parity (owner-confirmed). All S01 measurements in
+  the table above now match exactly except the Roboto/system-ui font delta
+  (item 2) and the documented mode difference (item 3).
