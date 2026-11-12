@@ -10,8 +10,11 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
-import { FiPlus } from 'react-icons/fi';
+import { Modal } from '../components/modal';
+import { EmptyState, MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
+import { FiBarChart2, FiPlus, FiTrendingUp, FiUsers } from 'react-icons/fi';
 
 const SUBJECTS = [
   'Artificial Intelligence',
@@ -41,6 +44,11 @@ export default function CourseProgress() {
 
   const students = data.people.filter((p) => p.role === 'student');
   const canAdd = isAdmin() || isTeacher();
+  const visibleProgress = isStudent() ? myProgress : data.courseProgress;
+  const averageProgress = visibleProgress.length
+    ? Math.round(visibleProgress.reduce((sum, entry) => sum + entry.percent, 0) / visibleProgress.length)
+    : 0;
+  const representedStudents = new Set(visibleProgress.map((entry) => entry.student_id)).size;
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,27 +80,29 @@ export default function CourseProgress() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Course Progress</h1>
-          <p className="text-muted">
-            Track subject-wise progress per student. Teachers and admins can add progress.
-          </p>
-        </div>
-        {canAdd && (
+    <Page>
+      <PageHeader
+        eyebrow="Academic progress"
+        title={isStudent() ? 'My progress' : 'Course progress'}
+        description={isStudent()
+          ? 'Your subject goals, grades and teacher remarks in one view.'
+          : 'Track subject-wise progress and record the next learning milestone.'}
+        meta={`${visibleProgress.length} progress records`}
+        actions={canAdd ? (
           <Button onClick={() => setOpen(true)}>
             <FiPlus size={16} /> Add progress
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
+
+      <MetricGrid className="xl:grid-cols-3">
+        <StatCard label="Progress records" value={visibleProgress.length} icon={FiBarChart2} />
+        <StatCard label="Average progress" value={`${averageProgress}%`} icon={FiTrendingUp} variant="neutral" />
+        <StatCard label={isStudent() ? 'Student view' : 'Students represented'} value={isStudent() ? 1 : representedStudents} icon={FiUsers} variant="terracotta" />
+      </MetricGrid>
 
       <Card>
-        <div className="mb-4">
-          <h3 className="text-lg font-bold text-ink">
-            {isStudent() ? 'My course progress' : 'All course progress'}
-          </h3>
-        </div>
+        <SectionHeading title={isStudent() ? 'My course progress' : 'All course progress'} description="Most recently updated goals appear first." />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -107,19 +117,19 @@ export default function CourseProgress() {
               </TableRow>
             </TableHeader>
             <tbody>
-              {(isStudent() ? myProgress : data.courseProgress)
+              {[...visibleProgress]
                 .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
                 .map((entry) => {
                   const student = data.people.find((p) => p.id === entry.student_id);
                   return (
                     <TableRow key={entry.id}>
-                      <TableCell>{student?.full_name ?? '—'}</TableCell>
+                      <TableCell className="font-bold">{student?.full_name ?? '—'}</TableCell>
                       <TableCell>{entry.subject}</TableCell>
                       <TableCell className="text-sm">{entry.title}</TableCell>
                       <TableCell>
-                        <div className="w-full bg-slate-200 rounded-full h-2">
-                          <div
-                            className="bg-olive h-2 rounded-full"
+                         <div className="h-2 w-full overflow-hidden rounded-full bg-parchment" role="progressbar" aria-label={`${entry.title} progress`} aria-valuenow={entry.percent} aria-valuemin={0} aria-valuemax={100}>
+                           <div
+                             className="h-2 rounded-full bg-moss"
                             style={{ width: `${entry.percent}%` }}
                           />
                         </div>
@@ -135,29 +145,22 @@ export default function CourseProgress() {
                     </TableRow>
                   );
                 })}
-                {(isStudent() ? myProgress : data.courseProgress).length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted py-4">
-                      No course progress records yet.
-                    </TableCell>
-                  </TableRow>
-                )}
+                {visibleProgress.length === 0 && <TableRow><TableCell colSpan={7}><EmptyState title="No course progress records" description="Recorded learning goals will appear here." /></TableCell></TableRow>}
               </tbody>
             </Table>
           </div>
         </Card>
 
         {canAdd && open && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-              <h2 className="text-lg font-bold text-ink mb-4">Add course progress</h2>
+          <Modal title="Add course progress" description="Record a subject goal for one student." onClose={() => setOpen(false)} size="sm">
               <form onSubmit={handleAdd} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Student</label>
+                  <label htmlFor="progress-student" className="field-label">Student</label>
                   <select
+                    id="progress-student"
                     value={form.student_id}
                     onChange={(e) => setForm({ ...form, student_id: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="field-control"
                   >
                     <option value="">Select student</option>
                     {students.map((s) => (
@@ -168,11 +171,12 @@ export default function CourseProgress() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Subject</label>
+                  <label htmlFor="progress-subject" className="field-label">Subject</label>
                   <select
+                    id="progress-subject"
                     value={form.subject}
                     onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="field-control"
                   >
                     <option value="">Select subject</option>
                     {SUBJECTS.map((s) => (
@@ -181,55 +185,58 @@ export default function CourseProgress() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Title</label>
+                  <label htmlFor="progress-title" className="field-label">Title</label>
                   <input
+                    id="progress-title"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="field-control"
                     placeholder="e.g. Polynomials and quadratic equations"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Percent</label>
+                    <label htmlFor="progress-percent" className="field-label">Percent</label>
                     <input
+                      id="progress-percent"
                       type="number"
                       min="0"
                       max="100"
                       value={form.percent}
                       onChange={(e) => setForm({ ...form, percent: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="field-control"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Grade</label>
+                    <label htmlFor="progress-grade" className="field-label">Grade</label>
                     <input
+                      id="progress-grade"
                       value={form.grade}
                       onChange={(e) => setForm({ ...form, grade: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="field-control"
                       placeholder="A1"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Remarks</label>
+                  <label htmlFor="progress-remarks" className="field-label">Remarks</label>
                   <textarea
+                    id="progress-remarks"
                     value={form.remarks}
                     onChange={(e) => setForm({ ...form, remarks: e.target.value })}
                     rows={2}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="field-control"
                   />
                 </div>
-                <div className="flex justify-end gap-2 mt-4">
+                <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
                   <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                     Cancel
                   </Button>
                   <Button type="submit">Save</Button>
                 </div>
               </form>
-            </div>
-          </div>
+          </Modal>
         )}
-    </div>
+    </Page>
   );
 }

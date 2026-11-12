@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData as useData } from '../lib/appData';
-import { Card, Button, Badge, Table, TableHeader, TableRow, TableHead, TableCell } from '../components/ui';
-import { FiFileText, FiPlus, FiClipboard, FiPaperclip, FiCheckCircle } from 'react-icons/fi';
+import { Card, Button, Badge, StatCard, Table, TableHeader, TableRow, TableHead, TableCell } from '../components/ui';
+import { Modal } from '../components/modal';
+import { EmptyState, MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
+import { FiCheckCircle, FiClipboard, FiFileText, FiPaperclip, FiPlus, FiUsers } from 'react-icons/fi';
 import { cn, formatDateLong, relativeToToday } from '../lib/utils';
 import type { Homework } from '../lib/types';
 
@@ -24,7 +26,9 @@ export default function Assignments() {
     attachmentName: '',
   });
 
-  const canAdd = isAdmin() || isTeacher();
+  // Academic content is teacher-authored. Admins retain read-only oversight.
+  const canAdd = isTeacher();
+  const canReview = isTeacher();
 
   const myAssignments = useMemo(() => {
     const scoped = isStudent()
@@ -111,73 +115,79 @@ export default function Assignments() {
   }, [data.homework, data.people, data.submissions, isStudent]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">
-            {isStudent() ? 'Assignments / Homework' : 'Class Assignments'}
-          </h1>
-          <p className="text-muted">
-            {isStudent()
-              ? 'Everything your teachers set, with who assigned it and when it is due.'
-              : 'Set homework, attach the worksheet and review what comes back.'}
-          </p>
-        </div>
-        {canAdd && (
+    <Page>
+      <PageHeader
+        eyebrow="Academic workflow"
+        title={isStudent() ? 'Assignments / homework' : 'Assignments'}
+        description={isStudent()
+          ? 'Everything your teachers set, with who assigned it and when it is due.'
+          : isAdmin()
+            ? 'Read-only oversight of published work and student submissions.'
+            : 'Set class work, attach the worksheet and review what comes back.'}
+        meta={`${myAssignments.length} items on this board`}
+        actions={canAdd ? (
           <Button onClick={() => setOpen(true)}>
             <FiPlus size={16} /> Add assignment
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
-      <div className="flex flex-wrap gap-2">
-        <div className="flex gap-1 rounded-lg bg-white p-1 shadow-sm">
+      <MetricGrid className="xl:grid-cols-3">
+        <StatCard label="Board items" value={myAssignments.length} icon={FiFileText} />
+        <StatCard label="Homework" value={myAssignments.filter((homework) => homework.type === 'HOMEWORK').length} icon={FiClipboard} variant="neutral" />
+        <StatCard label={isStudent() ? 'My submissions' : 'Submissions'} value={isStudent() ? mySubmissions.length : data.submissions.length} icon={FiUsers} variant="terracotta" />
+      </MetricGrid>
+
+      <section aria-label="Assignment filters" className="flex flex-wrap gap-2">
+        <div role="group" aria-label="Filter assignment type" className="flex gap-1 rounded-full border border-border bg-paper p-1 shadow-sm">
           {(['all', 'HOMEWORK', 'ASSIGNMENT'] as const).map((key) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
               className={cn(
-                'rounded-md px-3 py-1 text-xs capitalize transition-colors',
-                filter === key ? 'bg-olive text-white' : 'text-muted hover:text-ink',
+                'rounded-full px-3 text-xs font-bold capitalize transition-colors duration-150',
+                filter === key ? 'bg-forest text-paper' : 'text-muted hover:text-ink',
               )}
+              aria-pressed={filter === key}
             >
               {key === 'all' ? 'All' : key === 'HOMEWORK' ? 'Homework' : 'Assignments'}
             </button>
           ))}
         </div>
         {!isStudent() && (
-          <div className="flex gap-1 rounded-lg bg-white p-1 shadow-sm">
+          <div role="group" aria-label="Choose assignment view" className="flex gap-1 rounded-full border border-border bg-paper p-1 shadow-sm">
             {(['board', 'submissions'] as const).map((key) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
                 className={cn(
-                  'rounded-md px-3 py-1 text-xs capitalize transition-colors',
-                  tab === key ? 'bg-olive text-white' : 'text-muted hover:text-ink',
+                  'rounded-full px-3 text-xs font-bold capitalize transition-colors duration-150',
+                  tab === key ? 'bg-forest text-paper' : 'text-muted hover:text-ink',
                 )}
+                aria-pressed={tab === key}
               >
                 {key}
               </button>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
       {tab === 'board' || isStudent() ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <section aria-label="Assignment board" className="stagger-grid grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {myAssignments.map((hw) => {
             const teacher = data.people.find((p) => p.id === hw.teacher_id);
             const alreadySubmitted = submittedAssignmentIds.has(hw.id);
             const overdue = hw.due_date < '2026-11-04';
             return (
-              <Card key={hw.id} className="flex h-full flex-col">
+              <Card key={hw.id} className="hover-lift flex h-full flex-col">
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h3 className="truncate text-base font-bold text-ink">{hw.title}</h3>
                     <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
                       <FiFileText size={13} />
                       <span>{hw.subject}</span>
-                      <span className="text-slate-300">·</span>
+                      <span className="text-forest/20">·</span>
                       <span>{hw.section_label}</span>
                     </div>
                   </div>
@@ -195,7 +205,7 @@ export default function Assignments() {
                     {hw.attachments.map((att) => (
                       <div
                         key={att.id}
-                        className="flex items-center gap-2 rounded-md bg-sand/60 px-2 py-1 text-xs text-ink"
+                         className="flex items-center gap-2 rounded-lg bg-parchment/60 px-2.5 py-1.5 text-xs text-ink"
                       >
                         <FiPaperclip size={12} className="shrink-0 text-terracotta" />
                         <span className="truncate">{att.name}</span>
@@ -205,7 +215,7 @@ export default function Assignments() {
                   </div>
                 )}
 
-                <div className="mt-auto space-y-2 border-t border-sand/40 pt-3">
+                <div className="mt-auto space-y-2 border-t border-border pt-3">
                   <div className="flex items-center gap-2 text-xs">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-olive/10 text-[9px] font-bold text-olive">
                       {(teacher?.full_name ?? 'T')
@@ -254,22 +264,12 @@ export default function Assignments() {
             );
           })}
           {myAssignments.length === 0 && (
-            <Card className="col-span-full py-12 text-center">
-              <div className="text-sm text-muted">
-                No assignments here yet.
-                {canAdd && ' Use “Add assignment” to post the first one.'}
-              </div>
-            </Card>
+            <EmptyState className="col-span-full" title="No assignments here yet" description={canAdd ? 'Use Add assignment to post the first one.' : 'Published class work will appear here.'} />
           )}
-        </div>
+        </section>
       ) : (
         <Card>
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-ink">Submissions</h3>
-            <p className="text-sm text-muted">
-              Who has handed in and who is still missing, per assignment.
-            </p>
-          </div>
+          <SectionHeading title="Submissions" description="Who has handed in and who is still missing, per assignment." />
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -306,7 +306,7 @@ export default function Assignments() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {!row.missing && row.submission && row.submission.status !== 'reviewed' && (
+                      {canReview && !row.missing && row.submission && row.submission.status !== 'reviewed' && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -333,7 +333,7 @@ export default function Assignments() {
 
       {/* Student: submit work */}
       {submitting && (
-        <Modal title={`Submit — ${submitting.title}`} onClose={() => setSubmitting(null)}>
+        <Modal title={`Submit — ${submitting.title}`} description="Send your note or file reference to the assigning teacher." onClose={() => setSubmitting(null)}>
           <p className="mb-3 text-sm text-muted">
             Add a short note or the file name you are handing in. Your teacher sees it against your
             name.
@@ -342,7 +342,7 @@ export default function Assignments() {
             value={submissionNote}
             onChange={(e) => setSubmissionNote(e.target.value)}
             rows={4}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="field-control"
             placeholder="Completed exercises 4.1–4.4. Attached the scanned worksheet."
           />
           <div className="mt-4 flex justify-end gap-2">
@@ -356,7 +356,7 @@ export default function Assignments() {
 
       {/* Teacher: review submissions for one assignment */}
       {reviewing && (
-        <Modal title={reviewing.title} onClose={() => setReviewing(null)}>
+        <Modal title={reviewing.title} description={`Submission roster for ${reviewing.section_label}.`} onClose={() => setReviewing(null)}>
           <div className="space-y-2">
             {data.people
               .filter(
@@ -369,7 +369,7 @@ export default function Assignments() {
                 return (
                   <div
                     key={student.id}
-                    className="flex items-center gap-3 rounded-lg border border-sand/50 p-2.5"
+                     className="flex items-center gap-3 rounded-xl border border-border bg-parchment/30 p-3"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium text-ink">{student.full_name}</div>
@@ -380,13 +380,15 @@ export default function Assignments() {
                       </div>
                     </div>
                     {submission ? (
-                      submission.status === 'reviewed' ? (
-                        <Badge variant="success">Reviewed</Badge>
-                      ) : (
-                        <Button variant="outline" size="sm" onClick={() => data.reviewSubmission(submission.id)}>
-                          Review
-                        </Button>
-                      )
+                       submission.status === 'reviewed' ? (
+                         <Badge variant="success">Reviewed</Badge>
+                       ) : canReview ? (
+                         <Button variant="outline" size="sm" onClick={() => data.reviewSubmission(submission.id)}>
+                           Review
+                         </Button>
+                       ) : (
+                         <Badge variant="olive">Submitted</Badge>
+                       )
                     ) : (
                       <Badge variant="terracotta">Missing</Badge>
                     )}
@@ -398,33 +400,36 @@ export default function Assignments() {
       )}
 
       {canAdd && open && (
-        <Modal title="Add assignment" onClose={() => setOpen(false)}>
+        <Modal title="Add assignment" description="Publish class work to one section." onClose={() => setOpen(false)}>
           <form onSubmit={handleAdd} className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Title</label>
+              <label htmlFor="assignment-title" className="field-label">Title</label>
               <input
+                id="assignment-title"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="field-control"
                 placeholder="Quadratic equations worksheet"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Instructions</label>
+              <label htmlFor="assignment-instructions" className="field-label">Instructions</label>
               <textarea
+                id="assignment-instructions"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 rows={3}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="field-control"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Subject</label>
+                <label htmlFor="assignment-subject" className="field-label">Subject</label>
                 <select
+                  id="assignment-subject"
                   value={form.subject}
                   onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 >
                   {['Artificial Intelligence', 'Mathematics', 'English', 'Science', 'Social Science', 'Hindi'].map(
                     (s) => (
@@ -436,11 +441,12 @@ export default function Assignments() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Section</label>
+                <label htmlFor="assignment-section" className="field-label">Section</label>
                 <select
+                  id="assignment-section"
                   value={form.section_label}
                   onChange={(e) => setForm({ ...form, section_label: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 >
                   {['IX - E', 'IX - A', 'V - A'].map((s) => (
                     <option key={s} value={s}>
@@ -452,20 +458,22 @@ export default function Assignments() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Due date</label>
+                <label htmlFor="assignment-due" className="field-label">Due date</label>
                 <input
+                  id="assignment-due"
                   type="date"
                   value={form.due_date}
                   onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Type</label>
+                <label htmlFor="assignment-type" className="field-label">Type</label>
                 <select
+                  id="assignment-type"
                   value={form.type}
                   onChange={(e) => setForm({ ...form, type: e.target.value as 'HOMEWORK' | 'ASSIGNMENT' })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 >
                   <option value="HOMEWORK">Homework</option>
                   <option value="ASSIGNMENT">Assignment</option>
@@ -473,17 +481,18 @@ export default function Assignments() {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">
+              <label htmlFor="assignment-attachment" className="field-label">
                 Attachment name (worksheet PDF)
               </label>
               <input
+                id="assignment-attachment"
                 value={form.attachmentName}
                 onChange={(e) => setForm({ ...form, attachmentName: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="field-control"
                 placeholder="Quadratic-equations.pdf"
               />
             </div>
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
               <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
@@ -492,30 +501,6 @@ export default function Assignments() {
           </form>
         </Modal>
       )}
-    </div>
-  );
-}
-
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-start justify-between gap-2">
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-ink" aria-label="Close">
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    </Page>
   );
 }

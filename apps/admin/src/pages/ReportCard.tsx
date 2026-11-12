@@ -11,8 +11,11 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
-import { FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi';
+import { Modal } from '../components/modal';
+import { EmptyState, MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
+import { FiAward, FiBookOpen, FiPlus, FiPrinter, FiTrash2, FiUsers } from 'react-icons/fi';
 import type { ReportCard as ReportCardType } from '../lib/types';
 
 const DEFAULT_SUBJECTS = [
@@ -42,6 +45,7 @@ export default function ReportCard() {
   const students = data.people.filter((p) => p.role === 'student');
   const myReportCards = data.reportCards.filter((rc) => rc.student_id === profile?.id);
   const visibleCards = isStudent() ? myReportCards : data.reportCards;
+  const representedStudents = new Set(visibleCards.map((card) => card.student_id)).size;
 
   const pickStudent = (id: string) => {
     const student = data.people.find((p) => p.id === id);
@@ -141,35 +145,33 @@ export default function ReportCard() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">
-            {isStudent() ? 'My Report Card' : 'Report Cards'}
-          </h1>
-          <p className="text-muted">
-            {canGenerate
-              ? 'Pick a student, enter subject marks, and the card is generated and assigned instantly.'
-              : 'Your published report cards. Print any term for your records.'}
-          </p>
-        </div>
-        {canGenerate && (
+    <Page>
+      <PageHeader
+        eyebrow="Academic documents"
+        title={isStudent() ? 'My report card' : 'Report cards'}
+        description={canGenerate
+          ? 'Select a student, enter subject marks and publish the completed card.'
+          : 'Review your published term results and print a copy for your records.'}
+        meta={`${visibleCards.length} published report card${visibleCards.length === 1 ? '' : 's'}`}
+        actions={canGenerate ? (
           <Button onClick={() => setOpen(true)}>
             <FiPlus size={16} /> Generate report card
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
+
+      <MetricGrid className="xl:grid-cols-3">
+        <StatCard label="Published cards" value={visibleCards.length} icon={FiAward} />
+        <StatCard label={isStudent() ? 'Terms available' : 'Students represented'} value={isStudent() ? visibleCards.length : representedStudents} icon={FiUsers} variant="neutral" />
+        <StatCard label="Students on roster" value={isStudent() ? 1 : students.length} icon={FiBookOpen} variant="terracotta" />
+      </MetricGrid>
 
       {isStudent() && myReportCards.length > 0 && (
         <LatestCard card={myReportCards[0]} onPrint={handlePrint} studentName={profile?.full_name ?? ''} />
       )}
 
       <Card>
-        <div className="mb-4">
-          <h3 className="text-lg font-bold text-ink">
-            {isStudent() ? 'All my report cards' : 'All report cards'}
-          </h3>
-        </div>
+        <SectionHeading title={isStudent() ? 'All my report cards' : 'Published report cards'} description="Term, totals, grade and document actions." />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -189,7 +191,7 @@ export default function ReportCard() {
                 return (
                   <TableRow key={rc.id}>
                     <TableCell>
-                      <div className="font-medium">{student?.full_name ?? '—'}</div>
+                      <div className="font-bold">{student?.full_name ?? '—'}</div>
                       <div className="text-xs text-muted">{student?.admission_no}</div>
                     </TableCell>
                     <TableCell>{rc.term}</TableCell>
@@ -223,33 +225,22 @@ export default function ReportCard() {
                   </TableRow>
                 );
               })}
-              {visibleCards.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="py-4 text-center text-muted">
-                    No report cards yet.
-                  </TableCell>
-                </TableRow>
-              )}
+              {visibleCards.length === 0 && <TableRow><TableCell colSpan={7}><EmptyState title="No report cards yet" description="Published term results will appear here." /></TableCell></TableRow>}
             </tbody>
           </Table>
         </div>
       </Card>
 
       {canGenerate && open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-1 text-lg font-bold text-ink">Generate report card</h2>
-            <p className="mb-4 text-xs text-muted">
-              Marks are graded automatically (A1 to E). The card appears in the student’s account
-              immediately.
-            </p>
+        <Modal title="Generate report card" description="Marks are graded automatically (A1 to E) and assigned to the selected student." onClose={() => setOpen(false)} size="lg">
             <form onSubmit={handleGenerate} className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Student</label>
+                <label htmlFor="report-student" className="field-label">Student</label>
                 <select
+                  id="report-student"
                   value={form.student_id}
                   onChange={(e) => pickStudent(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 >
                   <option value="">Select student</option>
                   {students.map((s) => (
@@ -261,11 +252,12 @@ export default function ReportCard() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Term</label>
+                  <label htmlFor="report-term" className="field-label">Term</label>
                   <select
+                    id="report-term"
                     value={form.term}
                     onChange={(e) => setForm({ ...form, term: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                   >
                     {TERMS.map((t) => (
                       <option key={t} value={t}>
@@ -275,50 +267,55 @@ export default function ReportCard() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Academic year</label>
+                  <label htmlFor="report-year" className="field-label">Academic year</label>
                   <input
+                    id="report-year"
                     value={form.academic_year}
                     onChange={(e) => setForm({ ...form, academic_year: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Class</label>
+                  <label htmlFor="report-class" className="field-label">Class</label>
                   <input
+                    id="report-class"
                     value={form.class_label}
                     onChange={(e) => setForm({ ...form, class_label: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                     placeholder="IX"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Section</label>
+                  <label htmlFor="report-section" className="field-label">Section</label>
                   <input
+                    id="report-section"
                     value={form.section_label}
                     onChange={(e) => setForm({ ...form, section_label: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                     placeholder="E"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Subjects &amp; marks</label>
+                <div className="field-label">Subjects &amp; marks</div>
                 <div className="space-y-2">
                   {form.subjects.map((s, i) => (
-                    <div key={i} className="flex gap-2">
+                    <div key={i} className="grid grid-cols-[minmax(0,1fr)_5rem_5rem_2.75rem] gap-2">
                       <input
+                        aria-label={`Subject ${i + 1}`}
                         value={s.subject}
                         onChange={(ev) => {
                           const subs = [...form.subjects];
                           subs[i] = { ...subs[i], subject: ev.target.value };
                           setForm({ ...form, subjects: subs });
                         }}
-                        className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        className="field-control"
                         placeholder="Subject"
                       />
                       <input
+                        aria-label={`Marks for subject ${i + 1}`}
                         type="number"
                         value={s.marks}
                         onChange={(ev) => {
@@ -326,10 +323,11 @@ export default function ReportCard() {
                           subs[i] = { ...subs[i], marks: ev.target.value };
                           setForm({ ...form, subjects: subs });
                         }}
-                        className="w-20 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        className="field-control px-2"
                         placeholder="Marks"
                       />
                       <input
+                        aria-label={`Maximum marks for subject ${i + 1}`}
                         type="number"
                         value={s.max_marks}
                         onChange={(ev) => {
@@ -337,7 +335,7 @@ export default function ReportCard() {
                           subs[i] = { ...subs[i], max_marks: ev.target.value };
                           setForm({ ...form, subjects: subs });
                         }}
-                        className="w-20 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        className="field-control px-2"
                         placeholder="Max"
                       />
                       <button
@@ -348,7 +346,7 @@ export default function ReportCard() {
                             subjects: prev.subjects.filter((_, index) => index !== i),
                           }))
                         }
-                        className="text-terracotta hover:text-terracotta/80"
+                        className="focus-ring inline-flex items-center justify-center rounded-xl text-terracotta transition-colors duration-150 hover:bg-terracotta/10"
                         aria-label="Remove subject"
                       >
                         ✕
@@ -370,17 +368,16 @@ export default function ReportCard() {
                   </Button>
                 </div>
               </div>
-              <div className="mt-4 flex justify-end gap-2">
+              <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Generate &amp; assign</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }
 
@@ -394,13 +391,13 @@ function LatestCard({
   studentName: string;
 }) {
   return (
-    <Card className="print-card">
+    <Card className="print-card border-gold/35">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <div className="text-xs uppercase tracking-widest text-olive">Latest result</div>
-          <h3 className="text-lg font-bold text-ink">
-            {card.term} · {card.academic_year}
-          </h3>
+           <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-moss">Latest result</div>
+           <h2 className="mt-1 font-display text-2xl font-medium text-ink">
+             {card.term} · {card.academic_year}
+           </h2>
           <p className="text-sm text-muted">
             {studentName} · {card.class_label} {card.section_label}
           </p>
@@ -426,7 +423,7 @@ function LatestCard({
                   {s.marks}/{s.max_marks}
                 </span>
               </div>
-              <div className="mt-0.5 h-1.5 w-full rounded-full bg-sand">
+               <div className="mt-0.5 h-1.5 w-full rounded-full bg-parchment" role="progressbar" aria-label={`${s.subject} result`} aria-valuenow={share} aria-valuemin={0} aria-valuemax={100}>
                 <div
                   className="h-1.5 rounded-full bg-olive"
                   style={{ width: `${Math.min(100, share)}%` }}
@@ -442,8 +439,8 @@ function LatestCard({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-sand/60 bg-cream/40 p-3">
-      <div className="text-lg font-bold text-ink">{value}</div>
+    <div className="rounded-xl border border-border bg-parchment/35 p-3">
+      <div className="font-display text-xl font-medium text-ink">{value}</div>
       <div className="text-xs text-muted">{label}</div>
     </div>
   );

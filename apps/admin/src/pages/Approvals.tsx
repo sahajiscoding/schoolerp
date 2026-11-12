@@ -10,7 +10,10 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
+import { Modal } from '../components/modal';
+import { EmptyState, MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
 import { FiCheckCircle, FiClock, FiX } from 'react-icons/fi';
 import { cn, formatDateLong, daysBetween } from '../lib/utils';
 
@@ -62,6 +65,15 @@ export default function Approvals() {
 
   const pendingInbox = inboxForMe.filter((l) => l.status === 'pending');
   const history = inboxForMe.filter((l) => (filter === 'all' ? true : l.status === filter));
+  const studentProfile = data.people.find((person) => person.id === profile?.id);
+  const studentSection = `${studentProfile?.class_label} - ${studentProfile?.section_label}`;
+  const classTeacherName = data.people.find((person) => person.class_teacher_of === studentSection)?.full_name;
+  const studentLeaveDescription = classTeacherName
+    ? `Reviewed by ${classTeacherName}, your class teacher.`
+    : 'Awaiting your class teacher.';
+  const approvalDescription = isAdmin()
+    ? 'Every class, newest first.'
+    : `Students in ${data.people.find((person) => person.id === profile?.id)?.class_teacher_of ?? 'your class'}.`;
 
   const handleApply = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,39 +110,23 @@ export default function Approvals() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Approvals</h1>
-          <p className="text-muted">
-            {isStudent()
-              ? 'Apply for leave and track what your class teacher decides.'
-              : 'Leave requests from your class. Approve or reject in one click.'}
-          </p>
-        </div>
-        {isStudent() && (
-          <Button onClick={() => setOpen(true)}>Apply for leave</Button>
-        )}
-      </div>
+    <Page>
+      <PageHeader
+        eyebrow="Academic workflow"
+        title={isStudent() ? 'My leaves' : 'Leave approvals'}
+        description={isStudent()
+          ? 'Apply for leave and track what your class teacher decides.'
+          : 'Review leave requests routed to the responsible class teacher.'}
+        meta={isStudent() ? `${myLeaves.length} requests` : `${pendingInbox.length} awaiting a decision`}
+        actions={isStudent() ? <Button onClick={() => setOpen(true)}>Apply for leave</Button> : undefined}
+      />
 
       {isStudent() && (
         <Card>
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-ink">Your leave requests</h3>
-            <p className="text-sm text-muted">
-              {data.people.find((p) => p.class_teacher_of === `${data.people.find((s) => s.id === profile?.id)?.class_label} - ${data.people.find((s) => s.id === profile?.id)?.section_label}`)?.full_name
-                ? `Reviewed by ${
-                    data.people.find(
-                      (p) =>
-                        p.class_teacher_of ===
-                        `${data.people.find((s) => s.id === profile?.id)?.class_label} - ${
-                          data.people.find((s) => s.id === profile?.id)?.section_label
-                        }`,
-                    )?.full_name
-                  }, your class teacher.`
-                : 'Awaiting your class teacher.'}
-            </p>
-          </div>
+          <SectionHeading
+            title="Your leave requests"
+            description={studentLeaveDescription}
+          />
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -159,13 +155,7 @@ export default function Approvals() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {myLeaves.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-4 text-center text-muted">
-                      No leave requests yet. Use “Apply for leave” above.
-                    </TableCell>
-                  </TableRow>
-                )}
+                {myLeaves.length === 0 && <TableRow><TableCell colSpan={5}><EmptyState title="No leave requests yet" description="Use Apply for leave when you need time away." /></TableCell></TableRow>}
               </tbody>
             </Table>
           </div>
@@ -174,27 +164,21 @@ export default function Approvals() {
 
       {canManage && (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <MiniStat label="Pending" value={pendingInbox.length} tone="warning" />
-            <MiniStat label="Approved" value={inboxForMe.filter((l) => l.status === 'approved').length} tone="success" />
-            <MiniStat label="Rejected" value={inboxForMe.filter((l) => l.status === 'rejected').length} tone="danger" />
-            <MiniStat label="Total requests" value={inboxForMe.length} tone="neutral" />
-          </div>
+          <MetricGrid>
+            <StatCard label="Pending" value={pendingInbox.length} icon={FiClock} variant="warning" />
+            <StatCard label="Approved" value={inboxForMe.filter((leave) => leave.status === 'approved').length} icon={FiCheckCircle} />
+            <StatCard label="Rejected" value={inboxForMe.filter((leave) => leave.status === 'rejected').length} icon={FiX} variant="terracotta" />
+            <StatCard label="Total requests" value={inboxForMe.length} icon={FiClock} variant="neutral" />
+          </MetricGrid>
 
           <Card>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 className="text-lg font-bold text-ink">Pending approvals</h3>
-                <p className="text-sm text-muted">
-                  {isAdmin()
-                    ? 'Every class, newest first.'
-                    : `Students in ${data.people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'your class'}.`}
-                </p>
-              </div>
-              <Badge variant={pendingInbox.length ? 'terracotta' : 'success'}>
+            <SectionHeading
+              title="Pending approvals"
+              description={approvalDescription}
+              action={<Badge variant={pendingInbox.length ? 'terracotta' : 'success'}>
                 {pendingInbox.length} waiting
-              </Badge>
-            </div>
+              </Badge>}
+            />
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -261,23 +245,23 @@ export default function Approvals() {
           </Card>
 
           <Card>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-lg font-bold text-ink">Decision history</h3>
-              <div className="flex gap-1 rounded-lg bg-sand/60 p-1">
+            <SectionHeading title="Decision history" description="Approved and rejected requests remain visible for review." action={
+              <div role="group" aria-label="Filter decision history" className="flex gap-1 rounded-full border border-border bg-parchment/55 p-1">
                 {(['all', 'approved', 'rejected'] as const).map((key) => (
                   <button
                     key={key}
                     onClick={() => setFilter(key)}
                     className={cn(
-                      'rounded-md px-3 py-1 text-xs capitalize transition-colors',
-                      filter === key ? 'bg-white font-medium text-ink shadow-sm' : 'text-muted hover:text-ink',
+                      'rounded-full px-3 text-xs font-bold capitalize transition-colors duration-150',
+                      filter === key ? 'bg-forest text-paper shadow-sm' : 'text-muted hover:text-ink',
                     )}
+                    aria-pressed={filter === key}
                   >
                     {key}
                   </button>
                 ))}
               </div>
-            </div>
+            } />
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -323,21 +307,17 @@ export default function Approvals() {
       )}
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-ink">Apply for leave</h2>
-              <FiClock className="text-slate-400" />
-            </div>
+        <Modal title="Apply for leave" description="Your request is sent to your class teacher for a decision." onClose={() => setOpen(false)} size="sm">
             <form onSubmit={handleApply} className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Leave type</label>
+                <label htmlFor="leave-type" className="field-label">Leave type</label>
                 <select
+                  id="leave-type"
                   value={form.leave_type}
                   onChange={(e) =>
                     setForm({ ...form, leave_type: e.target.value as (typeof LEAVE_TYPES)[number] })
                   }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 >
                   {LEAVE_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -348,67 +328,46 @@ export default function Approvals() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Start date</label>
+                  <label htmlFor="leave-start" className="field-label">Start date</label>
                   <input
+                    id="leave-start"
                     type="date"
                     value={form.start_date}
                     onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">End date</label>
+                  <label htmlFor="leave-end" className="field-label">End date</label>
                   <input
+                    id="leave-end"
                     type="date"
                     value={form.end_date}
                     onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Reason</label>
+                <label htmlFor="leave-reason" className="field-label">Reason</label>
                 <textarea
+                  id="leave-reason"
                   value={form.reason}
                   onChange={(e) => setForm({ ...form, reason: e.target.value })}
                   rows={3}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                   placeholder="Doctor advised rest for two days…"
                 />
               </div>
-              <div className="mt-4 flex justify-end gap-2">
+              <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Submit for approval</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
-  );
-}
-
-function MiniStat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: 'warning' | 'success' | 'danger' | 'neutral';
-}) {
-  const tones: Record<typeof tone, string> = {
-    warning: 'border-amber-100 bg-amber-50 text-amber-700',
-    success: 'border-olive/15 bg-olive/5 text-olive',
-    danger: 'border-terracotta/15 bg-terracotta/5 text-terracotta',
-    neutral: 'border-slate-200 bg-slate-50 text-ink',
-  };
-  return (
-    <div className={cn('rounded-xl border p-4', tones[tone])}>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-xs text-muted">{label}</div>
-    </div>
+    </Page>
   );
 }

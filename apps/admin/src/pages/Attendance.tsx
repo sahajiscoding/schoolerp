@@ -11,8 +11,11 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
-import { FiCheckCircle } from 'react-icons/fi';
+import { Modal } from '../components/modal';
+import { MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
+import { FiCheckCircle, FiChevronLeft, FiChevronRight, FiUsers, FiXCircle } from 'react-icons/fi';
 
 type AttendanceStatus = 'present' | 'absent' | 'leave' | 'medical' | 'holiday';
 
@@ -108,45 +111,35 @@ export default function Attendance() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">My Attendance</h1>
-          <p className="text-muted">
-            Mark attendance for your class. {isStudent() ? 'View your own attendance.' : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={prevDay}>
-            ◀
+    <Page>
+      <PageHeader
+        eyebrow="Academic register"
+        title={isStudent() ? 'My attendance' : 'Attendance'}
+        description={isStudent() ? 'View your own attendance register.' : 'Review and mark attendance for the current class scope.'}
+        meta={isStudent() ? `${students[0]?.class_label ?? ''} ${students[0]?.section_label ?? ''}`.trim() : mySection ?? 'School-wide view'}
+        actions={<div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={prevDay} aria-label="Previous day">
+            <FiChevronLeft size={16} />
           </Button>
-          <span className="px-3 py-1 text-sm font-medium text-ink bg-white border border-sand/30 rounded-lg">
+          <span className="inline-flex min-h-11 items-center rounded-xl border border-border bg-paper px-3 text-sm font-bold text-ink">
             {format(new Date(viewDate), 'dd MMM yyyy')}
           </span>
-          <Button variant="outline" size="sm" onClick={nextDay}>
-            ▶
+          <Button variant="outline" size="sm" onClick={nextDay} aria-label="Next day">
+            <FiChevronRight size={16} />
           </Button>
-        </div>
-      </div>
+        </div>}
+      />
 
       {canMark && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
-          <Card className="p-4">
-            <div className="text-xs text-muted">Total marked</div>
-            <div className="text-2xl font-bold text-ink">{total}</div>
-          </Card>
-          <Card className="p-4 border-olive/10 bg-olive/5">
-            <div className="text-xs text-muted text-olive">Present</div>
-            <div className="text-2xl font-bold text-olive">{presentCount}</div>
-          </Card>
-          <Card className="p-4 border-terracotta/10 bg-terracotta/5">
-            <div className="text-xs text-muted text-terracotta">Absent</div>
-            <div className="text-2xl font-bold text-terracotta">{absentCount}</div>
-          </Card>
-        </div>
+        <MetricGrid className="xl:grid-cols-3">
+          <StatCard label="Total marked" value={total} icon={FiUsers} variant="neutral" />
+          <StatCard label="Present" value={presentCount} icon={FiCheckCircle} />
+          <StatCard label="Absent" value={absentCount} icon={FiXCircle} variant="terracotta" />
+        </MetricGrid>
       )}
 
       <Card>
+        <SectionHeading title="Weekly register" description="Monday to Sunday status summary. Select a status only when you are authorised to mark attendance." />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -169,17 +162,19 @@ export default function Attendance() {
                 });
                 return (
                   <TableRow key={student.id}>
-                    <TableCell className="font-medium">{student.full_name} ({student.login_id})</TableCell>
+                    <TableCell className="font-bold">{student.full_name} <span className="block text-xs font-normal text-muted">{student.login_id}</span></TableCell>
                     {row.map((status, i) => (
                       <TableCell key={i} className="text-center">
-                      <Badge
-                        variant={STATUS_COLOR[status]}
-                        className={`text-[10px] px-2 py-1 ${canMark ? 'cursor-pointer' : ''}`}
-                        title={canMark ? `Click to change ${format(weekDays[i], 'dd MMM')} status` : undefined}
-                        onClick={canMark ? () => markStatus(student.id, format(weekDays[i], 'yyyy-MM-dd'), nextStatus(status)) : undefined}
-                        >
-                          {STATUS_LABEL[status].charAt(0)}
-                        </Badge>
+                        {canMark ? (
+                          <button
+                            type="button"
+                            onClick={() => markStatus(student.id, format(weekDays[i], 'yyyy-MM-dd'), nextStatus(status))}
+                            className="focus-ring inline-flex min-h-10 min-w-10 items-center justify-center rounded-full"
+                            aria-label={`${student.full_name}: ${STATUS_LABEL[status]} on ${format(weekDays[i], 'dd MMM')}. Change status`}
+                          >
+                            <Badge variant={STATUS_COLOR[status]} className="pointer-events-none px-2 py-1 text-[10px]">{STATUS_LABEL[status].charAt(0)}</Badge>
+                          </button>
+                        ) : <Badge variant={STATUS_COLOR[status]} className="px-2 py-1 text-[10px]">{STATUS_LABEL[status].charAt(0)}</Badge>}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -198,14 +193,15 @@ export default function Attendance() {
       </Card>
 
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-ink">{canMark ? 'Mark today' : 'Attendance'} ({format(new Date(viewDate), 'dd MMM yyyy')})</h3>
-          {canMark && (
+        <SectionHeading
+          title={canMark ? 'Mark the selected day' : 'Attendance detail'}
+          description={format(new Date(viewDate), 'dd MMM yyyy')}
+          action={canMark ? (
             <Button onClick={() => setOpen(true)}>
               <FiCheckCircle size={14} /> Mark attendance
             </Button>
-          )}
-        </div>
+          ) : undefined}
+        />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -219,7 +215,7 @@ export default function Attendance() {
                 const current = statusByStudent.get(student.id) || 'present';
                 return (
                   <TableRow key={student.id}>
-                    <TableCell className="font-medium">{student.full_name} ({student.login_id})</TableCell>
+                    <TableCell className="font-bold">{student.full_name} <span className="block text-xs font-normal text-muted">{student.login_id}</span></TableCell>
                     <TableCell>
                       {canMark ? (
                         <div className="flex gap-2">
@@ -248,14 +244,11 @@ export default function Attendance() {
       </Card>
 
       {canMark && open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">Mark attendance</h2>
-            <p className="text-muted text-sm mb-4">Date: {format(new Date(viewDate), 'dd MMM yyyy')}</p>
+        <Modal title="Mark attendance" description={`Date: ${format(new Date(viewDate), 'dd MMM yyyy')}`} onClose={() => setOpen(false)}>
             <div className="space-y-2">
               {students.map((student) => (
-                <div key={student.id} className="flex items-center justify-between p-2 rounded-lg border border-sand/20">
-                  <span className="text-sm">{student.full_name}</span>
+                <div key={student.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-parchment/30 p-3">
+                  <span className="text-sm font-bold">{student.full_name}</span>
                   <div className="flex gap-1">
                     {['present', 'absent', 'leave', 'medical'].map((status) => (
                       <Button
@@ -272,12 +265,11 @@ export default function Attendance() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end border-t border-border pt-4">
               <Button variant="ghost" onClick={() => setOpen(false)}>Done</Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }
