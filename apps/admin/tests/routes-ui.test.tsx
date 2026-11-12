@@ -40,3 +40,33 @@ it.each(adminRoutes)('renders the administration route %s with its primary actio
   expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeTruthy();
   if (action) expect(screen.getByRole('button', { name: action })).toBeTruthy();
 });
+
+const academicRoutes = [
+  ['/approvals', /Leave approvals/i, 'Leave requests'],
+  ['/assignments', /Assignments/i, 'Assignment workspace'],
+  ['/course-progress', /Course progress/i, 'Progress records'],
+  ['/attendance', /Attendance/i, 'Attendance register'],
+  ['/report-card', /Report cards/i, 'Report card records'],
+] as const;
+
+it.each(academicRoutes)('renders the academic route %s as a labelled workspace', async (path, heading, region) => {
+  window.history.replaceState(null, '', `/demo${path}?role=admin`);
+  render(<App />);
+  expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeTruthy();
+  expect(screen.getByRole('region', { name: region })).toBeTruthy();
+});
+
+it('keeps attendance read-only for students', async () => {
+  window.history.replaceState(null, '', '/demo/attendance?role=student');
+  render(<App />);
+  await screen.findByRole('heading', { level: 1, name: /My attendance/i });
+  expect(screen.queryByRole('button', { name: /Mark attendance/i })).toBeNull();
+});
+
+it('keeps academic publishing and review read-only for administrators', async () => {
+  window.history.replaceState(null, '', '/demo/assignments?role=admin');
+  render(<App />);
+  await screen.findByRole('heading', { level: 1, name: /Class assignments/i });
+  expect(screen.queryByRole('button', { name: /Add assignment/i })).toBeNull();
+  expect(screen.queryByRole('button', { name: /Mark reviewed/i })).toBeNull();
+});

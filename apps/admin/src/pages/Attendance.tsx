@@ -12,6 +12,8 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
+import { Page, PageHeader, SectionHeading } from '../components/page';
+import { Modal } from '../components/modal';
 import { FiCheckCircle } from 'react-icons/fi';
 
 type AttendanceStatus = 'present' | 'absent' | 'leave' | 'medical' | 'holiday';
@@ -108,26 +110,25 @@ export default function Attendance() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">My Attendance</h1>
-          <p className="text-muted">
-            Mark attendance for your class. {isStudent() ? 'View your own attendance.' : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <Page>
+      <PageHeader
+        eyebrow={isStudent() ? 'My school day' : 'Daily rhythm'}
+        title={isStudent() ? 'My Attendance' : 'Attendance'}
+        description={isStudent() ? 'View your own attendance.' : 'Mark attendance for your class and review the week at a glance.'}
+        actions={<div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={prevDay}>
-            ◀
+            <span aria-hidden="true">◀</span><span className="sr-only">Previous day</span>
           </Button>
-          <span className="px-3 py-1 text-sm font-medium text-ink bg-white border border-sand/30 rounded-lg">
+          <span className="rounded-[10px] border border-olive/15 bg-paper px-3 py-2 text-sm font-semibold text-ink">
             {format(new Date(viewDate), 'dd MMM yyyy')}
           </span>
           <Button variant="outline" size="sm" onClick={nextDay}>
-            ▶
+            <span aria-hidden="true">▶</span><span className="sr-only">Next day</span>
           </Button>
-        </div>
-      </div>
+        </div>}
+      />
+
+      <section aria-label="Attendance register" className="space-y-6">
 
       {canMark && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
@@ -147,6 +148,7 @@ export default function Attendance() {
       )}
 
       <Card>
+        <SectionHeading title="Weekly register" description="Select a status to move through present, absent, leave and medical." />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -172,14 +174,18 @@ export default function Attendance() {
                     <TableCell className="font-medium">{student.full_name} ({student.login_id})</TableCell>
                     {row.map((status, i) => (
                       <TableCell key={i} className="text-center">
-                      <Badge
-                        variant={STATUS_COLOR[status]}
-                        className={`text-[10px] px-2 py-1 ${canMark ? 'cursor-pointer' : ''}`}
-                        title={canMark ? `Click to change ${format(weekDays[i], 'dd MMM')} status` : undefined}
-                        onClick={canMark ? () => markStatus(student.id, format(weekDays[i], 'yyyy-MM-dd'), nextStatus(status)) : undefined}
-                        >
-                          {STATUS_LABEL[status].charAt(0)}
-                        </Badge>
+                        {canMark ? (
+                          <button
+                            type="button"
+                            className="focus-ring rounded-full"
+                            aria-label={`Change ${student.full_name}'s ${format(weekDays[i], 'dd MMM')} attendance from ${STATUS_LABEL[status]}`}
+                            onClick={() => markStatus(student.id, format(weekDays[i], 'yyyy-MM-dd'), nextStatus(status))}
+                          >
+                            <Badge variant={STATUS_COLOR[status]} className="px-2 py-1 text-[10px]">{STATUS_LABEL[status].charAt(0)}</Badge>
+                          </button>
+                        ) : (
+                          <Badge variant={STATUS_COLOR[status]} className="px-2 py-1 text-[10px]">{STATUS_LABEL[status].charAt(0)}</Badge>
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -198,14 +204,14 @@ export default function Attendance() {
       </Card>
 
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-ink">{canMark ? 'Mark today' : 'Attendance'} ({format(new Date(viewDate), 'dd MMM yyyy')})</h3>
-          {canMark && (
+        <SectionHeading
+          title={`${canMark ? 'Mark today' : 'Attendance'} · ${format(new Date(viewDate), 'dd MMM yyyy')}`}
+          action={canMark ? (
             <Button onClick={() => setOpen(true)}>
-              <FiCheckCircle size={14} /> Mark attendance
+              <FiCheckCircle size={14} aria-hidden="true" /> Mark attendance
             </Button>
-          )}
-        </div>
+          ) : undefined}
+        />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -230,6 +236,7 @@ export default function Attendance() {
                               size="sm"
                               onClick={() => handleMark(student.id, status as AttendanceStatus)}
                               className="px-2 py-1 text-xs"
+                              aria-label={`Mark ${student.full_name} ${STATUS_LABEL[status as AttendanceStatus].toLowerCase()}`}
                             >
                               {STATUS_LABEL[status as AttendanceStatus].charAt(0)}
                             </Button>
@@ -247,16 +254,15 @@ export default function Attendance() {
         </div>
       </Card>
 
+      </section>
+
       {canMark && open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">Mark attendance</h2>
-            <p className="text-muted text-sm mb-4">Date: {format(new Date(viewDate), 'dd MMM yyyy')}</p>
+        <Modal title="Mark attendance" description={`Date: ${format(new Date(viewDate), 'dd MMM yyyy')}`} onClose={() => setOpen(false)} size="sm">
             <div className="space-y-2">
               {students.map((student) => (
-                <div key={student.id} className="flex items-center justify-between p-2 rounded-lg border border-sand/20">
+                <div key={student.id} className="flex flex-wrap items-center justify-between gap-2 rounded-campus border border-olive/10 p-3">
                   <span className="text-sm">{student.full_name}</span>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1">
                     {['present', 'absent', 'leave', 'medical'].map((status) => (
                       <Button
                         key={status}
@@ -264,6 +270,7 @@ export default function Attendance() {
                         size="sm"
                         onClick={() => handleMark(student.id, status as AttendanceStatus)}
                         className="px-2 py-1 text-[10px]"
+                        aria-label={`Mark ${student.full_name} ${STATUS_LABEL[status as AttendanceStatus].toLowerCase()}`}
                       >
                         {STATUS_LABEL[status as AttendanceStatus].charAt(0)}
                       </Button>
@@ -275,9 +282,8 @@ export default function Attendance() {
             <div className="mt-4 flex justify-end">
               <Button variant="ghost" onClick={() => setOpen(false)}>Done</Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }

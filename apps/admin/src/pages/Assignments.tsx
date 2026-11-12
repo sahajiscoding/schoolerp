@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData as useData } from '../lib/appData';
 import { Card, Button, Badge, Table, TableHeader, TableRow, TableHead, TableCell } from '../components/ui';
+import { Page, PageHeader } from '../components/page';
+import { Modal } from '../components/modal';
 import { FiFileText, FiPlus, FiClipboard, FiPaperclip, FiCheckCircle } from 'react-icons/fi';
 import { cn, formatDateLong, relativeToToday } from '../lib/utils';
 import type { Homework } from '../lib/types';
 
 export default function Assignments() {
-  const { profile, isAdmin, isTeacher, isStudent } = useAuth();
+  const { profile, isTeacher, isStudent } = useAuth();
   const data = useData();
   const [open, setOpen] = useState(false);
   const [reviewing, setReviewing] = useState<Homework | null>(null);
@@ -24,7 +26,7 @@ export default function Assignments() {
     attachmentName: '',
   });
 
-  const canAdd = isAdmin() || isTeacher();
+  const canAdd = isTeacher();
 
   const myAssignments = useMemo(() => {
     const scoped = isStudent()
@@ -111,24 +113,23 @@ export default function Assignments() {
   }, [data.homework, data.people, data.submissions, isStudent]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">
-            {isStudent() ? 'Assignments / Homework' : 'Class Assignments'}
-          </h1>
-          <p className="text-muted">
-            {isStudent()
-              ? 'Everything your teachers set, with who assigned it and when it is due.'
-              : 'Set homework, attach the worksheet and review what comes back.'}
-          </p>
-        </div>
-        {canAdd && (
+    <Page>
+      <PageHeader
+        eyebrow={isStudent() ? 'My learning' : 'Classroom work'}
+        title={isStudent() ? 'Assignments / Homework' : 'Class Assignments'}
+        description={isStudent()
+          ? 'Everything your teachers set, with who assigned it and when it is due.'
+          : isTeacher()
+            ? 'Set homework, attach the worksheet and review what comes back.'
+            : 'Read-only school-wide oversight of assignments and submissions.'}
+        actions={canAdd ? (
           <Button onClick={() => setOpen(true)}>
-            <FiPlus size={16} /> Add assignment
+            <FiPlus size={16} aria-hidden="true" /> Add assignment
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
+
+      <section aria-label="Assignment workspace" className="space-y-6">
 
       <div className="flex flex-wrap gap-2">
         <div className="flex gap-1 rounded-lg bg-white p-1 shadow-sm">
@@ -306,7 +307,7 @@ export default function Assignments() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {!row.missing && row.submission && row.submission.status !== 'reviewed' && (
+                      {isTeacher() && !row.missing && row.submission && row.submission.status !== 'reviewed' && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -331,6 +332,8 @@ export default function Assignments() {
         </Card>
       )}
 
+      </section>
+
       {/* Student: submit work */}
       {submitting && (
         <Modal title={`Submit — ${submitting.title}`} onClose={() => setSubmitting(null)}>
@@ -339,6 +342,7 @@ export default function Assignments() {
             name.
           </p>
           <textarea
+            aria-label="Submission note or file name"
             value={submissionNote}
             onChange={(e) => setSubmissionNote(e.target.value)}
             rows={4}
@@ -380,13 +384,15 @@ export default function Assignments() {
                       </div>
                     </div>
                     {submission ? (
-                      submission.status === 'reviewed' ? (
-                        <Badge variant="success">Reviewed</Badge>
-                      ) : (
-                        <Button variant="outline" size="sm" onClick={() => data.reviewSubmission(submission.id)}>
-                          Review
-                        </Button>
-                      )
+                       submission.status === 'reviewed' ? (
+                         <Badge variant="success">Reviewed</Badge>
+                       ) : isTeacher() ? (
+                         <Button variant="outline" size="sm" onClick={() => data.reviewSubmission(submission.id)}>
+                           Review
+                         </Button>
+                       ) : (
+                         <Badge variant="olive">Submitted</Badge>
+                       )
                     ) : (
                       <Badge variant="terracotta">Missing</Badge>
                     )}
@@ -403,6 +409,7 @@ export default function Assignments() {
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">Title</label>
               <input
+                aria-label="Assignment title"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -412,6 +419,7 @@ export default function Assignments() {
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">Instructions</label>
               <textarea
+                aria-label="Assignment instructions"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 rows={3}
@@ -422,6 +430,7 @@ export default function Assignments() {
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">Subject</label>
                 <select
+                  aria-label="Assignment subject"
                   value={form.subject}
                   onChange={(e) => setForm({ ...form, subject: e.target.value })}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -438,6 +447,7 @@ export default function Assignments() {
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">Section</label>
                 <select
+                  aria-label="Assignment section"
                   value={form.section_label}
                   onChange={(e) => setForm({ ...form, section_label: e.target.value })}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -454,6 +464,7 @@ export default function Assignments() {
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">Due date</label>
                 <input
+                  aria-label="Assignment due date"
                   type="date"
                   value={form.due_date}
                   onChange={(e) => setForm({ ...form, due_date: e.target.value })}
@@ -463,6 +474,7 @@ export default function Assignments() {
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">Type</label>
                 <select
+                  aria-label="Assignment type"
                   value={form.type}
                   onChange={(e) => setForm({ ...form, type: e.target.value as 'HOMEWORK' | 'ASSIGNMENT' })}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -477,6 +489,7 @@ export default function Assignments() {
                 Attachment name (worksheet PDF)
               </label>
               <input
+                aria-label="Attachment name"
                 value={form.attachmentName}
                 onChange={(e) => setForm({ ...form, attachmentName: e.target.value })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -492,30 +505,6 @@ export default function Assignments() {
           </form>
         </Modal>
       )}
-    </div>
-  );
-}
-
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-start justify-between gap-2">
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-ink" aria-label="Close">
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    </Page>
   );
 }

@@ -11,6 +11,8 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
+import { Page, PageHeader, SectionHeading } from '../components/page';
+import { Modal } from '../components/modal';
 import { FiPlus } from 'react-icons/fi';
 
 const SUBJECTS = [
@@ -72,27 +74,21 @@ export default function CourseProgress() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Course Progress</h1>
-          <p className="text-muted">
-            Track subject-wise progress per student. Teachers and admins can add progress.
-          </p>
-        </div>
-        {canAdd && (
+    <Page>
+      <PageHeader
+        eyebrow={isStudent() ? 'My learning' : 'Academic progress'}
+        title={isStudent() ? 'My Progress' : 'Course Progress'}
+        description="Track subject-wise progress per student. Teachers and admins can add progress."
+        actions={canAdd ? (
           <Button onClick={() => setOpen(true)}>
-            <FiPlus size={16} /> Add progress
+            <FiPlus size={16} aria-hidden="true" /> Add progress
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
+      <section aria-label="Progress records">
       <Card>
-        <div className="mb-4">
-          <h3 className="text-lg font-bold text-ink">
-            {isStudent() ? 'My course progress' : 'All course progress'}
-          </h3>
-        </div>
+        <SectionHeading title={isStudent() ? 'My course progress' : 'All course progress'} />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -145,19 +141,19 @@ export default function CourseProgress() {
               </tbody>
             </Table>
           </div>
-        </Card>
+      </Card>
+      </section>
 
-        {canAdd && open && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-              <h2 className="text-lg font-bold text-ink mb-4">Add course progress</h2>
+      {canAdd && open && (
+          <Modal title="Add course progress" description="Record a subject goal and the student's current progress." onClose={() => setOpen(false)} size="sm">
               <form onSubmit={handleAdd} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Student</label>
+                  <label htmlFor="progress-student" className="field-label">Student</label>
                   <select
+                    id="progress-student"
                     value={form.student_id}
                     onChange={(e) => setForm({ ...form, student_id: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="field-control"
                   >
                     <option value="">Select student</option>
                     {students.map((s) => (
@@ -168,11 +164,12 @@ export default function CourseProgress() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Subject</label>
+                  <label htmlFor="progress-subject" className="field-label">Subject</label>
                   <select
+                    id="progress-subject"
                     value={form.subject}
                     onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="field-control"
                   >
                     <option value="">Select subject</option>
                     {SUBJECTS.map((s) => (
@@ -181,43 +178,47 @@ export default function CourseProgress() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Title</label>
+                  <label htmlFor="progress-title" className="field-label">Title</label>
                   <input
+                    id="progress-title"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="field-control"
                     placeholder="e.g. Polynomials and quadratic equations"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Percent</label>
+                    <label htmlFor="progress-percent" className="field-label">Percent</label>
                     <input
+                      id="progress-percent"
                       type="number"
                       min="0"
                       max="100"
                       value={form.percent}
                       onChange={(e) => setForm({ ...form, percent: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="field-control"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Grade</label>
+                    <label htmlFor="progress-grade" className="field-label">Grade</label>
                     <input
+                      id="progress-grade"
                       value={form.grade}
                       onChange={(e) => setForm({ ...form, grade: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="field-control"
                       placeholder="A1"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Remarks</label>
+                  <label htmlFor="progress-remarks" className="field-label">Remarks</label>
                   <textarea
+                    id="progress-remarks"
                     value={form.remarks}
                     onChange={(e) => setForm({ ...form, remarks: e.target.value })}
                     rows={2}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="field-control"
                   />
                 </div>
                 <div className="flex justify-end gap-2 mt-4">
@@ -227,9 +228,8 @@ export default function CourseProgress() {
                   <Button type="submit">Save</Button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
-    </div>
+          </Modal>
+      )}
+    </Page>
   );
 }

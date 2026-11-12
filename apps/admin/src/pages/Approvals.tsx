@@ -11,6 +11,8 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
+import { Page, PageHeader, SectionHeading } from '../components/page';
+import { Modal } from '../components/modal';
 import { FiCheckCircle, FiClock, FiX } from 'react-icons/fi';
 import { cn, formatDateLong, daysBetween } from '../lib/utils';
 
@@ -98,20 +100,17 @@ export default function Approvals() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Approvals</h1>
-          <p className="text-muted">
-            {isStudent()
-              ? 'Apply for leave and track what your class teacher decides.'
-              : 'Leave requests from your class. Approve or reject in one click.'}
-          </p>
-        </div>
-        {isStudent() && (
-          <Button onClick={() => setOpen(true)}>Apply for leave</Button>
-        )}
-      </div>
+    <Page>
+      <PageHeader
+        eyebrow={isStudent() ? 'My school day' : 'Student wellbeing'}
+        title={isStudent() ? 'My Leaves' : 'Leave Approvals'}
+        description={isStudent()
+          ? 'Apply for leave and track what your class teacher decides.'
+          : 'Leave requests from your class. Approve or reject in one click.'}
+        actions={isStudent() ? <Button onClick={() => setOpen(true)}>Apply for leave</Button> : undefined}
+      />
+
+      <section aria-label="Leave requests" className="space-y-6">
 
       {isStudent() && (
         <Card>
@@ -182,19 +181,15 @@ export default function Approvals() {
           </div>
 
           <Card>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 className="text-lg font-bold text-ink">Pending approvals</h3>
-                <p className="text-sm text-muted">
-                  {isAdmin()
-                    ? 'Every class, newest first.'
-                    : `Students in ${data.people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'your class'}.`}
-                </p>
-              </div>
-              <Badge variant={pendingInbox.length ? 'terracotta' : 'success'}>
+            <SectionHeading
+              title="Pending approvals"
+              description={isAdmin()
+                ? 'Every class, newest first.'
+                : `Students in ${data.people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'your class'}.`}
+              action={<Badge variant={pendingInbox.length ? 'terracotta' : 'success'}>
                 {pendingInbox.length} waiting
-              </Badge>
-            </div>
+              </Badge>}
+            />
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -322,22 +317,23 @@ export default function Approvals() {
         </>
       )}
 
+      </section>
+
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-ink">Apply for leave</h2>
-              <FiClock className="text-slate-400" />
+        <Modal title="Apply for leave" description="Send the dates and reason to your class teacher." onClose={() => setOpen(false)} size="sm">
+            <div className="mb-4 flex items-center gap-2 rounded-campus bg-leaf/30 px-3 py-2 text-xs text-deep-olive">
+              <FiClock aria-hidden="true" /> Your teacher will see this in their approvals workspace.
             </div>
             <form onSubmit={handleApply} className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Leave type</label>
+                <label htmlFor="leave-type" className="field-label">Leave type</label>
                 <select
+                  id="leave-type"
                   value={form.leave_type}
                   onChange={(e) =>
                     setForm({ ...form, leave_type: e.target.value as (typeof LEAVE_TYPES)[number] })
                   }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 >
                   {LEAVE_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -346,33 +342,36 @@ export default function Approvals() {
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Start date</label>
+                  <label htmlFor="leave-start" className="field-label">Start date</label>
                   <input
+                    id="leave-start"
                     type="date"
                     value={form.start_date}
                     onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">End date</label>
+                  <label htmlFor="leave-end" className="field-label">End date</label>
                   <input
+                    id="leave-end"
                     type="date"
                     value={form.end_date}
                     onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Reason</label>
+                <label htmlFor="leave-reason" className="field-label">Reason</label>
                 <textarea
+                  id="leave-reason"
                   value={form.reason}
                   onChange={(e) => setForm({ ...form, reason: e.target.value })}
                   rows={3}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                   placeholder="Doctor advised rest for two days…"
                 />
               </div>
@@ -383,10 +382,9 @@ export default function Approvals() {
                 <Button type="submit">Submit for approval</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }
 

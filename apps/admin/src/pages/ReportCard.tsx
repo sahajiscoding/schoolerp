@@ -12,6 +12,8 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
+import { Page, PageHeader, SectionHeading } from '../components/page';
+import { Modal } from '../components/modal';
 import { FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi';
 import type { ReportCard as ReportCardType } from '../lib/types';
 
@@ -26,7 +28,7 @@ const DEFAULT_SUBJECTS = [
 const TERMS = ['HALF YEARLY', 'ANNUAL', 'TERM 1', 'TERM 2'];
 
 export default function ReportCard() {
-  const { profile, isAdmin, isTeacher, isStudent } = useAuth();
+  const { profile, isTeacher, isStudent } = useAuth();
   const data = useAppDataHook();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -38,7 +40,7 @@ export default function ReportCard() {
     subjects: DEFAULT_SUBJECTS.map((s) => ({ subject: s, marks: '', max_marks: '100' })),
   });
 
-  const canGenerate = isAdmin() || isTeacher();
+  const canGenerate = isTeacher();
   const students = data.people.filter((p) => p.role === 'student');
   const myReportCards = data.reportCards.filter((rc) => rc.student_id === profile?.id);
   const visibleCards = isStudent() ? myReportCards : data.reportCards;
@@ -141,35 +143,30 @@ export default function ReportCard() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">
-            {isStudent() ? 'My Report Card' : 'Report Cards'}
-          </h1>
-          <p className="text-muted">
-            {canGenerate
-              ? 'Pick a student, enter subject marks, and the card is generated and assigned instantly.'
-              : 'Your published report cards. Print any term for your records.'}
-          </p>
-        </div>
-        {canGenerate && (
+    <Page>
+      <PageHeader
+        eyebrow={isStudent() ? 'My learning' : 'Academic records'}
+        title={isStudent() ? 'My Report Card' : 'Report Cards'}
+        description={canGenerate
+          ? 'Pick a student, enter subject marks, and the card is generated and assigned instantly.'
+          : isStudent()
+            ? 'Your published report cards. Print any term for your records.'
+            : 'Read-only school-wide oversight of published report cards.'}
+        actions={canGenerate ? (
           <Button onClick={() => setOpen(true)}>
-            <FiPlus size={16} /> Generate report card
+            <FiPlus size={16} aria-hidden="true" /> Generate report card
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
+
+      <section aria-label="Report card records" className="space-y-6">
 
       {isStudent() && myReportCards.length > 0 && (
         <LatestCard card={myReportCards[0]} onPrint={handlePrint} studentName={profile?.full_name ?? ''} />
       )}
 
       <Card>
-        <div className="mb-4">
-          <h3 className="text-lg font-bold text-ink">
-            {isStudent() ? 'All my report cards' : 'All report cards'}
-          </h3>
-        </div>
+        <SectionHeading title={isStudent() ? 'All my report cards' : 'All report cards'} />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -234,19 +231,15 @@ export default function ReportCard() {
           </Table>
         </div>
       </Card>
+      </section>
 
       {canGenerate && open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-1 text-lg font-bold text-ink">Generate report card</h2>
-            <p className="mb-4 text-xs text-muted">
-              Marks are graded automatically (A1 to E). The card appears in the student’s account
-              immediately.
-            </p>
+        <Modal title="Generate report card" description="Marks are graded automatically (A1 to E). The card appears in the student’s account immediately." onClose={() => setOpen(false)}>
             <form onSubmit={handleGenerate} className="space-y-4">
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">Student</label>
                 <select
+                  aria-label="Student"
                   value={form.student_id}
                   onChange={(e) => pickStudent(e.target.value)}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -263,6 +256,7 @@ export default function ReportCard() {
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted">Term</label>
                   <select
+                    aria-label="Term"
                     value={form.term}
                     onChange={(e) => setForm({ ...form, term: e.target.value })}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -277,6 +271,7 @@ export default function ReportCard() {
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted">Academic year</label>
                   <input
+                    aria-label="Academic year"
                     value={form.academic_year}
                     onChange={(e) => setForm({ ...form, academic_year: e.target.value })}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -287,6 +282,7 @@ export default function ReportCard() {
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted">Class</label>
                   <input
+                    aria-label="Class"
                     value={form.class_label}
                     onChange={(e) => setForm({ ...form, class_label: e.target.value })}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -296,6 +292,7 @@ export default function ReportCard() {
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted">Section</label>
                   <input
+                    aria-label="Section"
                     value={form.section_label}
                     onChange={(e) => setForm({ ...form, section_label: e.target.value })}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -309,6 +306,7 @@ export default function ReportCard() {
                   {form.subjects.map((s, i) => (
                     <div key={i} className="flex gap-2">
                       <input
+                        aria-label={`Subject ${i + 1}`}
                         value={s.subject}
                         onChange={(ev) => {
                           const subs = [...form.subjects];
@@ -319,6 +317,7 @@ export default function ReportCard() {
                         placeholder="Subject"
                       />
                       <input
+                        aria-label={`Marks for subject ${i + 1}`}
                         type="number"
                         value={s.marks}
                         onChange={(ev) => {
@@ -330,6 +329,7 @@ export default function ReportCard() {
                         placeholder="Marks"
                       />
                       <input
+                        aria-label={`Maximum marks for subject ${i + 1}`}
                         type="number"
                         value={s.max_marks}
                         onChange={(ev) => {
@@ -377,10 +377,9 @@ export default function ReportCard() {
                 <Button type="submit">Generate &amp; assign</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }
 
