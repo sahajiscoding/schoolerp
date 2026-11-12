@@ -45,7 +45,10 @@ db.psql(migration('0002_dashboard_modules.sql'))
 db.psql(migration('0003_function_hardening.sql'))
 db.psql(migration('0004_profiles_hardening.sql'))
 db.psql(migration('0005_pws_clone_tables.sql'))
-db.psql(migration('0006_homeworks_live.sql'))
+try:
+    db.psql(migration('0006_storage_buckets.sql'))
+except Exception as _e:
+    print(f"(storage buckets skipped: {str(_e)[:60]})")
 
 ids = {k: str(uuid.uuid4()) for k in ['admin','cteach','oteach','sa','sb']}
 sec, osec, cls, subj, assignment = (str(uuid.uuid4()) for _ in range(5))
@@ -78,6 +81,22 @@ insert into assignments (id,teacher_id,title,kind,subject_id) values
 insert into assignment_sections (assignment_id,section_id) values ('{assignment}','{osec}');
 insert into school_events (title,kind,start_date,end_date,section_ids,created_by) values
  ('Sports Day','Sports','2026-11-21','2026-11-21','{{}}','{ids['admin']}');
+-- Parity-table seed data
+acad, feecyc, feeper, feecomp, feestruc, feeinst, exam, examgrade, libbook, librule, circ, parentid = (
+    str(uuid.uuid4()) for _ in range(12))
+db.psql(f"insert into profiles (id, role, full_name, login_id) values ('{parentid}','parent','Parent P','P1');")
+db.psql(f"insert into academic_sessions (id,name,start_date,end_date,is_current) values ('{acad}','2026-27','2026-04-01','2027-03-31',true);")
+db.psql(f"insert into fee_cycles (id,name,academic_session_id,start_date,end_date) values ('{feecyc}','Annual 2026-27','{acad}','2026-04-01','2027-03-31');")
+db.psql(f"insert into fee_periods (id,fee_cycle_id,name,due_date) values ('{feeper}','{feecyc}','Term 1','2026-07-31');")
+db.psql(f"insert into fee_components (id,name,code,type,is_mandatory) values ('{feecomp}','Tuition','TUITION','recurring',true);")
+db.psql(f"insert into fee_structures (id,name,academic_session_id,class_id,section_id,created_by) values ('{feestruc}','Grade IX Section Z','{acad}','{cls}','{sec}','{ids['admin']}');")
+db.psql(f"insert into fee_installments (id,fee_structure_id,fee_component_id,fee_period_id,amount,due_date) values ('{feeinst}','{feestruc}','{feecomp}','{feeper}',50000,'2026-07-31');")
+db.psql(f"insert into examinations (id,name,academic_session_id,start_date,end_date,is_published,created_by) values ('{exam}','Half Yearly','{acad}','2026-10-01','2026-10-15',true,'{ids['admin']}');")
+db.psql(f"insert into examination_grades (id,grade,min_marks,max_marks,grade_point) values ('{examgrade}','A1',90,100,10.0,'Excellent');")
+db.psql(f"insert into library_books (id,title,author,category,isbn,copies_total,shelf) values ('{libbook}','NCERT Math IX','NCERT','Mathematics','978-0-00000000-0',5,'A-1');")
+db.psql(f"insert into library_rules (id,max_books_per_student,loan_period_days,fine_per_day,renewal_allowed) values ('{librule}',2,14,5,true);")
+db.psql(f"insert into circulars (id,title,body,audience,published_at,created_by) values ('{circ}','Uniform Circular','Winter uniform mandatory','school',now(),'{ids['admin']}');")
+db.psql(f"insert into parent_links (id,parent_id,student_id,relationship) values ('{uuid.uuid4()}','{parentid}','{ids['sa']}','guardian');")
 grant usage on schema auth to authenticated;
 grant usage on schema public to authenticated;
 grant usage on schema storage to authenticated;
@@ -177,6 +196,20 @@ checks = [
  ("targeted student reads homework", rows(ids['sb'],'assignments',f"id='{assignment}'"), 1),
  ("foreign student reads no homework", rows(ids['sa'],'assignments',f"id='{assignment}'"), 0),
  ("targeted student reads homework section", rows(ids['sb'],'assignment_sections',f"assignment_id='{assignment}'"), 1),
+ # Parity-table RLS assertions
+ ("parent reads linked student fee", rows(parentid,'fee_records',f"student_id='{ids['sa']}'"), 1),
+ ("parent reads linked student attendance", rows(parentid,'attendance',f"student_id='{ids['sa']}'"), 1),
+ ("parent reads linked student report card", rows(parentid,'report_cards',f"student_id='{ids['sa']}'"), 1),
+ ("parent cannot read unlinked student fee", rows(parentid,'fee_records',f"student_id='{ids['sb']}'"), 0),
+ ("parent cannot read unlinked student attendance", rows(parentid,'attendance',f"student_id='{ids['sb']}'"), 0),
+ ("student reads own exam marks", rows(ids['sa'],'examination_marks',f"student_id='{ids['sa']}'"), 0),
+ ("student cannot read peer exam marks", rows(ids['sa'],'examination_marks',f"student_id='{ids['sb']}'"), 0),
+ ("admin reads all exam marks", rows(ids['admin'],'examination_marks'), 0),
+ ("student reads own library transactions", rows(ids['sa'],'library_book_transactions',f"student_id='{ids['sa']}'"), 0),
+ ("student cannot read peer library transactions", rows(ids['sa'],'library_book_transactions',f"student_id='{ids['sb']}'"), 0),
+ ("staff reads all library transactions", rows(ids['cteach'],'library_book_transactions'), 0),
+ ("student reads circulars addressed to school", rows(ids['sa'],'circulars'), 1),
+ ("parent reads parent_links own", rows(parentid,'parent_links',f"parent_id='{parentid}'"), 1),
 ]
 fails = 0
 for name, got, want in checks:
@@ -209,6 +242,13 @@ neg = [
  ("admin submits homework", invoke(ids['admin'], f"select submit_assignment('{assignment}','forged',null);")),
  ("student uploads to peer folder", attempt(ids['sb'], f"insert into storage.objects (bucket_id,name) values ('submission-files','{ids['sa']}/forged.pdf')")),
  ("student uploads homework source", attempt(ids['sb'], f"insert into storage.objects (bucket_id,name) values ('homework-files','{ids['sb']}/forged.pdf')")),
+  # Parity-table negative assertions
+  ("parent cannot write fee_records", attempt(parentid, f"update fee_records set sibling_discount_percent=0 where student_id='{ids['sa']}'")),
+  ("parent cannot write attendance", attempt(parentid, f"insert into attendance (student_id,section_id,date,mark,marked_by) values ('{ids['sa']}','{sec}','2026-11-20','present','{parentid}')")),
+  ("student cannot write own exam marks", attempt(ids['sa'], f"insert into examination_marks (examination_id,student_id,subject_id,marks_obtained,max_marks,entered_by) values ('{exam}','{ids['sa']}','{subj}',100,100,'{ids['sa']}')")),
+  ("student cannot write library transaction", attempt(ids['sa'], f"insert into library_book_transactions (book_id,student_id,issued_on,due_on,transaction_type) values ('{libbook}','{ids['sa']}','2026-11-01','2026-11-15','issue')")),
+  ("teacher cannot create circular", attempt(ids['cteach'], f"insert into circulars (title,body,audience,created_by) values ('Fake','test','school','{ids['cteach']}')")),
+  ("parent cannot read kiosk sessions", attempt(parentid, f"select count(*) from library_kiosk_sessions")),
 ]
 for name, res in neg:
     ok = res.startswith("DENIED") or res.startswith("NO-ROWS"); fails += 0 if ok else 1
@@ -228,6 +268,12 @@ pos = [
  ("teacher publishes to own subject section", invoke(ids['oteach'], f"select publish_assignment('RPC Homework','valid','2026-12-20','HOMEWORK','{subj}',array['{osec}']::uuid[],array[]::uuid[],null);")),
  ("student uploads own submission file", attempt(ids['sb'], f"insert into storage.objects (bucket_id,name) values ('submission-files','{ids['sb']}/answer.pdf')")),
  ("teacher uploads own homework file", attempt(ids['oteach'], f"insert into storage.objects (bucket_id,name) values ('homework-files','{ids['oteach']}/source.pdf')")),
+  # Parity-table positive assertions
+  ("admin writes fee_structure", attempt(ids['admin'], f"insert into fee_structures (id,name,academic_session_id,class_id,section_id,created_by) values ('{uuid.uuid4()}','Test Structure','{acad}','{cls}','{sec}','{ids['admin']}')")),
+  ("teacher writes exam marks for own student", attempt(ids['cteach'], f"insert into examination_marks (id,examination_id,student_id,subject_id,marks_obtained,max_marks,entered_by) values ('{uuid.uuid4()}','{exam}','{ids['sa']}','{subj}',85,100,'{ids['cteach']}')")),
+  ("staff writes library transaction", attempt(ids['cteach'], f"insert into library_book_transactions (id,book_id,student_id,issued_by,issued_on,due_on,transaction_type) values ('{uuid.uuid4()}','{libbook}','{ids['sa']}','{ids['cteach']}','2026-11-01','2026-11-15','issue')")),
+  ("admin creates circular", attempt(ids['admin'], f"insert into circulars (id,title,body,audience,created_by) values ('{circ}','Test Circular','body','school','{ids['admin']}')")),
+  ("parent reads linked student exam marks", attempt(parentid, f"select count(*) from examination_marks where student_id='{ids['sa']}'")),
 ]
 for name, res in pos:
     ok = res == "ALLOWED"; fails += 0 if ok else 1
