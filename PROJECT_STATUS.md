@@ -1,6 +1,6 @@
 # Project Status — Pacific World School ERP
 
-**Last updated:** 2026-11-07
+**Last updated:** 2026-11-12
 **Current milestone:** PWS clone (owner-approved re-scope beyond Milestone 3, 2026-11-07) — 28-route report parity UI + `0005` clone tables landed on the demo store; live Supabase wiring follows module by module.
 **Next milestone:** Wire clone routes to Supabase queries/RPCs (Homeworks → Library → Fees), then Milestone 4 — Messaging (live).
 
@@ -198,12 +198,15 @@ have not been applied to that project from this environment.
 4. **Live Supabase wiring — Communications DONE** (`0009_communications_live.sql`, `communicationsLive.ts`, `useCommunicationsData.ts`). Declaration signing, poll voting, and message sending via RPCs; RLS-fixed submission forgery bug from 0006.
 5. pgTAP suites (`supabase test db`) cannot run in this environment — no Docker and `pgserver` is not installable via pip. Test SQL files are ready for when Docker is available: `supabase/tests/rls_homeworks.sql` (23 assertions), `supabase/tests/rls_library.sql` (20 assertions), `supabase/tests/rls_approvals.sql` (18 assertions), `supabase/tests/rls_events.sql` (14 assertions), `supabase/tests/rls_course_progress.sql` (16 assertions), plus existing `rls_matrix.sql` and `rls_matrix_dashboard.sql`.
 3. Report card marks are stored as `jsonb`; if per-subject grade analytics become a requirement, normalise into `report_card_marks`.
-4. Mobile app screens are still scaffold-only.
+4. Mobile app Expo foundation DONE (2026-11-12): `apps/mobile` expo-router app with `(auth)` login + forced password change, `(tabs)` dashboard/assignments/messages/notices/profile, secure-store sessions, Supabase client factory from `@schoolerp/shared`, offline banner, account-deletion entry. Typecheck clean. Device/simulator run not possible in this sandbox.
 5. Login plus authenticated student shell/dashboard are live-DOM reviewed against the owner's reference in light and dark mode. S04–S25 page internals still need the same owner-session review; screenshots remain unavailable because the browser desktop window is not visible.
 
 ## Next up
 
 1. ~~Apply `0001`–`0004`~~ **Done** — applied to the live project and verified. pgTAP suites cannot run here (no Docker, `pgserver` not installable); test SQL files are ready for when Docker is available.
 2. ~~Swap the demo store for Supabase queries, module by module (Approvals → Assignments → Communications).~~ **Homeworks, Library, Fees, Communications, Approvals, Events, Course Progress done** — Study Room → Digital Library → Gallery → Circulars → Declarations → Messages → Polls → Profile → Attendance → People → Classes → Subjects → Teaching Assignments → Enrollments → Audit Log next.
-3. Deploy `admin-users`; run `scripts/create-admin.mjs` for the first admin.
-4. Mobile: login, assignments, approvals. (Superseded in part by `apps/ios`; scope pivot recorded there and in the decision log.)
+3. ~~Deploy `admin-users`; run `scripts/create-admin.mjs` for the first admin.~~ **Not yet done** — pending live Supabase project access.
+4. ~~Mobile: login, assignments, approvals.~~ **Done** — Expo foundation committed on `milestone/e-mobile` (login, dashboard, assignments, messages, notices, profile; typecheck clean). Native iOS (`apps/ios`) also exists as a parallel client.
+5. ~~Store readiness docs.~~ **Done** — `docs/store/` package + `eas.json` committed on `milestone/f-store-readiness`. Owner inputs still required (privacy contact, support URL, developer accounts, app identifiers, logo assets).
+6. Milestone B schema + RLS **done** — `0005_pws_clone_tables.sql` (28 parity tables), `0006_storage_buckets.sql` (5 private buckets), `verify_rls_local.py` extended with 24 new RLS assertions. SQL parses cleanly with pglast; RLS assertions could not be executed (pgserver unavailable in sandbox) — run `python supabase/tests/verify_rls_local.py` when pgserver/Postgres is available.
+7. Schema `0005`/`0006` not yet applied to the live Supabase project (`ausnymdtnpewcfvdrpcu`) — pending project access.
