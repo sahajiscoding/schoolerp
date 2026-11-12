@@ -9,8 +9,11 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
-import { FiPlus, FiTrash2, FiUsers } from 'react-icons/fi';
+import { Modal } from '../components/modal';
+import { MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
+import { FiGrid, FiPlus, FiTrash2, FiUsers } from 'react-icons/fi';
 
 export default function Classes() {
   const data = useData();
@@ -40,22 +43,31 @@ export default function Classes() {
   const countStudents = (className: string) =>
     data.people.filter((p) => p.role === 'student' && p.class_label === className).length;
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Classes &amp; Sections</h1>
-          <p className="text-muted">
-            {data.classes.length} classes ·{' '}
-            {data.classes.reduce((sum, c) => sum + c.sections.length, 0)} sections
-          </p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <FiPlus size={16} /> Add class
-        </Button>
-      </div>
+  const sectionCount = data.classes.reduce((sum, schoolClass) => sum + schoolClass.sections.length, 0);
+  const studentCount = data.people.filter((person) => person.role === 'student').length;
 
-      <Card>
+  return (
+    <Page>
+      <PageHeader
+        eyebrow="Administration"
+        title="Classes & sections"
+        description="Maintain class groups, their sections and current class-teacher coverage."
+        meta={`${data.classes.length} classes · ${sectionCount} sections`}
+        actions={<Button onClick={() => setOpen(true)}>
+          <FiPlus size={16} /> Add class
+        </Button>}
+      />
+
+      <MetricGrid className="xl:grid-cols-3">
+        <StatCard label="Classes" value={data.classes.length} icon={FiGrid} />
+        <StatCard label="Sections" value={sectionCount} icon={FiGrid} variant="neutral" />
+        <StatCard label="Students placed" value={studentCount} icon={FiUsers} variant="terracotta" />
+      </MetricGrid>
+
+      <Card padded={false}>
+        <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+          <SectionHeading title="Class ledger" description="Sections, student totals and assigned class teachers." />
+        </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -63,7 +75,7 @@ export default function Classes() {
                 <TableHead>Class</TableHead>
                 <TableHead>Sections</TableHead>
                 <TableHead>Students</TableHead>
-                <TableHead>Class teacher</TableHead>
+                <TableHead className="hidden lg:table-cell">Class teacher</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -74,7 +86,7 @@ export default function Classes() {
                 );
                 return (
                   <TableRow key={cls.id}>
-                    <TableCell className="font-medium">{cls.name}</TableCell>
+                    <TableCell className="font-bold">{cls.name}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {cls.sections.map((section) => (
@@ -90,7 +102,7 @@ export default function Classes() {
                         {countStudents(cls.name)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="hidden text-sm lg:table-cell">
                       {teacher?.full_name ?? <span className="text-muted">Not assigned</span>}
                     </TableCell>
                     <TableCell className="text-right">
@@ -112,40 +124,39 @@ export default function Classes() {
       </Card>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-lg font-bold text-ink">Add class</h2>
+        <Modal title="Add class" description="Create a class and its initial section list." onClose={() => setOpen(false)} size="sm">
             <form onSubmit={handleAdd} className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Class name</label>
+                <label htmlFor="class-name" className="field-label">Class name</label>
                 <input
+                  id="class-name"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                   placeholder="XI"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">
+                <label htmlFor="class-sections" className="field-label">
                   Sections (comma separated)
                 </label>
                 <input
+                  id="class-sections"
                   value={form.sections}
                   onChange={(e) => setForm({ ...form, sections: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                   placeholder="A, B, C"
                 />
               </div>
-              <div className="mt-4 flex justify-end gap-2">
+              <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Add class</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }

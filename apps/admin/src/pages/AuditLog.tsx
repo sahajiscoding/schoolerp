@@ -8,7 +8,9 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
+import { MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
 import { formatDateTime } from '../lib/utils';
 import { FiShield } from 'react-icons/fi';
 
@@ -25,18 +27,24 @@ export default function AuditLog() {
       }),
     [data.audit, data.people, query],
   );
+  const actorCount = new Set(data.audit.map((entry) => entry.actorId)).size;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-ink">Audit Log</h1>
-        <p className="text-muted">
-          Every administrative action is recorded. Entries are read-only — admins cannot edit or delete
-          them, on this page or in the database.
-        </p>
-      </div>
+    <Page>
+      <PageHeader
+        eyebrow="Administration"
+        title="Audit log"
+        description="Every administrative action is recorded. Entries are read-only and cannot be edited or deleted here."
+        meta={`${data.audit.length} recorded actions`}
+      />
 
-      <div className="flex items-start gap-2 rounded-xl border border-olive/15 bg-olive/5 p-3 text-xs text-olive">
+      <MetricGrid className="xl:grid-cols-3">
+        <StatCard label="Recorded actions" value={data.audit.length} icon={FiShield} />
+        <StatCard label="Actors represented" value={actorCount} icon={FiShield} variant="neutral" />
+        <StatCard label="Visible results" value={entries.length} icon={FiShield} variant="terracotta" />
+      </MetricGrid>
+
+      <div className="flex items-start gap-2 rounded-heritage border border-moss/20 bg-moss/10 p-4 text-xs leading-5 text-[#4f5f28]">
         <FiShield size={14} className="mt-0.5 shrink-0" />
         <span>
           In the live system this table is backed by <code>audit_log</code> with RLS: admins can
@@ -44,16 +52,18 @@ export default function AuditLog() {
         </span>
       </div>
 
-      <Card>
-        <div className="mb-3">
+      <Card padded={false}>
+        <div className="flex flex-col gap-4 px-5 pt-5 sm:px-6 sm:pt-6 md:flex-row md:items-end md:justify-between">
+          <SectionHeading title="Activity ledger" description="Read-only actions ordered by recorded time." className="mb-0" />
           <input
+            aria-label="Search audit log"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search actor, action or student"
-            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="field-control max-w-sm"
           />
         </div>
-        <div className="overflow-x-auto">
+        <div className="mt-4 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -72,7 +82,7 @@ export default function AuditLog() {
                       {formatDateTime(entry.at)}
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm font-medium">{actor?.full_name ?? 'System'}</div>
+                       <div className="text-sm font-bold">{actor?.full_name ?? 'System'}</div>
                       <Badge variant={actor?.role === 'admin' ? 'terracotta' : 'olive'} className="mt-1">
                         {actor?.role ?? 'system'}
                       </Badge>
@@ -93,6 +103,6 @@ export default function AuditLog() {
           </Table>
         </div>
       </Card>
-    </div>
+    </Page>
   );
 }

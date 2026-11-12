@@ -9,8 +9,11 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
-import { FiPlus, FiEdit3, FiTrash2 } from 'react-icons/fi';
+import { Modal } from '../components/modal';
+import { MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
+import { FiEdit3, FiGrid, FiPlus, FiSend, FiTrash2, FiUsers } from 'react-icons/fi';
 
 const EMPTY_FORM = { teacher_id: '', section_label: '', subject: '' };
 
@@ -82,18 +85,27 @@ export default function TeachingAssignments() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Teaching Assignments</h1>
-          <p className="text-muted">Assign teachers to sections and subjects.</p>
-        </div>
-        <Button onClick={openCreate}>
+    <Page>
+      <PageHeader
+        eyebrow="Administration"
+        title="Teaching assignments"
+        description="Connect each teacher to the sections and subjects they are authorised to teach."
+        meta={`${data.teachingAssignments.length} assignments`}
+        actions={<Button onClick={openCreate}>
           <FiPlus size={16} /> Add assignment
-        </Button>
-      </div>
+        </Button>}
+      />
 
-      <Card>
+      <MetricGrid className="xl:grid-cols-3">
+        <StatCard label="Assignments" value={data.teachingAssignments.length} icon={FiSend} />
+        <StatCard label="Active teachers" value={teachers.length} icon={FiUsers} variant="terracotta" />
+        <StatCard label="Available sections" value={sections.length} icon={FiGrid} variant="neutral" />
+      </MetricGrid>
+
+      <Card padded={false}>
+        <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+          <SectionHeading title="Assignment ledger" description="Teacher reach is defined by these section and subject links." />
+        </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -107,7 +119,7 @@ export default function TeachingAssignments() {
             <tbody>
               {data.teachingAssignments.map((t) => (
                 <TableRow key={t.id}>
-                  <TableCell>{teacherName(t.teacher_id)}</TableCell>
+                  <TableCell className="font-bold">{teacherName(t.teacher_id)}</TableCell>
                   <TableCell>{t.section_label}</TableCell>
                   <TableCell>{t.subject}</TableCell>
                   <TableCell className="flex gap-2">
@@ -133,18 +145,20 @@ export default function TeachingAssignments() {
       </Card>
 
       {open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">
-              {editingId ? 'Edit teaching assignment' : 'Add teaching assignment'}
-            </h2>
+        <Modal
+          title={editingId ? 'Edit teaching assignment' : 'Add teaching assignment'}
+          description="Choose one teacher, section and subject."
+          onClose={() => setOpen(false)}
+          size="sm"
+        >
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Teacher</label>
+                <label htmlFor="assignment-teacher" className="field-label">Teacher</label>
                 <select
+                  id="assignment-teacher"
                   value={form.teacher_id}
                   onChange={(e) => setForm({ ...form, teacher_id: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 >
                   <option value="">Select a teacher…</option>
                   {teachers.map((t) => (
@@ -153,11 +167,12 @@ export default function TeachingAssignments() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Section</label>
+                <label htmlFor="assignment-section" className="field-label">Section</label>
                 <select
+                  id="assignment-section"
                   value={form.section_label}
                   onChange={(e) => setForm({ ...form, section_label: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 >
                   <option value="">Select a section…</option>
                   {sections.map((s) => (
@@ -166,11 +181,12 @@ export default function TeachingAssignments() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Subject</label>
+                <label htmlFor="assignment-subject" className="field-label">Subject</label>
                 <select
+                  id="assignment-subject"
                   value={form.subject}
                   onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 >
                   <option value="">Select a subject…</option>
                   {subjectNames.map((s) => (
@@ -178,16 +194,15 @@ export default function TeachingAssignments() {
                   ))}
                 </select>
               </div>
-              <div className="flex justify-end gap-2 mt-4">
+              <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">{editingId ? 'Save changes' : 'Assign'}</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }

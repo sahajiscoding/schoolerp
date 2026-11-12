@@ -9,8 +9,11 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
-import { FiPlus } from 'react-icons/fi';
+import { Modal } from '../components/modal';
+import { MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
+import { FiCheckCircle, FiPlus, FiUserX, FiUsers } from 'react-icons/fi';
 
 export default function Enrollments() {
   const data = useData();
@@ -33,6 +36,8 @@ export default function Enrollments() {
   );
 
   const selectedClass = data.classes.find((c) => c.id === form.class_id);
+  const allStudents = data.people.filter((person) => person.role === 'student');
+  const placedStudents = allStudents.filter((student) => student.class_label);
 
   const handleEnroll = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,29 +51,35 @@ export default function Enrollments() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Enrollments</h1>
-          <p className="text-muted">
-            Place students into a class and section. The class teacher then owns their leaves.
-          </p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
+    <Page>
+      <PageHeader
+        eyebrow="Administration"
+        title="Enrollments"
+        description="Place students into a class and section. The class teacher then owns their leave approvals."
+        meta={`${placedStudents.length} of ${allStudents.length} students placed`}
+        actions={<Button onClick={() => setOpen(true)}>
           <FiPlus size={16} /> Enroll student
-        </Button>
-      </div>
+        </Button>}
+      />
 
-      <Card>
-        <div className="mb-3">
+      <MetricGrid className="xl:grid-cols-3">
+        <StatCard label="Students" value={allStudents.length} icon={FiUsers} variant="neutral" />
+        <StatCard label="Placed" value={placedStudents.length} icon={FiCheckCircle} />
+        <StatCard label="Unplaced" value={allStudents.length - placedStudents.length} icon={FiUserX} variant="warning" />
+      </MetricGrid>
+
+      <Card padded={false}>
+        <div className="flex flex-col gap-4 px-5 pt-5 sm:px-6 sm:pt-6 md:flex-row md:items-end md:justify-between">
+          <SectionHeading title="Enrollment ledger" description="Current student class and section placement." className="mb-0" />
           <input
+            aria-label="Search enrollments"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or admission number"
-            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="field-control max-w-sm"
           />
         </div>
-        <div className="overflow-x-auto">
+        <div className="mt-4 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -82,7 +93,7 @@ export default function Enrollments() {
             <tbody>
               {students.map((student) => (
                 <TableRow key={student.id}>
-                  <TableCell className="font-medium">{student.full_name}</TableCell>
+                  <TableCell className="font-bold">{student.full_name}</TableCell>
                   <TableCell>
                     <code className="rounded bg-sand px-1.5 py-0.5 text-xs">
                       {student.admission_no ?? student.login_id}
@@ -110,16 +121,15 @@ export default function Enrollments() {
       </Card>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-lg font-bold text-ink">Enroll a student</h2>
+        <Modal title="Enroll a student" description="Choose the student's current class and section." onClose={() => setOpen(false)} size="sm">
             <form onSubmit={handleEnroll} className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Student</label>
+                <label htmlFor="enrollment-student" className="field-label">Student</label>
                 <select
+                  id="enrollment-student"
                   value={form.student_id}
                   onChange={(e) => setForm({ ...form, student_id: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 >
                   <option value="">Select student</option>
                   {data.people
@@ -133,11 +143,12 @@ export default function Enrollments() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Class</label>
+                  <label htmlFor="enrollment-class" className="field-label">Class</label>
                   <select
+                    id="enrollment-class"
                     value={form.class_id}
                     onChange={(e) => setForm({ ...form, class_id: e.target.value, section: '' })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                   >
                     <option value="">Select class</option>
                     {data.classes.map((c) => (
@@ -148,12 +159,13 @@ export default function Enrollments() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Section</label>
+                  <label htmlFor="enrollment-section" className="field-label">Section</label>
                   <select
+                    id="enrollment-section"
                     value={form.section}
                     onChange={(e) => setForm({ ...form, section: e.target.value })}
                     disabled={!selectedClass}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50"
+                    className="field-control"
                   >
                     <option value="">Select section</option>
                     {selectedClass?.sections.map((s) => (
@@ -164,16 +176,15 @@ export default function Enrollments() {
                   </select>
                 </div>
               </div>
-              <div className="mt-4 flex justify-end gap-2">
+              <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Enroll</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }

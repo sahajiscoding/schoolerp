@@ -9,8 +9,11 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
-import { FiPlus, FiEdit3, FiTrash2 } from 'react-icons/fi';
+import { Modal } from '../components/modal';
+import { MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
+import { FiBookOpen, FiEdit3, FiPlus, FiSend, FiTrash2 } from 'react-icons/fi';
 
 const DEFAULT_COLOR = '#4B5D2A';
 const EMPTY_FORM = { name: '', code: '', color: DEFAULT_COLOR };
@@ -64,18 +67,26 @@ export default function Subjects() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Subjects</h1>
-          <p className="text-muted">Manage school subjects.</p>
-        </div>
-        <Button onClick={openCreate}>
+    <Page>
+      <PageHeader
+        eyebrow="Administration"
+        title="Subjects"
+        description="Maintain the subject catalogue and the codes used across teaching assignments."
+        meta={`${subjects.length} subjects`}
+        actions={<Button onClick={openCreate}>
           <FiPlus size={16} /> Add subject
-        </Button>
-      </div>
+        </Button>}
+      />
 
-      <Card>
+      <MetricGrid className="xl:grid-cols-2">
+        <StatCard label="Subjects" value={subjects.length} icon={FiBookOpen} />
+        <StatCard label="Teaching assignments" value={data.teachingAssignments.length} icon={FiSend} variant="neutral" />
+      </MetricGrid>
+
+      <Card padded={false}>
+        <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+          <SectionHeading title="Subject ledger" description="Names, school codes and visual identifiers." />
+        </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -95,7 +106,7 @@ export default function Subjects() {
                         style={{ backgroundColor: s.color }}
                         aria-hidden
                       />
-                      {s.name}
+                       <span className="font-bold">{s.name}</span>
                     </span>
                   </TableCell>
                   <TableCell className="text-muted text-sm">{s.code}</TableCell>
@@ -117,45 +128,45 @@ export default function Subjects() {
       </Card>
 
       {open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">{editingId ? 'Edit subject' : 'Add subject'}</h2>
+        <Modal title={editingId ? 'Edit subject' : 'Add subject'} description="Set the name, code and colour used in the school catalogue." onClose={() => setOpen(false)} size="sm">
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Subject name</label>
+                <label htmlFor="subject-name" className="field-label">Subject name</label>
                 <input
+                  id="subject-name"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Code</label>
+                <label htmlFor="subject-code" className="field-label">Code</label>
                 <input
+                  id="subject-code"
                   value={form.code}
                   onChange={(e) => setForm({ ...form, code: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Colour</label>
+                <label htmlFor="subject-colour" className="field-label">Colour</label>
                 <input
+                  id="subject-colour"
                   type="color"
                   value={form.color}
                   onChange={(e) => setForm({ ...form, color: e.target.value })}
-                  className="h-10 w-20 px-1 py-1 border rounded-lg cursor-pointer"
+                  className="h-12 w-24 cursor-pointer rounded-xl border border-border bg-paper p-1"
                 />
               </div>
-              <div className="flex justify-end gap-2 mt-4">
+              <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">{editingId ? 'Save changes' : 'Add'}</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }
