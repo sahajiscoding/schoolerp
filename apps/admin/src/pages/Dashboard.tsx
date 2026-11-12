@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../lib/appData';
 import { Badge, Card, StatCard } from '../components/ui';
+import { EmptyState, MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
 import {
   FiAlertCircle,
   FiArrowRight,
@@ -11,30 +12,37 @@ import {
   FiCalendar,
   FiCheckCircle,
   FiClipboard,
+  FiCreditCard,
   FiFileText,
   FiUsers,
-  FiCreditCard,
 } from 'react-icons/fi';
 import { cn, formatDateLong, inr, relativeToToday } from '../lib/utils';
 
 export default function Dashboard() {
   const { profile, isAdmin, isTeacher, isStudent } = useAuth();
   const data = useAppData();
-
-  const mySection = data.people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'IX - E';
+  const currentPerson = data.people.find((person) => person.id === profile?.id);
+  const mySection = currentPerson?.class_teacher_of ?? 'IX - E';
 
   const stats = useMemo(() => {
-    const students = data.people.filter((p) => p.role === 'student');
-    const teachers = data.people.filter((p) => p.role === 'teacher');
-    const pendingLeaves = data.leaves.filter((l) => l.status === 'pending');
-    const upcomingEvents = data.events.filter((e) => e.end_date >= '2026-11-04');
-    const myFees = data.fees.filter((f) => f.student_id === profile?.id);
-    const dueFees = myFees.reduce((sum, f) => sum + (f.amount - f.discount - f.paid), 0);
-    const collected = data.fees.reduce((sum, f) => sum + f.paid, 0);
-    const billed = data.fees.reduce((sum, f) => sum + f.amount - f.discount, 0);
-    const myAttendance = data.attendance.filter((a) => a.student_id === profile?.id);
-    const presentDays = myAttendance.filter((a) => a.status === 'present').length;
-    const teachingDays = myAttendance.filter((a) => a.status !== 'holiday').length;
+    const students = data.people.filter((person) => person.role === 'student');
+    const teachers = data.people.filter((person) => person.role === 'teacher');
+    const pendingLeaves = data.leaves.filter((leave) => leave.status === 'pending');
+    const upcomingEvents = data.events.filter((event) => event.end_date >= '2026-11-04');
+    const myFees = data.fees.filter((fee) => fee.student_id === profile?.id);
+    const dueFees = myFees.reduce((sum, fee) => sum + (fee.amount - fee.discount - fee.paid), 0);
+    const collected = data.fees.reduce((sum, fee) => sum + fee.paid, 0);
+    const billed = data.fees.reduce((sum, fee) => sum + fee.amount - fee.discount, 0);
+    const myAttendance = data.attendance.filter((attendance) => attendance.student_id === profile?.id);
+    const presentDays = myAttendance.filter((attendance) => attendance.status === 'present').length;
+    const teachingDays = myAttendance.filter((attendance) => attendance.status !== 'holiday').length;
+    const schoolTeachingDays = data.attendance.filter((attendance) => attendance.status !== 'holiday');
+    const schoolPresentDays = schoolTeachingDays.filter((attendance) => attendance.status === 'present').length;
+    const sectionStudents = students.filter(
+      (student) => `${student.class_label} - ${student.section_label}` === mySection,
+    ).length;
+    const authoredAssignments = data.homework.filter((homework) => homework.teacher_id === profile?.id).length;
+
     return {
       students: students.length,
       teachers: teachers.length,
@@ -44,36 +52,37 @@ export default function Dashboard() {
       collected,
       billed,
       attendanceRate: teachingDays ? Math.round((presentDays / teachingDays) * 100) : 0,
-      unread: data.notifications.filter((n) => !n.read).length,
+      schoolAttendanceRate: schoolTeachingDays.length
+        ? Math.round((schoolPresentDays / schoolTeachingDays.length) * 100)
+        : 0,
+      sectionStudents,
+      authoredAssignments,
+      unread: data.notifications.filter((notification) => !notification.read).length,
     };
-  }, [data, profile?.id]);
+  }, [data, mySection, profile?.id]);
 
   const myAssignments = useMemo(() => {
     if (!isStudent()) return [];
-    return data.homework.filter((hw) => {
-      const student = data.people.find((p) => p.id === profile?.id);
-      return hw.section_label === `${student?.class_label} - ${student?.section_label}`;
-    });
-  }, [data.homework, data.people, isStudent, profile?.id]);
+    return data.homework.filter((homework) => (
+      homework.section_label === `${currentPerson?.class_label} - ${currentPerson?.section_label}`
+    ));
+  }, [currentPerson?.class_label, currentPerson?.section_label, data.homework, isStudent]);
 
   const recentLeaves = useMemo(() => {
     const scoped = isAdmin()
       ? data.leaves
       : data.leaves.filter((leave) => {
-          const student = data.people.find((p) => p.id === leave.student_id);
+          const student = data.people.find((person) => person.id === leave.student_id);
           return `${student?.class_label} - ${student?.section_label}` === mySection;
         });
-    return [...scoped]
-      .sort((a, b) => b.created_at.localeCompare(a.created_at))
-      .slice(0, 4);
+    return [...scoped].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 4);
   }, [data.leaves, data.people, isAdmin, mySection]);
 
   const upcoming = useMemo(
-    () =>
-      [...data.events]
-        .filter((e) => e.end_date >= '2026-11-04')
-        .sort((a, b) => a.start_date.localeCompare(b.start_date))
-        .slice(0, 4),
+    () => [...data.events]
+      .filter((event) => event.end_date >= '2026-11-04')
+      .sort((a, b) => a.start_date.localeCompare(b.start_date))
+      .slice(0, 4),
     [data.events],
   );
 
@@ -84,225 +93,215 @@ export default function Dashboard() {
     return 'Good evening';
   })();
 
+  const heading = isStudent() ? 'My school day' : isTeacher() ? 'My class today' : 'Today at PWS';
+  const roleContext = isStudent()
+    ? `Admission ${profile?.login_id ?? '—'}`
+    : isTeacher()
+      ? `Class teacher · ${mySection}`
+      : 'Whole-school view';
+  const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
+
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-olive/10 bg-gradient-to-br from-olive to-olive-700 p-6 text-white shadow-lift">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="text-xs uppercase tracking-[0.2em] text-white/60">
-              {isStudent() ? `Admission ${profile?.login_id}` : isTeacher() ? `Class teacher · ${mySection}` : 'Administrator'}
-            </div>
-            <h1 className="mt-1 text-2xl font-bold">
-              {greeting}, {profile?.full_name?.split(' ')[0] ?? 'there'}.
-            </h1>
-            <p className="mt-1 max-w-xl text-sm text-white/70">
-              {isStudent()
-                ? `You have ${myAssignments.length} assignment${myAssignments.length === 1 ? '' : 's'} on the board and ${stats.upcomingEvents.length} upcoming school events.`
-                : isTeacher()
-                  ? `${stats.pendingLeaves.length} leave request${stats.pendingLeaves.length === 1 ? '' : 's'} waiting on you. ${upcoming.length} events this month.`
-                  : `${stats.students} students, ${stats.teachers} teachers. ${stats.pendingLeaves.length} leave approvals pending across the school.`}
-            </p>
-          </div>
-          <div className="rounded-xl bg-white/10 px-4 py-3 text-right backdrop-blur">
-            <div className="text-[10px] uppercase tracking-wider text-white/60">Today</div>
-            <div className="text-sm font-semibold">{formatDateLong('2026-11-04')}</div>
-            <div className="text-[10px] text-white/60">Academic year 2026-27</div>
-          </div>
-        </div>
+    <Page>
+      <PageHeader
+        eyebrow={roleContext}
+        title={heading}
+        description={`${greeting}, ${firstName}. ${dashboardSummary({
+          student: isStudent(),
+          teacher: isTeacher(),
+          assignments: myAssignments.length,
+          events: stats.upcomingEvents.length,
+          leaves: stats.pendingLeaves.length,
+          students: stats.students,
+          teachers: stats.teachers,
+        })}`}
+        meta={formatDateLong(new Date().toISOString())}
+      />
+
+      <div className="grid items-stretch gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <CampusStory event={upcoming[0]} />
+        <MetricGrid className="sm:grid-cols-2 xl:grid-cols-2">
+          {isStudent() ? (
+            <>
+              <StatCard label="Attendance this month" value={`${stats.attendanceRate}%`} icon={FiCheckCircle} />
+              <StatCard label="Assignments on the board" value={myAssignments.length} icon={FiFileText} variant="terracotta" />
+              <StatCard label="Fee due" value={inr(stats.dueFees)} icon={FiCreditCard} variant="warning" />
+              <StatCard label="Notifications" value={stats.unread} icon={FiBell} variant="neutral" />
+            </>
+          ) : isTeacher() ? (
+            <>
+              <StatCard label={`Students in ${mySection}`} value={stats.sectionStudents} icon={FiUsers} />
+              <StatCard label="Assignments posted" value={stats.authoredAssignments} icon={FiFileText} variant="terracotta" />
+              <StatCard label="Leave approvals pending" value={stats.pendingLeaves.length} icon={FiAlertCircle} variant="warning" />
+              <StatCard label="Upcoming events" value={upcoming.length} icon={FiCalendar} variant="neutral" />
+            </>
+          ) : (
+            <>
+              <StatCard label="Students" value={stats.students} icon={FiUsers} />
+              <StatCard label="Teaching staff" value={stats.teachers} icon={FiBookOpen} variant="terracotta" />
+              <StatCard label="Attendance recorded" value={`${stats.schoolAttendanceRate}%`} icon={FiCheckCircle} variant="neutral" />
+              <StatCard label="Leave approvals pending" value={stats.pendingLeaves.length} icon={FiAlertCircle} variant="warning" />
+            </>
+          )}
+        </MetricGrid>
       </div>
 
       {isStudent() ? (
-        <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Attendance this month" value={`${stats.attendanceRate}%`} icon={FiCheckCircle} />
-            <StatCard label="Assignments pending" value={myAssignments.length} icon={FiFileText} variant="terracotta" />
-            <StatCard label="Fee due" value={inr(stats.dueFees)} icon={FiCreditCard} variant="warning" />
-            <StatCard label="Notifications" value={stats.unread} icon={FiBell} variant="neutral" />
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Card>
-              <SectionHeading title="Homework & assignments" action={<Link to="/assignments">Open</Link>} />
-              <div className="space-y-2">
-                {myAssignments.slice(0, 4).map((hw) => {
-                  const teacher = data.people.find((p) => p.id === hw.teacher_id);
-                  return (
-                    <div key={hw.id} className="rounded-lg border border-sand/50 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="text-sm font-medium text-ink">{hw.title}</div>
-                        <Badge variant={hw.type === 'HOMEWORK' ? 'olive' : 'terracotta'}>{hw.type}</Badge>
-                      </div>
-                      <div className="mt-1 text-xs text-muted">
-                        {hw.subject} · assigned by {teacher?.full_name ?? 'your teacher'} · due{' '}
-                        {formatDateLong(hw.due_date)} ({relativeToToday(hw.due_date)})
-                      </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Card>
+            <SectionHeading title="Homework & assignments" description="Work posted for your section." action={<SectionLink to="/assignments">Open assignments</SectionLink>} />
+            <div className="space-y-2.5">
+              {myAssignments.slice(0, 4).map((homework) => {
+                const teacher = data.people.find((person) => person.id === homework.teacher_id);
+                return (
+                  <article key={homework.id} className="rounded-campus border border-olive/10 bg-daylight/45 p-3.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-bold text-ink">{homework.title}</h3>
+                      <Badge variant={homework.type === 'HOMEWORK' ? 'olive' : 'terracotta'}>{homework.type}</Badge>
                     </div>
-                  );
-                })}
-                {myAssignments.length === 0 && <Empty>No assignments posted yet.</Empty>}
-              </div>
-            </Card>
-
-            <Card>
-              <SectionHeading title="Upcoming events" action={<Link to="/events">Calendar</Link>} />
-              <div className="space-y-2">
-                {upcoming.map((ev) => (
-                  <div key={ev.id} className="flex items-start gap-3 rounded-lg border border-sand/50 p-3">
-                    <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg bg-olive/5 text-olive">
-                      <span className="text-sm font-bold leading-none">
-                        {new Date(ev.start_date).getDate()}
-                      </span>
-                      <span className="text-[9px] uppercase">
-                        {new Date(ev.start_date).toLocaleString('en', { month: 'short' })}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-ink">{ev.title}</div>
-                      <div className="text-xs text-muted">
-                        {ev.audience} · {formatDateLong(ev.start_date)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {upcoming.length === 0 && <Empty>No upcoming events.</Empty>}
-              </div>
-            </Card>
-          </div>
-        </>
+                    <p className="mt-1.5 text-xs leading-5 text-muted">
+                      {homework.subject} · assigned by {teacher?.full_name ?? 'your teacher'} · due {formatDateLong(homework.due_date)} ({relativeToToday(homework.due_date)})
+                    </p>
+                  </article>
+                );
+              })}
+              {myAssignments.length === 0 && <EmptyState title="No assignments posted" description="New work for your section will appear here." icon={FiFileText} />}
+            </div>
+          </Card>
+          <EventsCard events={upcoming} />
+        </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {isAdmin() && (
-              <StatCard label="Total students" value={stats.students} icon={FiUsers} />
-            )}
-            {isAdmin() && (
-              <StatCard label="Teaching staff" value={stats.teachers} icon={FiBookOpen} variant="terracotta" />
-            )}
-            <StatCard
-              label="Leave approvals pending"
-              value={stats.pendingLeaves.length}
-              icon={FiAlertCircle}
-              variant="warning"
-            />
-            {isAdmin() ? (
-              <StatCard label="Fees collected" value={inr(stats.collected)} icon={FiCreditCard} variant="neutral" />
-            ) : (
-              <StatCard label="Upcoming events" value={upcoming.length} icon={FiCalendar} variant="terracotta" />
-            )}
-          </div>
-
           {isAdmin() && (
             <Card>
-              <SectionHeading title="Fee collection" action={<Link to="/fees">Open fees</Link>} />
-              <div className="mb-2 flex items-baseline justify-between text-sm">
-                <span className="text-muted">
-                  Collected {inr(stats.collected)} of {inr(stats.billed)}
-                </span>
-                <span className="font-semibold text-olive">
+              <SectionHeading title="Fee collection" description="Recorded payments against billed fees." action={<SectionLink to="/fees">Open fees</SectionLink>} />
+              <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                <span className="text-muted">Collected {inr(stats.collected)} of {inr(stats.billed)}</span>
+                <span className="font-display text-xl font-semibold text-deep-olive">
                   {stats.billed ? Math.round((stats.collected / stats.billed) * 100) : 0}%
                 </span>
               </div>
-              <div className="h-2.5 w-full overflow-hidden rounded-full bg-sand">
+              <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-leaf/50" aria-label="Fee collection progress">
                 <div
-                  className="h-2.5 rounded-full bg-olive transition-all"
+                  className="h-full rounded-full bg-olive"
                   style={{ width: `${stats.billed ? Math.min(100, (stats.collected / stats.billed) * 100) : 0}%` }}
                 />
               </div>
             </Card>
           )}
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-2">
             <Card>
               <SectionHeading
                 title={isAdmin() ? 'Latest leave requests' : `Leaves in ${mySection}`}
-                action={<Link to="/approvals">Approvals</Link>}
+                description="Recent requests and their recorded status."
+                action={<SectionLink to="/approvals">Open approvals</SectionLink>}
               />
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {recentLeaves.map((leave) => {
-                  const student = data.people.find((p) => p.id === leave.student_id);
+                  const student = data.people.find((person) => person.id === leave.student_id);
                   return (
-                    <div
-                      key={leave.id}
-                      className="flex flex-wrap items-center gap-2 rounded-lg border border-sand/50 p-3"
-                    >
+                    <article key={leave.id} className="flex flex-wrap items-center gap-3 rounded-campus border border-olive/10 bg-daylight/45 p-3.5">
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-ink">{student?.full_name ?? '—'}</div>
-                        <div className="text-xs text-muted">
-                          {leave.leave_type} · {formatDateLong(leave.start_date)} →{' '}
-                          {formatDateLong(leave.end_date)}
-                        </div>
+                        <h3 className="text-sm font-bold text-ink">{student?.full_name ?? '—'}</h3>
+                        <p className="mt-1 text-xs text-muted">{leave.leave_type} · {formatDateLong(leave.start_date)} → {formatDateLong(leave.end_date)}</p>
                       </div>
-                      <Badge
-                        variant={
-                          leave.status === 'approved'
-                            ? 'success'
-                            : leave.status === 'rejected'
-                              ? 'terracotta'
-                              : 'warning'
-                        }
-                      >
+                      <Badge variant={leave.status === 'approved' ? 'success' : leave.status === 'rejected' ? 'terracotta' : 'warning'}>
                         {leave.status}
                       </Badge>
-                    </div>
+                    </article>
                   );
                 })}
-                {recentLeaves.length === 0 && <Empty>No leave requests yet.</Empty>}
+                {recentLeaves.length === 0 && <EmptyState title="No leave requests" description="Requests in your scope will appear here." icon={FiClipboard} />}
               </div>
             </Card>
-
-            <Card>
-              <SectionHeading title="Upcoming events" action={<Link to="/events">Calendar</Link>} />
-              <div className="space-y-2">
-                {upcoming.map((ev) => (
-                  <div key={ev.id} className="flex items-start gap-3 rounded-lg border border-sand/50 p-3">
-                    <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg bg-terracotta/5 text-terracotta">
-                      <span className="text-sm font-bold leading-none">
-                        {new Date(ev.start_date).getDate()}
-                      </span>
-                      <span className="text-[9px] uppercase">
-                        {new Date(ev.start_date).toLocaleString('en', { month: 'short' })}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-ink">{ev.title}</div>
-                      <div className="text-xs text-muted">
-                        {ev.audience} · {relativeToToday(ev.start_date)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {upcoming.length === 0 && <Empty>No upcoming events.</Empty>}
-              </div>
-            </Card>
+            <EventsCard events={upcoming} />
           </div>
         </>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <QuickLink to="/assignments" icon={FiFileText} title="Assignments" sub="Homework board" />
-        <QuickLink to="/attendance" icon={FiClipboard} title="Attendance" sub={isStudent() ? 'My register' : 'Mark today'} />
-        <QuickLink to="/library" icon={FiBookOpen} title="Library" sub="Books & issues" />
-        <QuickLink to="/fees" icon={FiCreditCard} title={isStudent() ? 'My fee' : 'Fee collection'} sub="Invoices" />
-      </div>
-    </div>
+      <section aria-label="Quick actions">
+        <SectionHeading title="Move through the day" description="Frequently used school areas." />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <QuickLink to="/assignments" icon={FiFileText} title="Assignments" sub="Homework board" />
+          <QuickLink to="/attendance" icon={FiClipboard} title="Attendance" sub={isStudent() ? 'My register' : 'Mark today'} />
+          <QuickLink to="/library" icon={FiBookOpen} title="Library" sub="Books & issues" />
+          <QuickLink to="/fees" icon={FiCreditCard} title={isStudent() ? 'My fee' : 'Fee collection'} sub="Invoices" />
+        </div>
+      </section>
+    </Page>
   );
 }
 
-function SectionHeading({ title, action }: { title: string; action?: React.ReactNode }) {
+function dashboardSummary({
+  student,
+  teacher,
+  assignments,
+  events,
+  leaves,
+  students,
+  teachers,
+}: {
+  student: boolean;
+  teacher: boolean;
+  assignments: number;
+  events: number;
+  leaves: number;
+  students: number;
+  teachers: number;
+}) {
+  if (student) return `${assignments} assignment${assignments === 1 ? '' : 's'} and ${events} upcoming school event${events === 1 ? '' : 's'} are on your board.`;
+  if (teacher) return `${leaves} leave request${leaves === 1 ? '' : 's'} pending, with ${events} upcoming event${events === 1 ? '' : 's'}.`;
+  return `${students} students and ${teachers} teachers are represented in this school view.`;
+}
+
+function CampusStory({ event }: { event?: { id: string; title: string; start_date: string; audience: string } }) {
+  if (!event) {
+    return <EmptyState title="A clear day ahead" description="No upcoming events are scheduled." icon={FiCalendar} />;
+  }
+
   return (
-    <div className="mb-3 flex items-center justify-between">
-      <h3 className="text-base font-bold text-ink">{title}</h3>
-      {action && (
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-olive [&_a]:inline-flex [&_a]:items-center [&_a]:gap-1 [&_a]:hover:underline">
-          {action} <FiArrowRight size={12} />
-        </span>
-      )}
-    </div>
+    <article aria-label="Campus story" className="relative min-h-64 overflow-hidden rounded-story bg-deep-olive shadow-lift sm:min-h-80">
+      <img src="/brand/campus-1.jpg" alt="" width="654" height="305" className="h-full min-h-64 w-full object-cover sm:absolute sm:inset-0 sm:min-h-80" />
+      <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/25 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
+        <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-white/70">On the school calendar</p>
+        <h2 className="mt-2 max-w-2xl font-display text-3xl font-semibold leading-none tracking-[-0.025em] sm:text-4xl">{event.title}</h2>
+        <p className="mt-3 text-sm text-white/80">{formatDateLong(event.start_date)} · {event.audience}</p>
+      </div>
+    </article>
   );
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
-  return <div className="py-6 text-center text-sm text-muted">{children}</div>;
+function EventsCard({ events }: { events: { id: string; title: string; start_date: string; audience: string }[] }) {
+  return (
+    <Card>
+      <SectionHeading title="Upcoming events" description="Dates already published to the school calendar." action={<SectionLink to="/events">Open calendar</SectionLink>} />
+      <div className="space-y-2.5">
+        {events.map((event) => (
+          <article key={event.id} className="flex items-start gap-3 rounded-campus border border-olive/10 bg-daylight/45 p-3.5">
+            <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-[10px] bg-clay/65 text-terracotta-700">
+              <span className="font-display text-lg font-semibold leading-none">{new Date(event.start_date).getDate()}</span>
+              <span className="text-[0.58rem] font-bold uppercase tracking-wide">{new Date(event.start_date).toLocaleString('en', { month: 'short' })}</span>
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-ink">{event.title}</h3>
+              <p className="mt-1 text-xs text-muted">{event.audience} · {relativeToToday(event.start_date)}</p>
+            </div>
+          </article>
+        ))}
+        {events.length === 0 && <EmptyState title="No upcoming events" description="Published dates will appear here." icon={FiCalendar} />}
+      </div>
+    </Card>
+  );
+}
+
+function SectionLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <Link to={to} className="focus-ring inline-flex min-h-10 items-center gap-1 rounded-full px-3 text-xs font-bold text-deep-olive transition-colors hover:bg-leaf/35">
+      {children} <FiArrowRight size={13} aria-hidden="true" />
+    </Link>
+  );
 }
 
 function QuickLink({
@@ -317,20 +316,15 @@ function QuickLink({
   sub: string;
 }) {
   return (
-    <Link
-      to={to}
-      className={cn(
-        'group flex items-center gap-3 rounded-xl border border-sand/60 bg-white p-3.5 transition-all',
-        'hover:-translate-y-0.5 hover:border-olive/20 hover:shadow-card',
-      )}
-    >
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-olive/5 text-olive transition-colors group-hover:bg-olive group-hover:text-white">
-        <Icon size={16} />
+    <Link to={to} className={cn('surface-paper surface-interactive focus-ring group flex min-h-20 items-center gap-3 p-4')}>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-leaf/45 text-deep-olive transition-colors group-hover:bg-olive group-hover:text-white">
+        <Icon size={17} aria-hidden="true" />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-sm font-medium text-ink">{title}</span>
-        <span className="block truncate text-[10px] text-muted">{sub}</span>
+        <span className="block truncate text-sm font-bold text-ink">{title}</span>
+        <span className="mt-0.5 block truncate text-[0.68rem] text-muted">{sub}</span>
       </span>
+      <FiArrowRight className="ml-auto shrink-0 text-olive/60" size={15} aria-hidden="true" />
     </Link>
   );
 }
