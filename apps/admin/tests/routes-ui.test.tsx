@@ -40,3 +40,31 @@ it.each(adminRoutes)('renders the administration ledger at %s', async (path, hea
   const pageHeading = await screen.findByRole('heading', { level: 1, name: heading });
   expect(pageHeading).toBeTruthy();
 });
+
+const academicRoutes = [
+  ['/approvals', 'student', /My leaves/i],
+  ['/assignments', 'admin', /Assignments/i],
+  ['/course-progress', 'student', /My progress/i],
+  ['/attendance', 'student', /Attendance/i],
+  ['/report-card', 'student', /My report card/i],
+] as const;
+
+it.each(academicRoutes)('renders the academic workspace at %s', async (path, role, heading) => {
+  window.history.replaceState(null, '', `/demo${path}?role=${role}`);
+  render(<App />);
+  expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeTruthy();
+});
+
+it('keeps attendance read-only for students', async () => {
+  window.history.replaceState(null, '', '/demo/attendance?role=student');
+  render(<App />);
+  await screen.findByRole('heading', { level: 1, name: /Attendance/i });
+  expect(screen.queryByRole('button', { name: /Mark attendance/i })).toBeNull();
+});
+
+it('keeps assignment content read-only for administrators', async () => {
+  window.history.replaceState(null, '', '/demo/assignments?role=admin');
+  render(<App />);
+  await screen.findByRole('heading', { level: 1, name: /Assignments/i });
+  expect(screen.queryByRole('button', { name: /Add assignment|Publish assignment/i })).toBeNull();
+});
