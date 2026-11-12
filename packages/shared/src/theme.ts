@@ -1,1 +1,20 @@
-export const theme = { colors: { olive: "#4B5D2A", terracotta: "#D2691E", sand: "#F5F1EC", ink: "#1A1A1A", muted: "#6B6B6B", cream: "#FAF7F2", accent: "#D2691E" }, spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 }, radius: { sm: 8, md: 12, lg: 16 } } as const;
+export const theme = {
+  colors: {
+    forest950: '#0D1E17',
+    forest900: '#12271E',
+    forest: '#173027',
+    parchment: '#ECE8DC',
+    paper: '#FCFAF4',
+    gold: '#E4CF83',
+    moss: '#6D7D42',
+    ink: '#172219',
+    muted: '#69756D',
+    olive: '#6D7D42',
+    terracotta: '#A94F36',
+    sand: '#ECE8DC',
+    cream: '#FCFAF4',
+    accent: '#E4CF83',
+  },
+  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
+  radius: { sm: 8, md: 14, lg: 20 },
+} as const;
