@@ -164,243 +164,216 @@ export default function Login() {
   };
 
   return (
-    <div className="grid min-h-screen w-full grid-cols-1 bg-white text-ink md:grid-cols-2">
-      <div className="flex min-h-screen flex-col justify-between bg-white p-4 md:p-8">
-        <h1 className="text-xl font-bold text-ink md:text-2xl">PACIFIC WORLD SCHOOL</h1>
+    <main aria-label="Pacific World School sign in" className="grid min-h-screen bg-forest-950 text-ink lg:grid-cols-[minmax(0,1.06fr)_minmax(30rem,0.94fr)]">
+      <section aria-label="Pacific World School campus" className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col lg:justify-between">
+        <img
+          src="/brand/campus-2.jpg"
+          alt=""
+          width="654"
+          height="305"
+          className="absolute inset-0 h-full w-full scale-[1.02] object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-forest-950/35 via-forest-950/65 to-forest-950" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_12%,rgba(228,207,131,0.22),transparent_28rem)]" />
 
-        <div className="mx-auto flex w-full max-w-lg flex-grow flex-col items-center justify-center">
-          <div className="w-full">
-            <div className="mb-4 flex flex-col items-center justify-center text-center md:mb-6">
-              <img
-                src="/brand/pws-logo.png"
-                alt="Pacific World School"
-                className="mx-auto h-auto w-[80px] select-none md:w-[100px]"
-              />
-              <h3 className="mb-1 text-xl font-semibold text-ink md:text-2xl">
-                {isDemoPath ? 'Explore the school demo' : 'Login to your account'}
-              </h3>
-              <p className="text-xs text-slate-500 md:text-sm">
-                {isDemoPath ? 'Choose a role below. No account or password required.' : 'Welcome back, Please enter your email & password to continue.'}
-              </p>
-            </div>
-
-            {!isDemoPath && (showForm ? (
-              <form
-                onSubmit={handleSubmit}
-                className="mx-auto w-full max-w-[400px] space-y-6"
-                noValidate
-              >
-                <div>
-                  <label
-                    htmlFor="login-id"
-                    className="mb-2 block text-sm font-medium text-ink"
-                  >
-                    Your Email/ UserId
-                  </label>
-                  <input
-                    ref={loginIdRef}
-                    id="login-id"
-                    name="loginId"
-                    type="text"
-                    autoComplete="username"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    value={loginId}
-                    onChange={(e) => setLoginId(e.target.value)}
-                    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-olive focus:outline-none focus:ring-1 focus:ring-olive"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="mb-2 block text-sm font-medium text-ink"
-                  >
-                    Your Password
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      ref={passwordRef}
-                      id="password"
-                      name="password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-9 w-full rounded-e-none rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-olive focus:outline-none focus:ring-1 focus:ring-olive"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((visible) => !visible)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      className="flex h-9 w-10 shrink-0 items-center justify-center rounded-e-md border border-l-0 border-slate-300 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
-                    >
-                      {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-2 flex items-center justify-between">
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-400 accent-olive"
-                    />
-                    <span className="text-sm text-slate-500">Remember Me</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNotice('Ask your school administrator to reset your password.')
-                    }
-                    className="text-sm text-olive hover:underline"
-                  >
-                    I forgot my password
-                  </button>
-                </div>
-
-                {notice && (
-                  <p role="status" className="text-sm text-slate-500">
-                    {notice}
-                  </p>
-                )}
-
-                {error && (
-                  <p role="alert" className="text-sm text-red-600">
-                    {error}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading || restoringSession}
-                  className="h-10 w-full rounded-md bg-olive px-8 text-center text-sm font-medium text-white shadow transition-colors hover:bg-olive/90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {restoringSession ? 'Checking session...' : loading ? 'Logging in...' : 'Login'}
-                </button>
-              </form>
-            ) : (
-              <div className="mx-auto w-full max-w-[400px]">
-                <button
-                  type="button"
-                  onClick={openRememberedAccount}
-                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive/40"
-                >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-slate-600">
-                    {remembered ? getInitials(remembered) : ''}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium uppercase text-ink">
-                      {remembered?.fullName.trim() || remembered?.loginId}
-                    </span>
-                    <span className="block truncate text-xs text-slate-500">
-                      {remembered?.loginId}
-                    </span>
-                  </span>
-                  <FiChevronRight className="ml-auto shrink-0 text-slate-400" size={18} />
-                </button>
-                <button
-                  type="button"
-                  onClick={useAnotherAccount}
-                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-4 text-sm text-slate-500 transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive/40"
-                >
-                  <FiPlus size={16} />
-                  Use another account
-                </button>
-              </div>
-            ))}
-
-            <div className="mx-auto mt-6 w-full max-w-[400px] text-center">
-              <button
-                type="button"
-                onClick={() => setDemoOpen((open) => !open)}
-                aria-expanded={demoOpen}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-olive shadow-sm transition-colors hover:border-olive hover:text-olive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
-              >
-                <FiPlay size={11} />
-                Try a demo
-                <FiChevronDown
-                  size={12}
-                  className={`transition-transform ${demoOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              {demoOpen && (
-                <div
-                  role="group"
-                  aria-label="Choose a demo role"
-                  className="mt-3 flex items-center justify-center gap-2"
-                >
-                  {DEMO_ROLES.map(({ role, label, Icon }) => isDemoPath ? (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => handleDemo(role)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-olive hover:bg-olive hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
-                    >
-                      <Icon size={12} />
-                      {label}
-                    </button>
-                  ) : (
-                    <a
-                      key={role}
-                      href={`/demo/dashboard?role=${role}`}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-olive hover:bg-olive hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
-                    >
-                      <Icon size={12} />
-                      {label}
-                    </a>
-                  ))}
-                </div>
-              )}
-              <p className="mt-2 text-[11px] text-slate-400">
-                Explore with sample data — no login needed.
-              </p>
-              {isDemoPath && (
-                <a href="/login" className="mt-3 inline-block text-sm font-medium text-olive underline">
-                  School sign in
-                </a>
-              )}
-            </div>
+        <div className="relative z-10 flex items-center gap-3 px-10 py-9 xl:px-14">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-paper shadow-lift">
+            <img src="/brand/pws-logo.png" alt="" width="311" height="435" className="h-11 w-auto object-contain" />
+          </div>
+          <div>
+            <div className="font-display text-2xl font-medium text-paper">Pacific World School</div>
+            <div className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-gold">School administration</div>
           </div>
         </div>
 
-        <p className="text-xs capitalize text-slate-500 md:text-sm">
-          Pacific World School ©2026
-        </p>
-      </div>
-
-      <section
-        aria-label="Pacific World School campus"
-        className="relative hidden min-h-screen flex-col items-start justify-start overflow-hidden md:flex"
-      >
-        <div className="absolute inset-0">
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/brand/campus-2.jpg')" }}
-          />
-          <div
-            className="absolute inset-0 bg-cover bg-center campus-crossfade"
-            style={{ backgroundImage: "url('/brand/campus-1.jpg')" }}
-          />
-          <div className="absolute inset-0 bg-black/40" />
-        </div>
-
-        <div className="relative z-10 w-full px-6 pt-4 lg:px-10 lg:pt-6">
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-md transition-all duration-300 hover:bg-white/15 lg:p-8">
-            <h1 className="mb-4 border-b border-white/30 pb-4 text-2xl font-semibold text-white md:text-3xl">
-              Digital Excellence in Every Student&apos;s Achievement
-            </h1>
-            <p className="pt-5 text-sm font-normal text-white md:text-base">
-              Tailored for PACIFIC WORLD SCHOOL, our innovative platform transforms the way
-              student report cards are created, offering a seamless and efficient digital
-              solution. Empowering teachers and students with technology that celebrates
-              academic success with precision and ease.
-            </p>
-          </div>
+        <div className="relative z-10 max-w-2xl px-10 pb-12 xl:px-14 xl:pb-16">
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-gold">Academic year 2026–27</p>
+          <h2 className="mt-4 max-w-xl font-display text-5xl font-medium leading-[0.98] tracking-[-0.035em] text-paper xl:text-6xl">
+            The school day, in one clear view.
+          </h2>
+          <p className="mt-6 max-w-lg text-sm leading-6 text-paper/70">
+            Attendance, assignments, approvals, events and school records for authorised staff and students.
+          </p>
+          <div className="mt-8 h-px bg-gradient-to-r from-gold via-gold/30 to-transparent" aria-hidden="true" />
         </div>
       </section>
-    </div>
+
+      <section className="relative flex min-h-screen flex-col bg-paper px-5 py-6 sm:px-8 lg:px-10 xl:px-14">
+        <div className="pointer-events-none absolute right-0 top-0 h-72 w-72 rounded-bl-full bg-gold/10" aria-hidden="true" />
+        <div className="relative flex items-center justify-between gap-4 lg:justify-end">
+          <div className="flex items-center gap-2.5 lg:hidden">
+            <img src="/brand/pws-logo.png" alt="" width="311" height="435" className="h-10 w-auto object-contain" />
+            <div>
+              <div className="font-display text-lg font-medium leading-none text-forest">Pacific World School</div>
+              <div className="mt-1 text-[8px] font-extrabold uppercase tracking-[0.18em] text-moss">School ERP</div>
+            </div>
+          </div>
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted">Secure access</span>
+        </div>
+
+        <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10 sm:py-14">
+          <div className="mb-7">
+            <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-moss">
+              {isDemoPath ? 'Sample workspace' : 'School portal'}
+            </p>
+            <h1 className="font-display text-4xl font-medium leading-none tracking-[-0.03em] text-ink sm:text-5xl">
+              {isDemoPath ? 'Explore the school demo' : 'Welcome back'}
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              {isDemoPath
+                ? 'Choose a role below. No account or password is required.'
+                : 'Enter your school-issued login ID and password to continue.'}
+            </p>
+            <div className="heritage-rule mt-5" aria-hidden="true" />
+          </div>
+
+          {!isDemoPath && (showForm ? (
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              <div>
+                <label htmlFor="login-id" className="field-label">Your Email/ UserId</label>
+                <input
+                  ref={loginIdRef}
+                  id="login-id"
+                  name="loginId"
+                  type="text"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  value={loginId}
+                  onChange={(event) => setLoginId(event.target.value)}
+                  className="field-control"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="field-label">Your Password</label>
+                <div className="flex items-stretch">
+                  <input
+                    ref={passwordRef}
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="field-control rounded-r-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="focus-ring flex w-12 shrink-0 items-center justify-center rounded-r-xl border border-l-0 border-border bg-parchment/40 text-muted transition-colors duration-150 hover:bg-parchment hover:text-ink"
+                  >
+                    {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm font-semibold text-muted">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
+                    className="h-4 w-4 shrink-0 cursor-pointer rounded border-forest/30 accent-forest"
+                  />
+                  Remember Me
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setNotice('Ask your school administrator to reset your password.')}
+                  className="text-sm font-bold text-forest underline decoration-gold underline-offset-4"
+                >
+                  I forgot my password
+                </button>
+              </div>
+
+              {notice && <p role="status" className="rounded-xl border border-blue-700/15 bg-blue-50 px-3.5 py-3 text-sm text-blue-900">{notice}</p>}
+              {error && <p role="alert" className="rounded-xl border border-red-700/15 bg-red-50 px-3.5 py-3 text-sm font-semibold text-red-800">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={loading || restoringSession}
+                className="focus-ring flex min-h-12 w-full items-center justify-center rounded-xl bg-forest px-8 text-sm font-extrabold text-paper shadow-card transition-[background-color,transform,box-shadow] duration-150 hover:bg-forest-900 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {restoringSession ? 'Checking session...' : loading ? 'Logging in...' : 'Login'}
+              </button>
+            </form>
+          ) : (
+            <div>
+              <button
+                type="button"
+                onClick={openRememberedAccount}
+                className="focus-ring flex w-full items-center gap-3 rounded-heritage border border-border bg-paper px-4 py-3.5 text-left shadow-card transition-[border-color,background-color,transform] duration-150 hover:border-forest/25 hover:bg-parchment/35 active:translate-y-px"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-forest text-sm font-extrabold text-gold">
+                  {remembered ? getInitials(remembered) : ''}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-extrabold uppercase tracking-[0.04em] text-ink">{remembered?.fullName.trim() || remembered?.loginId}</span>
+                  <span className="mt-0.5 block truncate text-xs text-muted">{remembered?.loginId}</span>
+                </span>
+                <FiChevronRight className="ml-auto shrink-0 text-moss" size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={useAnotherAccount}
+                className="focus-ring mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-forest/25 text-sm font-bold text-muted transition-colors duration-150 hover:bg-parchment/50 hover:text-ink"
+              >
+                <FiPlus size={16} /> Use another account
+              </button>
+            </div>
+          ))}
+
+          <div className="mt-7 border-t border-border pt-6">
+            <button
+              type="button"
+              onClick={() => setDemoOpen((open) => !open)}
+              aria-expanded={demoOpen}
+              className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full border border-forest/20 bg-paper px-4 text-sm font-extrabold text-forest transition-colors duration-150 hover:border-forest/35 hover:bg-parchment/40"
+            >
+              <FiPlay size={12} />
+              Try a demo
+              <FiChevronDown size={13} className={`transition-transform duration-150 ${demoOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <p className="mt-2 text-xs leading-5 text-muted">Explore with sample data — no login needed.</p>
+
+            {demoOpen && (
+              <div role="group" aria-label="Choose a demo role" className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {DEMO_ROLES.map(({ role, label, Icon }) => isDemoPath ? (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => handleDemo(role)}
+                    className="focus-ring flex min-h-14 items-center justify-center gap-2 rounded-xl border border-border bg-parchment/35 px-3 text-xs font-extrabold text-forest transition-[border-color,background-color,transform] duration-150 hover:border-forest/30 hover:bg-gold/20 active:translate-y-px"
+                  >
+                    <Icon size={15} /> {label}
+                  </button>
+                ) : (
+                  <a
+                    key={role}
+                    href={`/demo/dashboard?role=${role}`}
+                    className="focus-ring flex min-h-14 items-center justify-center gap-2 rounded-xl border border-border bg-parchment/35 px-3 text-xs font-extrabold text-forest transition-[border-color,background-color,transform] duration-150 hover:border-forest/30 hover:bg-gold/20 active:translate-y-px"
+                  >
+                    <Icon size={15} /> {label}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {isDemoPath && (
+              <a href="/login" className="mt-5 inline-flex min-h-11 items-center text-sm font-extrabold text-forest underline decoration-gold underline-offset-4">
+                School sign in
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="relative flex items-center justify-between gap-3 border-t border-border pt-4 text-[10px] font-bold text-muted">
+          <span>Pacific World School ©2026</span>
+          <span>Authorised access only</span>
+        </div>
+      </section>
+    </main>
   );
 }
