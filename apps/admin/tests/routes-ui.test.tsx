@@ -68,3 +68,38 @@ it('keeps assignment content read-only for administrators', async () => {
   await screen.findByRole('heading', { level: 1, name: /Assignments/i });
   expect(screen.queryByRole('button', { name: /Add assignment|Publish assignment/i })).toBeNull();
 });
+
+const communityRoutes = [
+  ['/communications', /Communications|Inbox/i],
+  ['/events', /Events & calendars/i],
+  ['/study-room', /Study room/i],
+  ['/library', /Library/i],
+  ['/fees', /Fee collection|My fee/i],
+  ['/gallery', /School gallery/i],
+] as const;
+
+it.each(communityRoutes)('renders the community and resource workspace at %s', async (path, heading) => {
+  window.history.replaceState(null, '', `/demo${path}?role=admin`);
+  render(<App />);
+  expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeTruthy();
+});
+
+it('labels the events calendar for assistive technology', async () => {
+  window.history.replaceState(null, '', '/demo/events?role=admin');
+  render(<App />);
+  expect(await screen.findByRole('region', { name: /School calendar/i })).toBeTruthy();
+});
+
+it('labels the three communications work areas', async () => {
+  window.history.replaceState(null, '', '/demo/communications?role=admin');
+  render(<App />);
+  for (const name of [/Declarations/i, /Polls/i, /Recent messages/i]) {
+    expect(await screen.findByRole('region', { name })).toBeTruthy();
+  }
+});
+
+it('retains the second-child sibling discount rule', async () => {
+  window.history.replaceState(null, '', '/demo/fees?role=admin');
+  render(<App />);
+  expect(await screen.findByText(/50% campus discount is applied to the sibling/i)).toBeTruthy();
+});
