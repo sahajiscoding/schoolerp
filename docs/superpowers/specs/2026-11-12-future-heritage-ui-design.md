@@ -2,7 +2,7 @@
 
 - **Date:** 2026-11-12
 - **Branch:** `newui`
-- **Status:** Approved in visual review; pending written-spec review
+- **Status:** Approved for implementation
 - **Scope:** Entire existing admin web application (`apps/admin`)
 - **Behavior boundary:** Presentation-only redesign; existing workflows and authorization remain unchanged
 
