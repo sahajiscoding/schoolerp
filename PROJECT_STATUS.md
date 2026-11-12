@@ -1,8 +1,10 @@
 # Project Status — Pacific World School ERP
 
-**Last updated:** 2026-11-05
+**Last updated:** 2026-11-12
 **Current milestone:** Milestone 3 — Dashboard modules (admin console complete, backend schema written, mobile pending).
 **Next milestone:** Wire the admin console to Supabase (replace demo store), then Milestone 4 — Messaging.
+
+**Branch design track (`newui2`):** Living Campus full-admin redesign approved in visual review; implementation has not started. Written specification: `docs/superpowers/specs/2026-11-12-living-campus-ui-design.md`.
 
 This file is the single source of truth for project state. Every agent must read it before starting work and update it before finishing. Keep it short, factual, and linked to files. Do not record intentions as completed work.
 
