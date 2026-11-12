@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { isDemoPath } from '../lib/demo';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,6 +24,7 @@ import {
   FiMenu,
   FiAward,
   FiX,
+  FiChevronRight,
 } from 'react-icons/fi';
 
 type Role = 'admin' | 'teacher' | 'student';
@@ -157,6 +158,9 @@ export default function AppShell({ children }: { children?: ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
 
   const role: Role = viewingRole ?? profile?.role ?? 'student';
 
@@ -211,31 +215,67 @@ export default function AppShell({ children }: { children?: ReactNode }) {
     return undefined;
   };
 
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSidebarOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(
+        sidebarRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [sidebarOpen]);
+
   const renderNav = (items: NavItem[]) =>
     items.map((item) => {
-      const active = location.pathname === item.to;
+      const active = location.pathname === item.to || (item.to === '/dashboard' && location.pathname === '/');
       const label = item.labelByRole?.[role] ?? item.label;
       const count = badgeFor(item.to);
       return (
         <Link
           key={item.to}
           to={item.to}
+          aria-current={active ? 'page' : undefined}
           className={cn(
-            'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+            'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-[background-color,color,box-shadow] duration-150 md:justify-center md:px-2 xl:justify-start xl:px-3',
             active
-              ? 'bg-olive text-white shadow-sm'
-              : 'text-slate-600 hover:bg-olive/5 hover:text-olive',
+              ? 'bg-gold text-forest-950 shadow-sm'
+              : 'text-paper/70 hover:bg-white/[0.07] hover:text-paper',
           )}
         >
           <item.icon
-            className={cn('h-[18px] w-[18px] shrink-0', active ? 'text-white' : 'text-slate-400 group-hover:text-olive')}
+            className={cn('h-[18px] w-[18px] shrink-0', active ? 'text-forest-950' : 'text-paper/45 group-hover:text-gold')}
           />
-          <span className="truncate">{label}</span>
+          <span className="truncate md:sr-only xl:not-sr-only">{label}</span>
           {count !== undefined && (
             <span
               className={cn(
-                'ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-                active ? 'bg-white/20 text-white' : 'bg-terracotta/10 text-terracotta',
+                'ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-extrabold md:absolute md:right-1 md:top-1 xl:static xl:ml-auto',
+                active ? 'bg-forest/10 text-forest' : 'bg-terracotta text-white',
               )}
             >
               {count}
@@ -247,119 +287,132 @@ export default function AppShell({ children }: { children?: ReactNode }) {
 
   const sidebarBody = (
     <>
-      <div className="flex items-center gap-3 border-b border-sand/60 px-5 py-5">
-        <img src="/brand/pws-logo.png" alt="" className="h-9 w-9 rounded-full object-contain" />
-        <div className="min-w-0">
-          <div className="truncate text-sm font-bold leading-tight text-ink">Pacific World</div>
-          <div className="truncate text-[10px] uppercase tracking-wider text-muted">School ERP</div>
+      <div className="relative flex min-h-[88px] items-center gap-3 border-b border-white/10 px-4 xl:px-5">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-paper shadow-sm">
+          <img src="/brand/pws-logo.png" alt="" width="36" height="36" className="h-9 w-9 object-contain" />
+        </div>
+        <div className="min-w-0 md:sr-only xl:not-sr-only">
+          <div className="truncate font-display text-lg font-medium leading-tight text-paper">Pacific World</div>
+          <div className="truncate text-[9px] font-bold uppercase tracking-[0.2em] text-gold">School ERP</div>
         </div>
         <button
+          ref={closeButtonRef}
+          type="button"
           onClick={() => setSidebarOpen(false)}
-          className="ml-auto text-slate-400 hover:text-ink md:hidden"
-          aria-label="Close menu"
+          className="touch-target ml-auto inline-flex items-center justify-center rounded-full text-paper/60 transition-colors duration-150 hover:bg-white/10 hover:text-paper md:hidden"
+          aria-label="Close navigation"
         >
-          <FiX size={18} />
+          <FiX size={20} />
         </button>
       </div>
 
-      <nav className="scroll-slim flex-1 space-y-4 overflow-y-auto px-3 py-4">
+      <nav aria-label="Primary navigation" className="scroll-slim flex-1 space-y-6 overflow-y-auto px-3 py-5">
         <div>
-          <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+          <div className="px-3 pb-2 text-[9px] font-extrabold uppercase tracking-[0.18em] text-paper/35 md:sr-only xl:not-sr-only">
             {GROUP_LABEL.main}
           </div>
-          <div className="space-y-0.5">{renderNav(mainNav)}</div>
+          <div className="space-y-1">{renderNav(mainNav)}</div>
         </div>
         {adminNav.length > 0 && (
           <div>
-            <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+            <div className="px-3 pb-2 text-[9px] font-extrabold uppercase tracking-[0.18em] text-paper/35 md:sr-only xl:not-sr-only">
               {GROUP_LABEL.admin}
             </div>
-            <div className="space-y-0.5">{renderNav(adminNav)}</div>
+            <div className="space-y-1">{renderNav(adminNav)}</div>
           </div>
         )}
       </nav>
 
-      <div className="border-t border-sand/60 px-4 py-3">
+      <div className="border-t border-white/10 px-3 py-3 xl:px-4">
         {demoMode && (
-          <div className="mb-3 rounded-lg border border-amber-100 bg-amber-50 p-2.5">
-            <div className="text-[11px] font-semibold text-amber-800">Demo data</div>
-            <div className="mt-0.5 text-[10px] leading-snug text-amber-700">
+          <div className="mb-3 rounded-xl border border-gold/30 bg-gold/10 p-3 md:hidden xl:block">
+            <div className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-gold">Demo data</div>
+            <div className="mt-1 text-[10px] leading-relaxed text-paper/60">
               Sample data only. Changes stay in this browser and never affect school records.
             </div>
             <button
               onClick={() => data.resetDemoData()}
-              className="mt-1.5 text-[10px] font-medium text-amber-800 underline decoration-amber-300 underline-offset-2"
+              className="mt-1 min-h-9 text-[10px] font-bold text-gold underline decoration-gold/40 underline-offset-4"
             >
               Reset demo data
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2.5 rounded-lg bg-sand/50 px-2.5 py-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-olive text-[10px] font-bold text-white">
+        <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.06] p-2 md:justify-center xl:justify-start">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold text-[10px] font-extrabold text-forest-950">
             {initials(profile?.full_name ?? 'U')}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-medium text-ink">{profile?.full_name ?? 'User'}</div>
-            <div className="truncate text-[10px] text-muted">{profile?.login_id ?? ''}</div>
+          <div className="min-w-0 flex-1 md:sr-only xl:not-sr-only">
+            <div className="truncate text-xs font-bold text-paper">{profile?.full_name ?? 'User'}</div>
+            <div className="truncate text-[10px] text-paper/45">{profile?.login_id ?? ''}</div>
           </div>
-          <Badge variant="olive" className="text-[9px] capitalize">
+          <Badge variant="olive" className="text-[9px] capitalize md:hidden xl:inline-flex">
             {role}
           </Badge>
         </div>
         <button
           onClick={handleLogout}
-          className="mt-2 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-terracotta transition-colors hover:bg-terracotta/5"
+          className="mt-2 flex w-full items-center gap-2 rounded-xl px-2.5 text-xs font-bold text-paper/60 transition-colors duration-150 hover:bg-white/[0.07] hover:text-paper md:justify-center xl:justify-start"
         >
-          <FiLogOut size={14} /> Sign out
+          <FiLogOut size={15} /> <span className="md:sr-only xl:not-sr-only">Sign out</span>
         </button>
       </div>
     </>
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-sand text-ink">
+    <div className="min-h-screen bg-parchment text-ink">
+      <a href="#main-content" className="fixed left-4 top-3 z-[100] -translate-y-20 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-forest-950 transition-transform duration-150 focus:translate-y-0">
+        Skip to main content
+      </a>
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-ink/40 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-forest-950/70 backdrop-blur-sm md:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden
         />
       )}
 
       <aside
+        ref={sidebarRef}
+        aria-label="School navigation"
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-72 transform flex-col border-r border-sand/60 bg-white transition-transform duration-200 md:relative md:z-0 md:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-72 transform flex-col overflow-hidden border-r border-white/10 bg-forest-900 text-paper shadow-rail transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] md:w-20 md:translate-x-0 xl:w-[248px]',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
+        <div className="pointer-events-none absolute -right-28 -top-28 h-64 w-64 rounded-full border border-gold/10" aria-hidden="true" />
         {sidebarBody}
       </aside>
 
-      <div className="relative flex flex-1 flex-col overflow-hidden">
-        <header className="z-20 flex shrink-0 items-center gap-3 border-b border-sand/60 bg-white px-4 py-3 md:px-6">
+      <div className="app-workspace relative flex min-h-screen min-w-0 flex-col md:ml-20 xl:ml-[248px]">
+        <header role="banner" className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-border bg-paper/95 px-4 backdrop-blur-md sm:px-5 lg:px-7">
           <button
+            ref={menuButtonRef}
+            type="button"
             onClick={() => setSidebarOpen(true)}
-            className="rounded-lg p-2 text-slate-500 hover:bg-sand hover:text-ink md:hidden"
-            aria-label="Open menu"
+            className="focus-ring touch-target inline-flex items-center justify-center rounded-full text-muted transition-colors duration-150 hover:bg-parchment hover:text-ink md:hidden"
+            aria-label="Open navigation"
+            aria-expanded={sidebarOpen}
           >
             <FiMenu size={20} />
           </button>
 
-          <div className="hidden md:block">
-            <div className="text-[10px] uppercase tracking-widest text-muted">Pacific World School</div>
-            <div className="text-sm font-semibold text-ink">
+          <div className="min-w-0 flex-1">
+            <Breadcrumbs items={breadcrumbItems} />
+            <div className="mt-0.5 truncate text-xs font-extrabold uppercase tracking-[0.12em] text-forest sm:hidden">
               {routeLabels[location.pathname] ?? 'Dashboard'}
             </div>
           </div>
 
-          <div className="ml-auto flex items-center gap-2 md:gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             {configError && (
-              <Badge variant="terracotta" className="hidden cursor-help text-[10px] sm:inline-flex" title={configError}>
+              <Badge variant="terracotta" className="hidden cursor-help text-[10px] lg:inline-flex" title={configError}>
                 Config
               </Badge>
             )}
             {!isDemoPath && (
-              <a href="/demo/login" className="text-xs font-medium text-olive underline underline-offset-2">Try a demo</a>
+              <a href="/demo/login" className="hidden min-h-11 items-center text-xs font-bold text-forest underline decoration-gold underline-offset-4 sm:inline-flex">Try a demo</a>
             )}
             {/* Gate on the real profile so an admin can always switch back. */}
             {profile?.role === 'admin' && (
@@ -379,28 +432,25 @@ export default function AppShell({ children }: { children?: ReactNode }) {
               />
               {unread === 0 && <span className="sr-only">No unread notifications</span>}
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-olive/10 text-xs font-bold text-olive">
+            <div className="hidden h-9 w-9 items-center justify-center rounded-full bg-forest text-xs font-extrabold text-gold sm:flex" aria-hidden="true">
               {initials(profile?.full_name ?? 'U')}
             </div>
           </div>
         </header>
 
         {isDemoPath && (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900 md:px-6">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gold/40 bg-gold/20 px-4 py-2 text-xs text-forest-950 sm:px-5 lg:px-7">
             <span><strong>Demo mode</strong> · Sample data only — no school records are changed.</span>
-            <a href="/login" className="font-semibold underline underline-offset-2">Exit demo · School sign in</a>
+            <a href="/login" className="inline-flex min-h-9 items-center gap-1 font-extrabold underline decoration-forest/20 underline-offset-4">Exit demo · School sign in <FiChevronRight size={13} aria-hidden="true" /></a>
           </div>
         )}
-        <div className="shrink-0 px-4 pt-3 md:px-6">
-          <Breadcrumbs items={breadcrumbItems} />
-        </div>
 
-        <main className="scroll-slim flex-1 overflow-y-auto px-4 pb-8 pt-2 md:px-6">
+        <main id="main-content" tabIndex={-1} className="page-reveal min-w-0 flex-1 px-4 pb-10 pt-5 outline-none sm:px-5 sm:pt-6 lg:px-7 lg:pt-7">
           {children ?? <Outlet />}
         </main>
 
-        <footer className="shrink-0 border-t border-sand/60 bg-white px-6 py-2 text-[10px] text-muted">
-          Pacific World School ERP · {new Date().getFullYear()} · Demo build
+        <footer className="shrink-0 border-t border-border bg-paper/70 px-5 py-2.5 text-[10px] font-semibold text-muted lg:px-7">
+          Pacific World School ERP · {new Date().getFullYear()}
         </footer>
       </div>
     </div>

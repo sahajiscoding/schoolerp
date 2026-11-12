@@ -28,8 +28,19 @@ function RequireAuth({ children }: { children: ReactNode }) {
   const { loading, profile } = useAuth();
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-sand">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-olive/30 border-t-olive" />
+      <div className="flex min-h-screen items-center justify-center bg-forest-950 px-6 text-paper">
+        <div role="status" className="flex flex-col items-center gap-4 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-paper shadow-lift">
+            <img src="/brand/pws-logo.png" alt="" width="48" height="48" className="h-12 w-12 object-contain" />
+          </div>
+          <div>
+            <div className="font-display text-xl font-medium">Pacific World School</div>
+            <div className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-gold">Preparing your workspace</div>
+          </div>
+          <div className="h-1 w-28 overflow-hidden rounded-full bg-paper/15" aria-hidden="true">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-gold" />
+          </div>
+        </div>
       </div>
     );
   }
