@@ -28,6 +28,10 @@ it.each(['Admin', 'Teacher', 'Student'])('enters %s with configured Supabase, na
   expect(screen.queryByLabelText('Your Password')).toBeNull();
   await user.click(screen.getByRole('button', { name: role, exact: true }));
   await screen.findByText('Demo mode');
+  expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Dashboard' }).getAttribute('aria-current')).toBe('page');
+  expect(screen.getByRole('banner')).toBeTruthy();
+  expect(screen.getByRole('main')).toBeTruthy();
   expect(window.location.pathname).toBe('/demo/dashboard');
   expect(sessionStorage.getItem('pws.showcase.role')).toBe(role.toLowerCase());
   expect(screen.getByRole('link', { name: 'Exit demo · School sign in' }).getAttribute('href')).toBe('/login');
