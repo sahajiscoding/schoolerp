@@ -43,7 +43,7 @@ function openMaterial(material: StudyMaterial) {
 }
 
 export default function StudyRoom() {
-  const { profile, isAdmin, isTeacher } = useAuth();
+  const { profile, isTeacher } = useAuth();
   const data = useData();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -56,7 +56,7 @@ export default function StudyRoom() {
     type: 'PDF',
   });
 
-  const canShare = isAdmin() || isTeacher();
+  const canShare = isTeacher();
 
   const myMaterials = data.studyMaterials;
 

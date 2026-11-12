@@ -71,6 +71,17 @@ it('keeps academic publishing and review read-only for administrators', async ()
   expect(screen.queryByRole('button', { name: /Mark reviewed/i })).toBeNull();
 });
 
+it.each([
+  ['/course-progress', /Add progress/i],
+  ['/study-room', /Share PDF/i],
+  ['/report-card', /Generate report card/i],
+] as const)('does not expose the academic authoring action on %s to administrators', async (path, action) => {
+  window.history.replaceState(null, '', `/demo${path}?role=admin`);
+  render(<App />);
+  await screen.findByRole('heading', { level: 1 });
+  expect(screen.queryByRole('button', { name: action })).toBeNull();
+});
+
 const communityRoutes = [
   ['/communications', /Communications/i, 'Communication centre'],
   ['/events', /Events & calendars/i, 'School calendar'],

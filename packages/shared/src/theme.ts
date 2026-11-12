@@ -8,7 +8,7 @@ export const theme = {
     terracotta: '#D97747',
     clay: '#F1D5C3',
     ink: '#2F3D2A',
-    muted: '#74806F',
+    muted: '#64705D',
     sand: '#F7F2E8',
     cream: '#FFFEFA',
     accent: '#D97747',

@@ -25,7 +25,7 @@ const SUBJECTS = [
 ];
 
 export default function CourseProgress() {
-  const { profile, isAdmin, isTeacher, isStudent } = useAuth();
+  const { profile, isTeacher, isStudent } = useAuth();
   const data = useData();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -42,7 +42,7 @@ export default function CourseProgress() {
   );
 
   const students = data.people.filter((p) => p.role === 'student');
-  const canAdd = isAdmin() || isTeacher();
+  const canAdd = isTeacher();
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();

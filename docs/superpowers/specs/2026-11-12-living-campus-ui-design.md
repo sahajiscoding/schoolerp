@@ -92,7 +92,7 @@ hierarchy but may not remove, hide, or materially alter an existing action.
 | Campus terracotta | `#D97747` | Primary moments and selected actions |
 | Clay tint | `#F1D5C3` | Warm secondary panels and warnings |
 | Ink | `#2F3D2A` | Primary text |
-| Muted ink | `#74806F` | Supporting text |
+| Muted ink | `#64705D` | Supporting text; darkened during AA verification |
 | Border | `rgba(54, 72, 47, 0.11)` | Quiet separation |
 
 Success, warning, danger, and information retain distinct semantic treatment.

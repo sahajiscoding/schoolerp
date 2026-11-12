@@ -34,13 +34,13 @@ This file is the single source of truth for project state. Every agent must read
 |---|---|---|
 | Dashboard | `src/pages/Dashboard.tsx` | Distinct admin / teacher / student layouts, fee collection bar, quick links |
 | Approvals | `src/pages/Approvals.tsx` | Student applies; **class teacher of the section** approves/rejects; history + filters |
-| Course Progress | `src/pages/CourseProgress.tsx` | Teacher/admin add goals per student; student sees own goals |
+| Course Progress | `src/pages/CourseProgress.tsx` | Teachers add goals per student; admins read; students see their own goals |
 | Communications | `src/pages/Communications.tsx` | Declaration forms (compose + sign), message broadcast, polls (create + vote) |
 | Events & Calendar | `src/pages/Events.tsx` | Month calendar; admins publish school-wide, teachers publish class-only |
-| Assignments | `src/pages/Assignments.tsx` | Teacher name on every card, attachments, submit flow, submissions review tab |
-| Study Room | `src/pages/StudyRoom.tsx` | **Share PDF** for teachers/admin; students open shared material |
+| Assignments | `src/pages/Assignments.tsx` | Teachers publish/review; students submit; admins have read-only oversight |
+| Study Room | `src/pages/StudyRoom.tsx` | **Share PDF** for teachers; admins and students open shared material |
 | My Library | `src/pages/Library.tsx` | Add/remove books, issue to a student, return, reserve |
-| My Report Card | `src/pages/ReportCard.tsx` | Teacher enters student + class + subjects + marks → card generated, printable, assigned |
+| My Report Card | `src/pages/ReportCard.tsx` | Teachers generate and assign printable cards; admins have read-only oversight |
 | My Attendance | `src/pages/Attendance.tsx` | Day grid; teacher marks present/absent per student; student reads own |
 | My Fee | `src/pages/Fees.tsx` | Invoices, payments, **50% sibling discount on the second child**, sibling link/unlink |
 | People | `src/pages/People.tsx` | Add student, **CSV import** with validation, template + credentials export |
@@ -89,7 +89,7 @@ This file is the single source of truth for project state. Every agent must read
 
 ### Verification done
 
-- **2026-11-12 (`newui2`, Living Campus):** admin tests 36/36 pass; admin typecheck passes; lint 0 errors / 3 pre-existing fast-refresh warnings; production build passes (426 modules, expected chunk-size warning); `git diff --check` clean; prohibited client-secret scan clean. Live DOM readback at 816×706 visited every authenticated route with zero page overflow and no browser console warnings; Admin/Teacher/Student role controls were checked. Screenshot capture and multi-viewport pixel comparison were unavailable in the connected browser session.
+- **2026-11-12 (`newui2`, Living Campus):** admin tests 39/39 pass; admin typecheck passes; lint 0 errors / 3 pre-existing fast-refresh warnings; production build passes (426 modules, expected chunk-size warning); `git diff --check` clean; prohibited client-secret scan clean. Live DOM readback at 816×706 visited every authenticated route with zero page overflow and no browser console warnings; Admin/Teacher/Student role controls were checked. AA review darkened muted text to `#64705D` and replaced the low-contrast solid terracotta button. Screenshot capture and multi-viewport pixel comparison were unavailable in the connected browser session.
 
 - `npm run typecheck --workspace=apps/admin` — clean.
 - `npm run build --workspace=apps/admin` — passes (tsc -b + vite build).

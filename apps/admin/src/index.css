@@ -100,7 +100,7 @@ textarea {
   .field-control:disabled {
     cursor: not-allowed;
     background: rgba(247, 242, 232, 0.72);
-    color: #74806f;
+    color: #64705d;
   }
 
   textarea.field-control {

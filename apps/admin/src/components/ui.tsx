@@ -27,8 +27,8 @@ export function Button({
   const variants: Record<string, string> = {
     primary: 'bg-olive text-white shadow-sm hover:bg-deep-olive active:bg-olive-800',
     olive: 'bg-olive text-white shadow-sm hover:bg-deep-olive active:bg-olive-800',
-    secondary: 'bg-terracotta text-ink shadow-sm hover:bg-terracotta-600 active:bg-terracotta-700',
-    terracotta: 'bg-terracotta text-ink shadow-sm hover:bg-terracotta-600 active:bg-terracotta-700',
+    secondary: 'border border-terracotta-200 bg-terracotta-100 text-terracotta-700 shadow-sm hover:bg-clay active:bg-terracotta-200',
+    terracotta: 'border border-terracotta-200 bg-terracotta-100 text-terracotta-700 shadow-sm hover:bg-clay active:bg-terracotta-200',
     outline: 'border border-olive/25 bg-paper text-deep-olive hover:border-olive/45 hover:bg-daylight active:bg-leaf/35',
     ghost: 'bg-transparent text-deep-olive hover:bg-leaf/35 active:bg-leaf/55',
     danger: 'bg-red-700 text-white shadow-sm hover:bg-red-800 active:bg-red-900',
