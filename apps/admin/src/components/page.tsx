@@ -27,7 +27,7 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <header className={cn('relative overflow-hidden rounded-editorial border border-border bg-paper px-5 py-6 shadow-card sm:px-7 sm:py-7', className)}>
+    <div className={cn('relative overflow-hidden rounded-editorial border border-border bg-paper px-5 py-6 shadow-card sm:px-7 sm:py-7', className)}>
       <div className="absolute inset-y-0 left-0 w-1 bg-gold" aria-hidden="true" />
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0 max-w-3xl">
@@ -45,7 +45,7 @@ export function PageHeader({
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
       </div>
       <div className="heritage-rule mt-5" aria-hidden="true" />
-    </header>
+    </div>
   );
 }
 
