@@ -24,3 +24,19 @@ it.each([
   render(<App />);
   expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeTruthy();
 });
+
+const adminRoutes = [
+  ['/people', /People & profiles/i, 'Add student'],
+  ['/classes', /Classes & sections/i, 'Add class'],
+  ['/subjects', /^Subjects$/i, 'Add subject'],
+  ['/teaching-assignments', /Teaching assignments/i, 'Add assignment'],
+  ['/enrollments', /^Enrollments$/i, 'Enroll student'],
+  ['/audit-log', /Audit log/i, null],
+] as const;
+
+it.each(adminRoutes)('renders the administration route %s with its primary action', async (path, heading, action) => {
+  window.history.replaceState(null, '', `/demo${path}?role=admin`);
+  render(<App />);
+  expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeTruthy();
+  if (action) expect(screen.getByRole('button', { name: action })).toBeTruthy();
+});

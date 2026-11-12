@@ -26,6 +26,11 @@ export function Modal({ title, description, onClose, children, footer, size = 'm
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -36,7 +41,7 @@ export function Modal({ title, description, onClose, children, footer, size = 'm
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !panelRef.current) return;
@@ -65,7 +70,7 @@ export function Modal({ title, description, onClose, children, footer, size = 'm
       document.body.style.overflow = previousOverflow;
       previousFocus?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   const widths = { sm: 'max-w-md', md: 'max-w-2xl', lg: 'max-w-4xl' };
 

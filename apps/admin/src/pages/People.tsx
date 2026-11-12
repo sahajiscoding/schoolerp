@@ -6,13 +6,16 @@ import {
   Card,
   Button,
   Badge,
+  StatCard,
   Table,
   TableHeader,
   TableRow,
   TableHead,
   TableCell,
 } from '../components/ui';
-import { FiDownload, FiInfo, FiPlus, FiUpload } from 'react-icons/fi';
+import { EmptyState, MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
+import { Modal } from '../components/modal';
+import { FiBookOpen, FiDownload, FiInfo, FiPlus, FiShield, FiUpload, FiUsers } from 'react-icons/fi';
 
 /**
  * CSV formats the office already exports. Header names are matched loosely so
@@ -85,6 +88,7 @@ export default function People() {
 
   const people = data.people;
   const students = useMemo(() => people.filter((p) => p.role === 'student'), [people]);
+  const teachers = useMemo(() => people.filter((p) => p.role === 'teacher'), [people]);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,56 +221,65 @@ export default function People() {
 
   if (!isAdmin()) {
     return (
-      <div className="rounded-xl border border-terracotta/20 bg-terracotta/5 p-6">
-        <h1 className="text-lg font-bold text-ink">People</h1>
-        <p className="mt-1 text-sm text-muted">
-          Only administrators can add students or import the roster.
-        </p>
-      </div>
+      <Page>
+        <PageHeader eyebrow="Administration" title="People & profiles" description="Only administrators can add students or import the roster." />
+      </Page>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">People</h1>
-          <p className="text-muted">
-            {people.length} accounts · {students.length} students · {people.filter((p) => p.role === 'teacher').length} teachers
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <Page>
+      <PageHeader
+        eyebrow="Our school community"
+        title="People & profiles"
+        description="A clear roster of school accounts, class placements and school-issued login details."
+        actions={(
+          <>
           <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <FiUpload size={16} /> Import CSV
+            <FiUpload size={16} aria-hidden="true" /> Import CSV
           </Button>
           <Button onClick={() => setOpen(true)}>
-            <FiPlus size={16} /> Add student
+            <FiPlus size={16} aria-hidden="true" /> Add student
           </Button>
-        </div>
-      </div>
+          </>
+        )}
+      />
 
-      <Card>
-        <div className="overflow-x-auto">
-          <Table>
+      <MetricGrid className="lg:grid-cols-3 xl:grid-cols-3">
+        <StatCard label="Accounts" value={people.length} icon={FiUsers} />
+        <StatCard label="Students" value={students.length} icon={FiBookOpen} variant="terracotta" />
+        <StatCard label="Teachers" value={teachers.length} icon={FiShield} variant="neutral" />
+      </MetricGrid>
+
+      <Card padded={false}>
+        <div className="p-5 pb-2 sm:p-6 sm:pb-2">
+          <SectionHeading title="School roster" description="Login IDs, placements and initial student passwords remain visible to administrators." />
+        </div>
+        {people.length ? (
+          <Table className="min-w-0">
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Login / Admission</TableHead>
+                <TableHead className="hidden md:table-cell">Login / Admission</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>DOB</TableHead>
-                <TableHead>Initial password</TableHead>
+                <TableHead className="hidden lg:table-cell">Class</TableHead>
+                <TableHead className="hidden xl:table-cell">DOB</TableHead>
+                <TableHead className="hidden xl:table-cell">Initial password</TableHead>
               </TableRow>
             </TableHeader>
             <tbody>
               {people.map((person) => (
                 <TableRow key={person.id}>
                   <TableCell>
-                    <div className="font-medium">{person.full_name}</div>
+                    <div className="font-semibold">{person.full_name}</div>
                     <div className="text-xs text-muted">{person.email}</div>
+                    <div className="mt-1 text-xs text-muted md:hidden">
+                      {person.login_id} · {person.class_label ? `${person.class_label} ${person.section_label ?? ''}` : 'No class'}
+                      {person.role === 'student' && person.password ? ` · ${person.password}` : ''}
+                    </div>
                   </TableCell>
-                  <TableCell>
-                    <code className="rounded bg-sand px-1.5 py-0.5 text-xs">{person.login_id}</code>
+                  <TableCell className="hidden md:table-cell">
+                    <code className="rounded bg-daylight px-2 py-1 text-xs">{person.login_id}</code>
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -277,11 +290,11 @@ export default function People() {
                       {person.role}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="hidden text-sm lg:table-cell">
                     {person.class_label ? `${person.class_label} ${person.section_label ?? ''}` : '—'}
                   </TableCell>
-                  <TableCell className="text-sm text-muted">{person.dob ?? '—'}</TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="hidden text-sm text-muted xl:table-cell">{person.dob ?? '—'}</TableCell>
+                  <TableCell className="hidden text-sm xl:table-cell">
                     {person.role === 'student' ? (
                       <code className="text-olive">{person.password ?? '—'}</code>
                     ) : (
@@ -292,38 +305,41 @@ export default function People() {
               ))}
             </tbody>
           </Table>
-        </div>
+        ) : (
+          <div className="p-5 pt-2 sm:p-6 sm:pt-2"><EmptyState title="No profiles yet" description="Add a student or import the first roster." icon={FiUsers} /></div>
+        )}
       </Card>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-lg font-bold text-ink">Add student</h2>
-            <form onSubmit={handleCreate} className="space-y-3">
+        <Modal title="Add student" description="Create a student profile with school-issued login details." onClose={() => setOpen(false)} size="sm">
+            <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Full name</label>
+                <label htmlFor="student-full-name" className="field-label">Full name</label>
                 <input
+                  id="student-full-name"
                   value={form.full_name}
                   onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Admission number</label>
+                <label htmlFor="student-admission" className="field-label">Admission number</label>
                 <input
+                  id="student-admission"
                   value={form.login_id}
                   onChange={(e) => setForm({ ...form, login_id: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                   placeholder="0185/18"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Date of birth</label>
+                <label htmlFor="student-dob" className="field-label">Date of birth</label>
                 <input
+                  id="student-dob"
                   type="date"
                   value={form.dob}
                   onChange={(e) => setForm({ ...form, dob: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 />
                 <p className="mt-1 text-xs text-muted">
                   {form.dob && safeDob(form.dob)
@@ -331,49 +347,43 @@ export default function People() {
                     : 'Password is generated as Student@DDMMYYYY'}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Class</label>
+                  <label htmlFor="student-class" className="field-label">Class</label>
                   <input
+                    id="student-class"
                     value={form.class_label}
                     onChange={(e) => setForm({ ...form, class_label: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                     placeholder="IX"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Section</label>
+                  <label htmlFor="student-section" className="field-label">Section</label>
                   <input
+                    id="student-section"
                     value={form.section_label}
                     onChange={(e) => setForm({ ...form, section_label: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                     placeholder="E"
                   />
                 </div>
               </div>
-              <div className="mt-4 flex justify-end gap-2">
+              <div className="flex flex-wrap justify-end gap-2 pt-2">
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Add student</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {importOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-1 text-lg font-bold text-ink">Import students from CSV</h2>
-            <p className="mb-4 text-sm text-muted">
-              Include <code className="rounded bg-sand px-1 text-xs">full_name</code>,{' '}
-              <code className="rounded bg-sand px-1 text-xs">admission_no</code> and{' '}
-              <code className="rounded bg-sand px-1 text-xs">dob</code>. Class and section are optional.
-            </p>
+        <Modal title="Import students from CSV" description="Include full_name, admission_no and dob. Class and section are optional." onClose={() => setImportOpen(false)} size="lg">
 
-            <div className="mb-4 flex items-start gap-2 rounded-lg border border-olive/15 bg-olive/5 p-3 text-xs text-olive">
-              <FiInfo size={14} className="mt-0.5 shrink-0" />
+            <div className="mb-4 flex items-start gap-2 rounded-campus border border-olive/15 bg-leaf/30 p-3 text-xs leading-5 text-deep-olive">
+              <FiInfo size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
               <span>
                 Every account starts with the password{' '}
                 <strong>Student@</strong> followed by the date of birth as <strong>DDMMYYYY</strong>.
@@ -384,10 +394,10 @@ export default function People() {
 
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={downloadTemplate}>
-                <FiDownload size={14} /> Template
+                <FiDownload size={14} aria-hidden="true" /> Template
               </Button>
               <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
-                <FiUpload size={14} /> Choose .csv file
+                <FiUpload size={14} aria-hidden="true" /> Choose .csv file
               </Button>
               <input
                 ref={fileInput}
@@ -399,21 +409,22 @@ export default function People() {
             </div>
 
             <div className="mt-3">
-              <label className="mb-1 block text-xs font-medium text-muted">Or paste CSV text</label>
+              <label htmlFor="csv-text" className="field-label">Or paste CSV text</label>
               <textarea
+                id="csv-text"
                 value={csvText}
                 onChange={(e) => {
                   setCsvText(e.target.value);
                   buildPreview(e.target.value);
                 }}
                 rows={6}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs"
+                className="field-control font-mono text-xs"
                 placeholder={'full_name,admission_no,dob,class,section\nSahaj Chugh,0185/18,14/05/2010,IX,E'}
               />
             </div>
 
             {parseError && (
-              <p className="mt-2 rounded-lg border border-terracotta/20 bg-terracotta/5 px-3 py-2 text-xs text-terracotta">
+              <p role="alert" className="mt-2 rounded-[10px] border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
                 {parseError}
               </p>
             )}
@@ -425,7 +436,7 @@ export default function People() {
                   {invalidRows.length > 0 && <Badge variant="terracotta">{invalidRows.length} need fixing</Badge>}
                   <span className="text-muted">Preview before anything is created</span>
                 </div>
-                <div className="max-h-64 overflow-auto rounded-lg border border-sand/60">
+                <div className="scroll-slim max-h-64 overflow-auto rounded-campus border border-olive/10">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -468,15 +479,14 @@ export default function People() {
                 disabled={validRows.length === 0}
                 onClick={downloadCredentials}
               >
-                <FiDownload size={14} /> Credentials CSV
+                <FiDownload size={14} aria-hidden="true" /> Credentials CSV
               </Button>
               <Button type="button" disabled={validRows.length === 0} onClick={handleImport}>
                 Import {validRows.length || ''} student{validRows.length === 1 ? '' : 's'}
               </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }
