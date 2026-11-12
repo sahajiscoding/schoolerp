@@ -19,7 +19,7 @@ module.exports = {
         gold: '#E4CF83',
         moss: '#6D7D42',
         ink: '#172219',
-        muted: '#69756D',
+        muted: '#5E6B62',
         border: 'rgba(28, 43, 32, 0.12)',
         olive: '#6D7D42',
         terracotta: '#A94F36',
@@ -50,7 +50,7 @@ module.exports = {
         },
       },
       animation: {
-        reveal: 'reveal 360ms cubic-bezier(0.23, 1, 0.32, 1) both',
+        reveal: 'reveal 280ms cubic-bezier(0.23, 1, 0.32, 1) both',
         'dialog-in': 'dialog-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both',
       },
     },

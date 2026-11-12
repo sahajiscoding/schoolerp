@@ -14,6 +14,7 @@ describe('Future Heritage design contract', () => {
       gold: '#E4CF83',
       moss: '#6D7D42',
       ink: '#172219',
+      muted: '#5E6B62',
     });
   });
 
@@ -22,5 +23,8 @@ describe('Future Heritage design contract', () => {
     expect(css).toContain(':focus-visible');
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');
     expect(css).toContain('.page-reveal');
+    expect(css).toContain('min-height: 44px');
+    expect(css).toContain('scrollbar-gutter: stable');
+    expect(css).not.toContain('transition: all');
   });
 });

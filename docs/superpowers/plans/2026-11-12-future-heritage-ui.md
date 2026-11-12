@@ -133,7 +133,7 @@ export const theme = {
     gold: '#E4CF83',
     moss: '#6D7D42',
     ink: '#172219',
-    muted: '#69756D',
+    muted: '#5E6B62',
     olive: '#6D7D42',
     terracotta: '#A94F36',
     sand: '#ECE8DC',

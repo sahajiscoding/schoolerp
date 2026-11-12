@@ -95,7 +95,7 @@ working capability.
 | Heritage gold | `#E4CF83` | Active state, emphasis, focus details |
 | Moss | `#6D7D42` | Secondary academic accent and charts |
 | Ink | `#172219` | Primary text on light surfaces |
-| Muted ink | `#69756D` | Supporting text |
+| Muted ink | `#5E6B62` | Supporting text; darkened during AA verification |
 | Border | `rgba(28, 43, 32, 0.12)` | Quiet structural separation |
 
 Semantic success, warning, danger, and information colors retain their meaning
