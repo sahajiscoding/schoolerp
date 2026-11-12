@@ -18,12 +18,6 @@ import { supabase } from '../lib/supabase';
 
 const REMEMBERED_ACCOUNT_KEY = 'pws.rememberedAccount';
 
-/**
- * Passwordless demo entry: one small button that reveals the three roles.
- * No credentials are stored or shown anywhere — picking a role signs in as
- * the matching seeded person in the isolated /demo app, with or without
- * production Supabase configuration. See `signInAsDemo` in AuthContext.
- */
 const DEMO_ROLES: { role: Role; label: string; Icon: typeof FiShield }[] = [
   { role: 'admin', label: 'Admin', Icon: FiShield },
   { role: 'teacher', label: 'Teacher', Icon: FiBookOpen },
@@ -102,8 +96,8 @@ export default function Login() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (restoringSession) return;
     const id = loginId.trim();
     if (!id) {
@@ -114,9 +108,9 @@ export default function Login() {
     setLoading(true);
     setError('');
     setNotice('');
-    const { error: err } = await signIn(id, password);
-    if (err) {
-      setError(err);
+    const { error: signInError } = await signIn(id, password);
+    if (signInError) {
+      setError(signInError);
       setLoading(false);
       return;
     }
@@ -134,10 +128,9 @@ export default function Login() {
   };
 
   const handleDemo = (role: Role) => {
-    const { error: err } = signInAsDemo(role);
-    if (err) {
-      // Surface the refusal in the form's error area.
-      setError(err);
+    const { error: demoError } = signInAsDemo(role);
+    if (demoError) {
+      setError(demoError);
       setShowForm(true);
       return;
     }
@@ -164,39 +157,34 @@ export default function Login() {
   };
 
   return (
-    <div className="grid min-h-screen w-full grid-cols-1 bg-white text-ink md:grid-cols-2">
-      <div className="flex min-h-screen flex-col justify-between bg-white p-4 md:p-8">
-        <h1 className="text-xl font-bold text-ink md:text-2xl">PACIFIC WORLD SCHOOL</h1>
+    <main aria-label="Pacific World School sign in" className="grid min-h-screen bg-daylight text-ink lg:grid-cols-[minmax(29rem,0.92fr)_minmax(34rem,1.08fr)]">
+      <section className="order-2 flex min-h-[calc(100vh-10rem)] flex-col bg-paper px-5 py-6 sm:px-10 lg:order-1 lg:min-h-screen lg:px-[clamp(2.5rem,6vw,6rem)] lg:py-8">
+        <div className="flex items-center gap-3">
+          <img src="/brand/pws-logo.png" alt="Pacific World School" width="311" height="435" className="h-12 w-9 object-contain" />
+          <div>
+            <p className="font-display text-lg font-semibold leading-none text-ink">Pacific World School</p>
+            <p className="mt-1 text-[0.62rem] font-bold uppercase tracking-[0.17em] text-muted">School console</p>
+          </div>
+        </div>
 
-        <div className="mx-auto flex w-full max-w-lg flex-grow flex-col items-center justify-center">
-          <div className="w-full">
-            <div className="mb-4 flex flex-col items-center justify-center text-center md:mb-6">
-              <img
-                src="/brand/pws-logo.png"
-                alt="Pacific World School"
-                className="mx-auto h-auto w-[80px] select-none md:w-[100px]"
-              />
-              <h3 className="mb-1 text-xl font-semibold text-ink md:text-2xl">
-                {isDemoPath ? 'Explore the school demo' : 'Login to your account'}
-              </h3>
-              <p className="text-xs text-slate-500 md:text-sm">
-                {isDemoPath ? 'Choose a role below. No account or password required.' : 'Welcome back, Please enter your email & password to continue.'}
-              </p>
-            </div>
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10 lg:py-14">
+          <p className="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-terracotta-700">
+            {isDemoPath ? 'Sample-data entry' : 'School sign in'}
+          </p>
+          <h1 className="mt-2 font-display text-[clamp(2.55rem,6vw,4.5rem)] font-semibold leading-[0.91] tracking-[-0.045em] text-ink">
+            Welcome to your school day
+          </h1>
+          <p className="mt-4 max-w-sm text-sm leading-6 text-muted">
+            {isDemoPath
+              ? 'Choose a role to explore the console with sample data. No school records are changed.'
+              : 'Use your school-issued login ID to open the tools and records available to your role.'}
+          </p>
 
-            {!isDemoPath && (showForm ? (
-              <form
-                onSubmit={handleSubmit}
-                className="mx-auto w-full max-w-[400px] space-y-6"
-                noValidate
-              >
+          {!isDemoPath && (
+            showForm ? (
+              <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
                 <div>
-                  <label
-                    htmlFor="login-id"
-                    className="mb-2 block text-sm font-medium text-ink"
-                  >
-                    Your Email/ UserId
-                  </label>
+                  <label htmlFor="login-id" className="field-label">Your Email/ UserId</label>
                   <input
                     ref={loginIdRef}
                     id="login-id"
@@ -206,19 +194,14 @@ export default function Login() {
                     autoCapitalize="none"
                     spellCheck={false}
                     value={loginId}
-                    onChange={(e) => setLoginId(e.target.value)}
-                    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-olive focus:outline-none focus:ring-1 focus:ring-olive"
+                    onChange={(event) => setLoginId(event.target.value)}
+                    className="field-control"
                   />
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="password"
-                    className="mb-2 block text-sm font-medium text-ink"
-                  >
-                    Your Password
-                  </label>
-                  <div className="flex items-center">
+                  <label htmlFor="password" className="field-label">Your Password</label>
+                  <div className="flex">
                     <input
                       ref={passwordRef}
                       id="password"
@@ -226,181 +209,150 @@ export default function Login() {
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-9 w-full rounded-e-none rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm transition-colors placeholder:text-slate-400 focus:border-olive focus:outline-none focus:ring-1 focus:ring-olive"
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="field-control rounded-r-none"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((visible) => !visible)}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      className="flex h-9 w-10 shrink-0 items-center justify-center rounded-e-md border border-l-0 border-slate-300 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
+                      className="focus-ring flex min-w-12 items-center justify-center rounded-r-[10px] border border-l-0 border-olive/20 bg-paper text-muted transition-colors hover:bg-daylight hover:text-ink"
                     >
-                      {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                      {showPassword ? <FiEyeOff size={18} aria-hidden="true" /> : <FiEye size={18} aria-hidden="true" />}
                     </button>
                   </div>
                 </div>
 
-                <div className="mt-2 flex items-center justify-between">
-                  <label className="flex cursor-pointer items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-muted">
                     <input
                       type="checkbox"
                       checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-400 accent-olive"
+                      onChange={(event) => setRememberMe(event.target.checked)}
+                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-olive/40 accent-olive"
                     />
-                    <span className="text-sm text-slate-500">Remember Me</span>
+                    Remember Me
                   </label>
                   <button
                     type="button"
-                    onClick={() =>
-                      setNotice('Ask your school administrator to reset your password.')
-                    }
-                    className="text-sm text-olive hover:underline"
+                    onClick={() => setNotice('Ask your school administrator to reset your password.')}
+                    className="focus-ring rounded text-sm font-semibold text-deep-olive underline decoration-olive/25 underline-offset-4 hover:text-olive"
                   >
                     I forgot my password
                   </button>
                 </div>
 
-                {notice && (
-                  <p role="status" className="text-sm text-slate-500">
-                    {notice}
-                  </p>
-                )}
-
-                {error && (
-                  <p role="alert" className="text-sm text-red-600">
-                    {error}
-                  </p>
-                )}
+                {notice && <p role="status" className="rounded-[10px] bg-leaf/35 px-3 py-2 text-sm text-deep-olive">{notice}</p>}
+                {error && <p role="alert" className="rounded-[10px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
 
                 <button
                   type="submit"
                   disabled={loading || restoringSession}
-                  className="h-10 w-full rounded-md bg-olive px-8 text-center text-sm font-medium text-white shadow transition-colors hover:bg-olive/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="focus-ring flex min-h-12 w-full items-center justify-center rounded-[11px] bg-olive px-6 text-sm font-bold text-white shadow-card transition-[background-color,box-shadow] hover:bg-deep-olive disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {restoringSession ? 'Checking session...' : loading ? 'Logging in...' : 'Login'}
                 </button>
               </form>
             ) : (
-              <div className="mx-auto w-full max-w-[400px]">
+              <div className="mt-8">
                 <button
                   type="button"
                   onClick={openRememberedAccount}
-                  className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive/40"
+                  className="surface-paper focus-ring flex min-h-20 w-full items-center gap-3 px-4 py-3.5 text-left transition-[border-color,box-shadow] hover:border-olive/30 hover:shadow-card"
                 >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-slate-600">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-leaf/60 text-sm font-bold text-deep-olive">
                     {remembered ? getInitials(remembered) : ''}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium uppercase text-ink">
-                      {remembered?.fullName.trim() || remembered?.loginId}
-                    </span>
-                    <span className="block truncate text-xs text-slate-500">
-                      {remembered?.loginId}
-                    </span>
+                    <span className="block truncate text-sm font-bold text-ink">{remembered?.fullName.trim() || remembered?.loginId}</span>
+                    <span className="block truncate text-xs text-muted">{remembered?.loginId}</span>
                   </span>
-                  <FiChevronRight className="ml-auto shrink-0 text-slate-400" size={18} />
+                  <FiChevronRight className="ml-auto shrink-0 text-olive" size={18} aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   onClick={useAnotherAccount}
-                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-4 text-sm text-slate-500 transition-colors hover:bg-slate-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive/40"
+                  className="focus-ring mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-campus border border-dashed border-olive/30 bg-daylight/60 text-sm font-semibold text-deep-olive transition-colors hover:bg-leaf/30"
                 >
-                  <FiPlus size={16} />
+                  <FiPlus size={16} aria-hidden="true" />
                   Use another account
                 </button>
               </div>
-            ))}
+            )
+          )}
 
-            <div className="mx-auto mt-6 w-full max-w-[400px] text-center">
+          <section className="mt-7 rounded-campus border border-terracotta/20 bg-clay/40 p-4" aria-labelledby="demo-entry-title">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 id="demo-entry-title" className="font-display text-lg font-semibold text-ink">Explore the school demo</h2>
+                <p className="mt-0.5 text-xs leading-5 text-muted">Sample data only. No account or password required.</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setDemoOpen((open) => !open)}
                 aria-expanded={demoOpen}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-olive shadow-sm transition-colors hover:border-olive hover:text-olive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
+                aria-controls="demo-role-options"
+                className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full border border-terracotta/30 bg-paper px-4 text-sm font-bold text-deep-olive shadow-sm transition-colors hover:border-terracotta hover:bg-terracotta-50"
               >
-                <FiPlay size={11} />
+                <FiPlay size={12} aria-hidden="true" />
                 Try a demo
-                <FiChevronDown
-                  size={12}
-                  className={`transition-transform ${demoOpen ? 'rotate-180' : ''}`}
-                />
+                <FiChevronDown size={13} aria-hidden="true" className={`transition-transform duration-200 ${demoOpen ? 'rotate-180' : ''}`} />
               </button>
-              {demoOpen && (
-                <div
-                  role="group"
-                  aria-label="Choose a demo role"
-                  className="mt-3 flex items-center justify-center gap-2"
-                >
-                  {DEMO_ROLES.map(({ role, label, Icon }) => isDemoPath ? (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => handleDemo(role)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-olive hover:bg-olive hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
-                    >
-                      <Icon size={12} />
-                      {label}
-                    </button>
-                  ) : (
-                    <a
-                      key={role}
-                      href={`/demo/dashboard?role=${role}`}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-olive hover:bg-olive hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-olive"
-                    >
-                      <Icon size={12} />
-                      {label}
-                    </a>
-                  ))}
-                </div>
-              )}
-              <p className="mt-2 text-[11px] text-slate-400">
-                Explore with sample data — no login needed.
-              </p>
-              {isDemoPath && (
-                <a href="/login" className="mt-3 inline-block text-sm font-medium text-olive underline">
-                  School sign in
-                </a>
-              )}
             </div>
-          </div>
+
+            {demoOpen && (
+              <div id="demo-role-options" role="group" aria-label="Choose a demo role" className="mt-4 grid grid-cols-3 gap-2">
+                {DEMO_ROLES.map(({ role, label, Icon }) => isDemoPath ? (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => handleDemo(role)}
+                    className="focus-ring flex min-h-12 flex-col items-center justify-center gap-1 rounded-[10px] border border-olive/15 bg-paper px-2 py-2 text-xs font-bold text-deep-olive transition-[background-color,border-color,color] hover:border-olive hover:bg-olive hover:text-white sm:flex-row"
+                  >
+                    <Icon size={14} aria-hidden="true" />
+                    {label}
+                  </button>
+                ) : (
+                  <a
+                    key={role}
+                    href={`/demo/dashboard?role=${role}`}
+                    className="focus-ring flex min-h-12 flex-col items-center justify-center gap-1 rounded-[10px] border border-olive/15 bg-paper px-2 py-2 text-xs font-bold text-deep-olive transition-[background-color,border-color,color] hover:border-olive hover:bg-olive hover:text-white sm:flex-row"
+                  >
+                    <Icon size={14} aria-hidden="true" />
+                    {label}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {isDemoPath && (
+              <a href="/login" className="focus-ring mt-4 inline-block rounded text-sm font-bold text-deep-olive underline decoration-olive/30 underline-offset-4">
+                School sign in
+              </a>
+            )}
+          </section>
         </div>
 
-        <p className="text-xs capitalize text-slate-500 md:text-sm">
-          Pacific World School ©2026
-        </p>
-      </div>
+        <p className="text-xs text-muted">Pacific World School ©2026</p>
+      </section>
 
-      <section
-        aria-label="Pacific World School campus"
-        className="relative hidden min-h-screen flex-col items-start justify-start overflow-hidden md:flex"
-      >
-        <div className="absolute inset-0">
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/brand/campus-2.jpg')" }}
-          />
-          <div
-            className="absolute inset-0 bg-cover bg-center campus-crossfade"
-            style={{ backgroundImage: "url('/brand/campus-1.jpg')" }}
-          />
-          <div className="absolute inset-0 bg-black/40" />
-        </div>
-
-        <div className="relative z-10 w-full px-6 pt-4 lg:px-10 lg:pt-6">
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-md transition-all duration-300 hover:bg-white/15 lg:p-8">
-            <h1 className="mb-4 border-b border-white/30 pb-4 text-2xl font-semibold text-white md:text-3xl">
-              Digital Excellence in Every Student&apos;s Achievement
-            </h1>
-            <p className="pt-5 text-sm font-normal text-white md:text-base">
-              Tailored for PACIFIC WORLD SCHOOL, our innovative platform transforms the way
-              student report cards are created, offering a seamless and efficient digital
-              solution. Empowering teachers and students with technology that celebrates
-              academic success with precision and ease.
-            </p>
-          </div>
+      <section aria-label="Pacific World School campus" className="relative order-1 h-40 overflow-hidden bg-deep-olive lg:order-2 lg:h-auto lg:min-h-screen">
+        <img
+          src="/brand/campus-2.jpg"
+          alt=""
+          width="654"
+          height="305"
+          className="campus-image-reveal h-full w-full object-cover object-center lg:absolute lg:inset-0"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-transparent lg:bg-gradient-to-br lg:from-ink/75 lg:via-ink/15 lg:to-olive/25" />
+        <div className="absolute inset-x-0 bottom-0 hidden p-[clamp(2rem,5vw,5rem)] text-white lg:block">
+          <p className="text-[0.7rem] font-bold uppercase tracking-[0.22em] text-white/70">Pacific World School</p>
+          <h2 className="mt-3 max-w-xl font-display text-[clamp(2.8rem,5vw,5.6rem)] font-semibold leading-[0.9] tracking-[-0.045em]">
+            The school day, in one clear view.
+          </h2>
+          <p className="mt-5 max-w-md text-sm leading-6 text-white/78">Learning, communication and school operations remain connected to the role you sign in with.</p>
         </div>
       </section>
-    </div>
+    </main>
   );
 }

@@ -25,6 +25,8 @@ it.each(['Admin', 'Teacher', 'Student'])('enters %s with configured Supabase, na
   localStorage.setItem('pws.demo.data.v4', JSON.stringify({ people: [{ id: 'private-person', full_name: 'Private school person' }] }));
   const schoolData = localStorage.getItem('pws.demo.data.v4');
   const { unmount } = render(<App />);
+  expect(screen.getByRole('main', { name: 'Pacific World School sign in' })).toBeTruthy();
+  expect(screen.getByRole('heading', { level: 1, name: /Welcome to your school day/i })).toBeTruthy();
   expect(screen.queryByLabelText('Your Password')).toBeNull();
   await user.click(screen.getByRole('button', { name: role, exact: true }));
   await screen.findByText('Demo mode');
