@@ -10,9 +10,12 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
+import { Modal } from '../components/modal';
+import { EmptyState, MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
 import { FiCreditCard, FiLink, FiSend, FiUsers, FiX } from 'react-icons/fi';
-import { cn, formatDateLong, inr } from '../lib/utils';
+import { formatDateLong, inr } from '../lib/utils';
 
 /**
  * Fee module.
@@ -92,17 +95,15 @@ export default function Fees() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">{isStudent() ? 'My Fee' : 'Fee Collection'}</h1>
-          <p className="text-muted">
-            {canManage
+    <Page>
+      <PageHeader
+        eyebrow="Finance"
+        title={isStudent() ? 'My fee' : 'Fee collection'}
+        description={canManage
               ? 'Link siblings so the 50% discount lands on the second child, then record payments.'
               : 'Your instalments, discounts and payment status.'}
-          </p>
-        </div>
-        {canManage && (
+        meta={`${myFees.length} invoices`}
+        actions={canManage ? (
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setOpenSibling(true)}>
               <FiLink size={16} /> Link sibling
@@ -111,23 +112,18 @@ export default function Fees() {
               <FiSend size={16} /> Record payment
             </Button>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MoneyCard label="Billed (after discount)" value={inr(totals.billed)} />
-        <MoneyCard label="Collected" value={inr(totals.paid)} tone="olive" />
-        <MoneyCard label="Outstanding" value={inr(totals.due)} tone="terracotta" />
-        <MoneyCard label="Sibling discounts given" value={inr(totals.discounts)} tone="neutral" />
-      </div>
+      <MetricGrid>
+        <StatCard label="Billed after discount" value={inr(totals.billed)} icon={FiCreditCard} variant="neutral" />
+        <StatCard label="Collected" value={inr(totals.paid)} icon={FiCreditCard} />
+        <StatCard label="Outstanding" value={inr(totals.due)} icon={FiCreditCard} variant="terracotta" />
+        <StatCard label="Sibling discounts" value={inr(totals.discounts)} icon={FiUsers} variant="warning" />
+      </MetricGrid>
 
       <Card>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-bold text-ink">
-            {isStudent() ? 'My fee invoices' : 'Fee invoices'}
-          </h3>
-          <Badge variant="olive">{myFees.length} invoices</Badge>
-        </div>
+        <SectionHeading title={isStudent() ? 'My fee invoices' : 'Fee invoices'} description="Billed amount, applied discount, payment and due status." action={<Badge variant="olive">{myFees.length} invoices</Badge>} />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -154,7 +150,7 @@ export default function Fees() {
                 return (
                   <TableRow key={fee.id}>
                     <TableCell>
-                      <div className="font-medium">{student?.full_name ?? '—'}</div>
+                       <div className="font-bold">{student?.full_name ?? '—'}</div>
                       <div className="text-xs text-muted">
                         {student?.class_label} {student?.section_label}
                         {siblingInfo && (
@@ -210,32 +206,22 @@ export default function Fees() {
                   </TableRow>
                 );
               })}
-              {myFees.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={canManage ? 9 : 8} className="py-4 text-center text-muted">
-                    No fee invoices yet.
-                  </TableCell>
-                </TableRow>
-              )}
+               {myFees.length === 0 && <TableRow><TableCell colSpan={canManage ? 9 : 8}><EmptyState title="No fee invoices yet" /></TableCell></TableRow>}
             </tbody>
           </Table>
         </div>
       </Card>
 
       <Card>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 className="text-lg font-bold text-ink">Sibling links</h3>
-            <p className="text-sm text-muted">
-              The 50% campus discount is applied to the sibling — the second child — not the first.
-            </p>
-          </div>
-          {canManage && (
+        <SectionHeading
+          title="Sibling links"
+          description="The 50% campus discount is applied to the sibling — the second child — not the first."
+          action={canManage ? (
             <Button variant="outline" size="sm" onClick={() => setOpenSibling(true)}>
               <FiUsers size={14} /> Add link
             </Button>
-          )}
-        </div>
+          ) : undefined}
+        />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -305,17 +291,15 @@ export default function Fees() {
       </Card>
 
       {canManage && openSibling && (
-        <Modal title="Link siblings" onClose={() => setOpenSibling(false)}>
-          <p className="mb-3 text-sm text-muted">
-            Pick the first child, then the sibling who receives the discount.
-          </p>
+        <Modal title="Link siblings" description="Pick the first child, then the sibling who receives the discount." onClose={() => setOpenSibling(false)}>
           <form onSubmit={handleLinkSibling} className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">First child (full fee)</label>
+              <label htmlFor="first-child" className="field-label">First child (full fee)</label>
               <select
+                id="first-child"
                 value={siblingForm.student_id}
                 onChange={(e) => setSiblingForm({ ...siblingForm, student_id: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="field-control"
               >
                 <option value="">Select first child</option>
                 {students.map((s) => (
@@ -326,13 +310,14 @@ export default function Fees() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">
+              <label htmlFor="discounted-sibling" className="field-label">
                 Sibling (receives discount)
               </label>
               <select
+                id="discounted-sibling"
                 value={siblingForm.sibling_id}
                 onChange={(e) => setSiblingForm({ ...siblingForm, sibling_id: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="field-control"
               >
                 <option value="">Select sibling</option>
                 {students
@@ -345,8 +330,9 @@ export default function Fees() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Sibling discount (%)</label>
+              <label htmlFor="sibling-discount" className="field-label">Sibling discount (%)</label>
               <input
+                id="sibling-discount"
                 type="number"
                 min={0}
                 max={100}
@@ -354,13 +340,13 @@ export default function Fees() {
                 onChange={(e) =>
                   setSiblingForm({ ...siblingForm, discount_percent: Number(e.target.value) })
                 }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="field-control"
               />
               <p className="mt-1 text-xs text-muted">
                 Campus policy is 50%. The discount is written onto the sibling’s invoice only.
               </p>
             </div>
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
               <Button variant="ghost" type="button" onClick={() => setOpenSibling(false)}>
                 Cancel
               </Button>
@@ -371,14 +357,15 @@ export default function Fees() {
       )}
 
       {canManage && openPay && (
-        <Modal title="Record payment" onClose={() => setOpenPay(false)}>
+        <Modal title="Record payment" description="Apply a received amount to one fee invoice." onClose={() => setOpenPay(false)}>
           <form onSubmit={handleRecordPayment} className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Invoice</label>
+              <label htmlFor="payment-invoice" className="field-label">Invoice</label>
               <select
+                id="payment-invoice"
                 value={payForm.invoice_id}
                 onChange={(e) => setPayForm({ ...payForm, invoice_id: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="field-control"
               >
                 <option value="">Select invoice</option>
                 {myFees.map((f) => {
@@ -393,15 +380,16 @@ export default function Fees() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Amount received (₹)</label>
+              <label htmlFor="payment-amount" className="field-label">Amount received (₹)</label>
               <input
+                id="payment-amount"
                 type="number"
                 value={payForm.amount}
                 onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="field-control"
               />
             </div>
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
               <Button variant="ghost" type="button" onClick={() => setOpenPay(false)}>
                 Cancel
               </Button>
@@ -410,52 +398,6 @@ export default function Fees() {
           </form>
         </Modal>
       )}
-    </div>
-  );
-}
-
-function MoneyCard({
-  label,
-  value,
-  tone = 'neutral',
-}: {
-  label: string;
-  value: string;
-  tone?: 'olive' | 'terracotta' | 'neutral';
-}) {
-  const tones = {
-    olive: 'border-olive/15 bg-olive/5 text-olive',
-    terracotta: 'border-terracotta/15 bg-terracotta/5 text-terracotta',
-    neutral: 'border-sand/60 bg-white text-ink',
-  };
-  return (
-    <div className={cn('rounded-xl border p-4', tones[tone])}>
-      <div className="text-xs text-muted">{label}</div>
-      <div className="mt-0.5 text-xl font-bold">{value}</div>
-    </div>
-  );
-}
-
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-ink" aria-label="Close">
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    </Page>
   );
 }

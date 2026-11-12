@@ -10,7 +10,10 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
+import { Modal } from '../components/modal';
+import { EmptyState, MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
 import { FiAlertCircle, FiCalendar, FiChevronLeft, FiChevronRight, FiPlus } from 'react-icons/fi';
 import { cn, formatRange } from '../lib/utils';
 
@@ -147,54 +150,55 @@ export default function Events() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Events &amp; Calendars</h1>
-          <p className="text-muted">
-            {isAdmin()
+    <Page>
+      <PageHeader
+        eyebrow="School calendar"
+        title="Events & calendars"
+        description={isAdmin()
               ? 'School-wide holidays, exams and meetings. Only admins publish to the whole school.'
               : isTeacher()
                 ? `Class events for ${teacherSection}. School-wide events come from the admin.`
                 : 'Holidays, exams and school events for the year.'}
-          </p>
-        </div>
-        {canManage && (
+        meta={`${events.length} calendar entries`}
+        actions={canManage ? (
           <Button onClick={() => setOpen(true)}>
             <FiPlus size={16} /> {isAdmin() ? 'Add event' : 'Add class event'}
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+      <MetricGrid className="xl:grid-cols-3">
+        <StatCard label="Calendar entries" value={events.length} icon={FiCalendar} />
+        <StatCard label="Upcoming" value={upcoming.length} icon={FiChevronRight} variant="neutral" />
+        <StatCard label="Event types" value={new Set(events.map((event) => event.type)).size} icon={FiCalendar} variant="terracotta" />
+      </MetricGrid>
+
+      <section aria-label="School calendar" className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-ink">
-              {MONTH_NAMES[cursor.month]} {cursor.year}
-            </h3>
+          <SectionHeading title={`${MONTH_NAMES[cursor.month]} ${cursor.year}`} description="Month view" action={
             <div className="flex items-center gap-1">
               <button
                 onClick={() => shiftMonth(-1)}
-                className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-sand hover:text-ink"
+                className="focus-ring touch-target inline-flex items-center justify-center rounded-full border border-border text-muted hover:bg-parchment hover:text-ink"
                 aria-label="Previous month"
               >
                 <FiChevronLeft size={16} />
               </button>
               <button
                 onClick={() => setCursor({ year: 2026, month: 10 })}
-                className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-sand"
+                className="focus-ring min-h-11 rounded-full border border-border px-3 text-xs font-bold text-muted hover:bg-parchment hover:text-ink"
               >
                 Today
               </button>
               <button
                 onClick={() => shiftMonth(1)}
-                className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-sand hover:text-ink"
+                className="focus-ring touch-target inline-flex items-center justify-center rounded-full border border-border text-muted hover:bg-parchment hover:text-ink"
                 aria-label="Next month"
               >
                 <FiChevronRight size={16} />
               </button>
             </div>
-          </div>
+          } />
           <div className="grid grid-cols-7 gap-1 text-center">
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
               <div key={d} className="pb-1 text-[10px] font-medium uppercase tracking-wider text-muted">
@@ -210,15 +214,15 @@ export default function Events() {
                 <div
                   key={day}
                   className={cn(
-                    'min-h-[64px] rounded-lg border p-1.5 text-left',
-                    isToday ? 'border-olive bg-olive/5' : 'border-sand/50',
-                    dayEvents.length > 0 && !isToday && 'bg-cream/60',
+                    'min-h-[68px] rounded-xl border p-1.5 text-left sm:min-h-[76px]',
+                    isToday ? 'border-moss bg-moss/10' : 'border-border',
+                    dayEvents.length > 0 && !isToday && 'bg-parchment/45',
                   )}
                 >
                   <div
                     className={cn(
                       'text-xs',
-                      isToday ? 'font-bold text-olive' : 'text-slate-600',
+                       isToday ? 'font-bold text-moss' : 'text-muted',
                     )}
                   >
                     {day}
@@ -230,7 +234,7 @@ export default function Events() {
                         className="flex items-center gap-1 truncate text-[9px] leading-tight text-ink"
                         title={`${ev.title} · ${TYPE_LABEL[ev.type as EventType]}`}
                       >
-                        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', TYPE_DOT[ev.type as EventType])} />
+                        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', TYPE_DOT[ev.type as EventType])} aria-hidden="true" />
                         <span className="truncate">{ev.title}</span>
                       </div>
                     ))}
@@ -245,26 +249,23 @@ export default function Events() {
           <div className="mt-4 flex flex-wrap gap-3 text-[10px] text-muted">
             {(Object.keys(TYPE_LABEL) as EventType[]).map((t) => (
               <span key={t} className="inline-flex items-center gap-1">
-                <span className={cn('h-2 w-2 rounded-full', TYPE_DOT[t])} /> {TYPE_LABEL[t]}
+                <span className={cn('h-2 w-2 rounded-full', TYPE_DOT[t])} aria-hidden="true" /> {TYPE_LABEL[t]}
               </span>
             ))}
           </div>
         </Card>
 
         <Card className="lg:col-span-2">
-          <div className="mb-4 flex items-center gap-2">
-            <FiCalendar className="text-olive" size={16} />
-            <h3 className="text-lg font-bold text-ink">Upcoming</h3>
-          </div>
+          <SectionHeading title="Upcoming" description="The next entries across the visible calendar." />
           <div className="space-y-2">
             {upcoming.map((ev) => {
               const start = new Date(ev.start_date);
               return (
                 <div
                   key={ev.id}
-                  className="flex items-start gap-3 rounded-lg border border-sand/40 p-3 hover:bg-sand/30"
+                   className="flex items-start gap-3 rounded-xl border border-border bg-parchment/25 p-3"
                 >
-                  <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-olive/5 text-olive">
+                   <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-forest text-gold">
                     <span className="text-sm font-bold leading-none">{start.getDate()}</span>
                     <span className="text-[9px] uppercase">
                       {MONTH_NAMES[start.getMonth()].slice(0, 3)}
@@ -272,7 +273,7 @@ export default function Events() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="mb-0.5 flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium text-ink">{ev.title}</span>
+                       <span className="text-sm font-bold text-ink">{ev.title}</span>
                       <Badge variant={TYPE_COLOR[ev.type as EventType]}>
                         {TYPE_LABEL[ev.type as EventType]}
                       </Badge>
@@ -288,20 +289,14 @@ export default function Events() {
               );
             })}
             {upcoming.length === 0 && (
-              <div className="py-8 text-center text-muted">
-                <FiAlertCircle size={24} className="mx-auto mb-2 opacity-50" />
-                <div className="text-sm">No upcoming events.</div>
-              </div>
+              <EmptyState title="No upcoming events" icon={FiAlertCircle} />
             )}
           </div>
         </Card>
-      </div>
+      </section>
 
       <Card>
-        <div className="mb-4">
-          <h3 className="text-lg font-bold text-ink">All events</h3>
-          <p className="text-sm text-muted">{events.length} entries on the calendar</p>
-        </div>
+        <SectionHeading title="All events" description={`${events.length} entries on the calendar`} />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -316,7 +311,7 @@ export default function Events() {
             <tbody>
               {events.map((ev) => (
                 <TableRow key={ev.id}>
-                  <TableCell className="font-medium">{ev.title}</TableCell>
+                  <TableCell className="font-bold">{ev.title}</TableCell>
                   <TableCell>
                     <Badge variant={TYPE_COLOR[ev.type as EventType]}>
                       {TYPE_LABEL[ev.type as EventType]}
@@ -344,33 +339,33 @@ export default function Events() {
       </Card>
 
       {canManage && open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-1 text-lg font-bold text-ink">
-              {isAdmin() ? 'Add event' : 'Add class event'}
-            </h2>
-            <p className="mb-4 text-xs text-muted">
-              {isAdmin()
+        <Modal
+          title={isAdmin() ? 'Add event' : 'Add class event'}
+          description={isAdmin()
                 ? 'Only admins can publish school-wide holidays and exams.'
                 : `Teachers can publish for ${teacherSection} only.`}
-            </p>
+          onClose={() => setOpen(false)}
+          size="sm"
+        >
             <form onSubmit={handleAdd} className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Title</label>
+                <label htmlFor="event-title" className="field-label">Title</label>
                 <input
+                  id="event-title"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                   placeholder="Unit test — Mathematics"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Type</label>
+                  <label htmlFor="event-type" className="field-label">Type</label>
                   <select
+                    id="event-type"
                     value={form.type}
                     onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                   >
                     {(Object.keys(TYPE_LABEL) as EventType[]).map((k) => (
                       <option key={k} value={k}>
@@ -380,12 +375,13 @@ export default function Events() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Audience</label>
+                  <label htmlFor="event-audience" className="field-label">Audience</label>
                   {isAdmin() ? (
                     <select
                       value={form.audience}
+                      id="event-audience"
                       onChange={(e) => setForm({ ...form, audience: e.target.value })}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                      className="field-control"
                     >
                       <option value="Whole school">Whole school</option>
                       <option value="Grades IX-XII">Grades IX-XII</option>
@@ -395,51 +391,54 @@ export default function Events() {
                   ) : (
                     <input
                       value={teacherSection}
+                      id="event-audience"
                       readOnly
-                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-muted"
+                      className="field-control"
                     />
                   )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Start date</label>
+                  <label htmlFor="event-start" className="field-label">Start date</label>
                   <input
+                    id="event-start"
                     type="date"
                     value={form.start_date}
                     onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">End date</label>
+                  <label htmlFor="event-end" className="field-label">End date</label>
                   <input
+                    id="event-end"
                     type="date"
                     value={form.end_date}
                     onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="field-control"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Description</label>
+                <label htmlFor="event-description" className="field-label">Description</label>
                 <textarea
+                  id="event-description"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={2}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="field-control"
                 />
               </div>
-              <div className="mt-4 flex justify-end gap-2">
+              <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Add to calendar</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }

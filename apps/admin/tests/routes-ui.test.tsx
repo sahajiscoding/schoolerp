@@ -69,6 +69,17 @@ it('keeps assignment content read-only for administrators', async () => {
   expect(screen.queryByRole('button', { name: /Add assignment|Publish assignment/i })).toBeNull();
 });
 
+it.each([
+  ['/course-progress', /Add progress/i],
+  ['/study-room', /Share PDF/i],
+  ['/report-card', /Generate report card/i],
+] as const)('keeps academic authoring read-only for administrators at %s', async (path, action) => {
+  window.history.replaceState(null, '', `/demo${path}?role=admin`);
+  render(<App />);
+  await screen.findByRole('heading', { level: 1 });
+  expect(screen.queryByRole('button', { name: action })).toBeNull();
+});
+
 const communityRoutes = [
   ['/communications', /Communications|Inbox/i],
   ['/events', /Events & calendars/i],
@@ -102,4 +113,13 @@ it('retains the second-child sibling discount rule', async () => {
   window.history.replaceState(null, '', '/demo/fees?role=admin');
   render(<App />);
   expect(await screen.findByText(/50% campus discount is applied to the sibling/i)).toBeTruthy();
+});
+
+it.each([
+  ['/study-room', /Study resources/i],
+  ['/gallery', /School memories/i],
+] as const)('labels the resource region at %s', async (path, region) => {
+  window.history.replaceState(null, '', `/demo${path}?role=admin`);
+  render(<App />);
+  expect(await screen.findByRole('region', { name: region })).toBeTruthy();
 });

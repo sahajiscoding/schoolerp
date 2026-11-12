@@ -10,8 +10,11 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
-import { FiCheckCircle, FiPlus, FiSend, FiUsers } from 'react-icons/fi';
+import { Modal } from '../components/modal';
+import { EmptyState, MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
+import { FiBarChart2, FiCheckCircle, FiFileText, FiPlus, FiSend, FiUsers } from 'react-icons/fi';
 import { cn, formatDateLong } from '../lib/utils';
 
 const DECLARATION_TYPES = ['Transport', 'Registration', 'Academic', 'Medical', 'Discipline'];
@@ -111,19 +114,16 @@ export default function Communications() {
   const pendingDeclarations = data.declarations.filter(
     (f) => !(f.signed_by ?? []).includes(profile?.id ?? ''),
   ).length;
+  const sentMessages = data.notifications.filter((notification) => notification.kind === 'notice');
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Communications</h1>
-          <p className="text-muted">
-            Declaration forms, messages, and polls.
-            {isStudent() && ' Sign your pending forms and reply to your class teacher.'}
-            {isTeacher() && ` You send to ${mySection}.`}
-          </p>
-        </div>
-        {canAuthor && (
+    <Page>
+      <PageHeader
+        eyebrow="School community"
+        title={isStudent() ? 'Inbox' : 'Communications'}
+        description={`Declaration forms, messages and polls.${isStudent() ? ' Sign pending forms and respond to class polls.' : ''}${isTeacher() ? ` Messages are scoped to ${mySection}.` : ''}`}
+        meta={isStudent() ? `${pendingDeclarations} declarations to sign` : `${sentMessages.length} recent messages`}
+        actions={canAuthor ? (
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setOpenDeclaration(true)}>
               <FiPlus size={16} /> Declaration form
@@ -135,21 +135,25 @@ export default function Communications() {
               <FiPlus size={16} /> Create poll
             </Button>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
+
+      <MetricGrid className="xl:grid-cols-3">
+        <StatCard label="Declarations" value={data.declarations.length} icon={FiFileText} />
+        <StatCard label="Open polls" value={data.polls.length} icon={FiBarChart2} variant="neutral" />
+        <StatCard label="Recent messages" value={sentMessages.length} icon={FiSend} variant="terracotta" />
+      </MetricGrid>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <h3 className="text-lg font-bold text-ink">Declaration forms</h3>
-            {isStudent() ? (
+        <section aria-label="Declarations" className="lg:col-span-2">
+        <Card className="h-full">
+          <SectionHeading title="Declaration forms" description="Published forms and each student's signing status." action={isStudent() ? (
               <Badge variant={pendingDeclarations ? 'terracotta' : 'success'}>
                 {pendingDeclarations ? `${pendingDeclarations} to sign` : 'All signed'}
               </Badge>
             ) : (
               <Badge variant="olive">{data.declarations.length} published</Badge>
-            )}
-          </div>
+            )} />
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -167,7 +171,7 @@ export default function Communications() {
                   return (
                     <TableRow key={form.id}>
                       <TableCell>
-                        <div className="font-medium text-ink">{form.name}</div>
+                       <div className="font-bold text-ink">{form.name}</div>
                         <div className="text-xs text-muted">{form.description}</div>
                       </TableCell>
                       <TableCell>{form.type}</TableCell>
@@ -198,27 +202,20 @@ export default function Communications() {
                     </TableRow>
                   );
                 })}
-                {data.declarations.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-4 text-center text-muted">
-                      No declaration forms.
-                    </TableCell>
-                  </TableRow>
-                )}
+                {data.declarations.length === 0 && <TableRow><TableCell colSpan={4}><EmptyState title="No declaration forms" description="Published forms will appear here." /></TableCell></TableRow>}
               </tbody>
             </Table>
           </div>
         </Card>
+        </section>
 
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-ink">Polls</h3>
-            {canCreatePoll && (
+        <section aria-label="Polls">
+        <Card className="h-full">
+          <SectionHeading title="Polls" description="Current questions and response totals." action={canCreatePoll ? (
               <Button size="sm" onClick={() => setOpenPoll(true)}>
                 <FiPlus size={14} /> New
               </Button>
-            )}
-          </div>
+            ) : undefined} />
           <div className="space-y-3">
             {data.polls.map((poll) => {
               const totalVotes = Object.values(poll.votes).length;
@@ -226,7 +223,7 @@ export default function Communications() {
                 Object.values(poll.votes).filter((v) => v === id).length;
               const hasVoted = profile ? poll.votes[profile.id] : false;
               return (
-                <div key={poll.id} className="rounded-lg border border-sand/40 p-4">
+                 <div key={poll.id} className="rounded-xl border border-border bg-parchment/25 p-4">
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="font-medium text-ink">{poll.question}</div>
                     <Badge variant="olive">{poll.audience}</Badge>
@@ -244,9 +241,9 @@ export default function Communications() {
                           <span className={voted ? 'font-medium text-olive' : ''}>{opt.label}</span>
                           <span className="text-muted">{share}%</span>
                         </div>
-                        <div className="h-2 w-full rounded-full bg-slate-200">
-                          <div
-                            className={cn('h-2 rounded-full transition-all duration-300', voted ? 'bg-olive' : 'bg-slate-300')}
+                         <div className="h-2 w-full overflow-hidden rounded-full bg-parchment" role="progressbar" aria-label={`${opt.label} vote share`} aria-valuenow={share} aria-valuemin={0} aria-valuemax={100}>
+                           <div
+                             className={cn('h-2 rounded-full', voted ? 'bg-moss' : 'bg-forest/20')}
                             style={{ width: `${share}%` }}
                           />
                         </div>
@@ -268,36 +265,31 @@ export default function Communications() {
               );
             })}
             {data.polls.length === 0 && (
-              <div className="py-6 text-center text-sm text-muted">
-                No polls yet. {canCreatePoll && 'Create one to get started.'}
-              </div>
+              <EmptyState title="No polls yet" description={canCreatePoll ? 'Create a poll to get started.' : 'Published polls will appear here.'} />
             )}
           </div>
         </Card>
+        </section>
       </div>
 
       {canAuthor && (
+        <section aria-label="Recent messages">
         <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-ink">Recent messages</h3>
-              <p className="text-sm text-muted">Broadcasts land in the student notification bell.</p>
-            </div>
+          <SectionHeading title="Recent messages" description="Broadcasts land in the student notification bell." action={
             <Button variant="outline" size="sm" onClick={() => setOpenMessage(true)}>
               <FiSend size={14} /> Send
             </Button>
-          </div>
+          } />
           <div className="space-y-2">
-            {data.notifications
-              .filter((n) => n.kind === 'notice')
+            {sentMessages
               .slice(0, 6)
               .map((n) => (
-                <div key={n.id} className="flex items-start gap-3 rounded-lg border border-sand/40 p-3">
-                  <span className="mt-0.5 rounded bg-olive/10 p-1.5 text-olive">
+                <div key={n.id} className="flex items-start gap-3 rounded-xl border border-border bg-parchment/25 p-3">
+                  <span className="mt-0.5 rounded-lg bg-moss/10 p-1.5 text-moss">
                     <FiUsers size={14} />
                   </span>
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-ink">{n.title}</div>
+                     <div className="text-sm font-bold text-ink">{n.title}</div>
                     <div className="truncate text-xs text-muted">{n.body}</div>
                   </div>
                   <span className="ml-auto shrink-0 text-[10px] text-slate-400">
@@ -305,18 +297,18 @@ export default function Communications() {
                   </span>
                 </div>
               ))}
-            {data.notifications.filter((n) => n.kind === 'notice').length === 0 && (
-              <div className="py-4 text-center text-sm text-muted">No messages sent yet.</div>
-            )}
+            {sentMessages.length === 0 && <EmptyState title="No messages sent yet" />}
           </div>
         </Card>
+        </section>
       )}
 
       {openDeclaration && (
-        <Modal title="Publish declaration form" onClose={() => setOpenDeclaration(false)}>
+        <Modal title="Publish declaration form" description="Create a form students can review and sign." onClose={() => setOpenDeclaration(false)}>
           <form onSubmit={handleCreateDeclaration} className="space-y-3">
             <Field label="Form name">
               <input
+                aria-label="Form name"
                 value={declarationForm.name}
                 onChange={(e) => setDeclarationForm({ ...declarationForm, name: e.target.value })}
                 className={inputCls}
@@ -325,6 +317,7 @@ export default function Communications() {
             </Field>
             <Field label="Description">
               <textarea
+                aria-label="Description"
                 value={declarationForm.description}
                 onChange={(e) => setDeclarationForm({ ...declarationForm, description: e.target.value })}
                 rows={3}
@@ -334,6 +327,7 @@ export default function Communications() {
             </Field>
             <Field label="Type">
               <select
+                aria-label="Declaration type"
                 value={declarationForm.type}
                 onChange={(e) => setDeclarationForm({ ...declarationForm, type: e.target.value })}
                 className={inputCls}
@@ -351,10 +345,11 @@ export default function Communications() {
       )}
 
       {openMessage && (
-        <Modal title="Send a message" onClose={() => setOpenMessage(false)}>
+        <Modal title="Send a message" description="Broadcast to an authorised school audience." onClose={() => setOpenMessage(false)}>
           <form onSubmit={handleSendMessage} className="space-y-3">
             <Field label="Subject">
               <input
+                aria-label="Subject"
                 value={messageForm.title}
                 onChange={(e) => setMessageForm({ ...messageForm, title: e.target.value })}
                 className={inputCls}
@@ -363,6 +358,7 @@ export default function Communications() {
             </Field>
             <Field label="Message">
               <textarea
+                aria-label="Message"
                 value={messageForm.body}
                 onChange={(e) => setMessageForm({ ...messageForm, body: e.target.value })}
                 rows={5}
@@ -372,6 +368,7 @@ export default function Communications() {
             </Field>
             <Field label="Send to">
               <select
+                aria-label="Send to"
                 value={messageForm.section_label}
                 onChange={(e) => setMessageForm({ ...messageForm, section_label: e.target.value })}
                 className={inputCls}
@@ -389,10 +386,11 @@ export default function Communications() {
       )}
 
       {openPoll && (
-        <Modal title="Create poll" onClose={() => setOpenPoll(false)}>
+        <Modal title="Create poll" description="Publish a question with clear response options." onClose={() => setOpenPoll(false)}>
           <form onSubmit={handleCreatePoll} className="space-y-3">
             <Field label="Question">
               <input
+                aria-label="Poll question"
                 value={pollForm.question}
                 onChange={(e) => setPollForm({ ...pollForm, question: e.target.value })}
                 className={inputCls}
@@ -402,6 +400,7 @@ export default function Communications() {
             <div className="grid grid-cols-2 gap-3">
               <Field label="Audience">
                 <select
+                  aria-label="Poll audience"
                   value={pollForm.audience}
                   onChange={(e) => setPollForm({ ...pollForm, audience: e.target.value })}
                   className={inputCls}
@@ -413,6 +412,7 @@ export default function Communications() {
               </Field>
               <Field label="Closes on">
                 <input
+                  aria-label="Poll closing date"
                   type="date"
                   value={pollForm.closes_at}
                   onChange={(e) => setPollForm({ ...pollForm, closes_at: e.target.value })}
@@ -425,6 +425,7 @@ export default function Communications() {
                 {pollForm.options.map((opt, i) => (
                   <div key={i} className="flex gap-2">
                     <input
+                      aria-label={`Poll option ${i + 1}`}
                       value={opt}
                       onChange={(e) => {
                         const opts = [...pollForm.options];
@@ -441,7 +442,7 @@ export default function Communications() {
                           options: pollForm.options.filter((_, index) => index !== i),
                         })
                       }
-                      className="text-terracotta hover:text-terracotta/80"
+                       className="focus-ring inline-flex w-11 items-center justify-center rounded-xl text-terracotta hover:bg-terracotta/10"
                       aria-label="Remove option"
                     >
                       ✕
@@ -462,49 +463,24 @@ export default function Communications() {
           </form>
         </Modal>
       )}
-    </div>
+    </Page>
   );
 }
 
-const inputCls =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-olive focus:outline-none focus:ring-1 focus:ring-olive';
+const inputCls = 'field-control';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-muted">{label}</label>
+      <div className="field-label">{label}</div>
       {children}
-    </div>
-  );
-}
-
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-ink" aria-label="Close">
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
     </div>
   );
 }
 
 function ModalActions({ onCancel, submitLabel }: { onCancel: () => void; submitLabel: string }) {
   return (
-    <div className="mt-4 flex justify-end gap-2">
+    <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
       <Button variant="ghost" type="button" onClick={onCancel}>
         Cancel
       </Button>

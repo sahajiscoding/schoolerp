@@ -13,6 +13,8 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
+import { Page, PageHeader, SectionHeading } from '../components/page';
+import { Modal } from '../components/modal';
 import { FiPlus, FiDownload } from 'react-icons/fi';
 
 const SUBJECTS = ['Artificial Intelligence', 'Mathematics', 'English', 'Science', 'Social Science', 'Hindi'];
@@ -41,7 +43,7 @@ function openMaterial(material: StudyMaterial) {
 }
 
 export default function StudyRoom() {
-  const { profile, isAdmin, isTeacher } = useAuth();
+  const { profile, isTeacher } = useAuth();
   const data = useData();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -54,7 +56,7 @@ export default function StudyRoom() {
     type: 'PDF',
   });
 
-  const canShare = isAdmin() || isTeacher();
+  const canShare = isTeacher();
 
   const myMaterials = data.studyMaterials;
 
@@ -76,25 +78,21 @@ export default function StudyRoom() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Study Room</h1>
-          <p className="text-muted">
-            Shared study materials and PDFs. Teachers can share PDFs.
-          </p>
-        </div>
-        {canShare && (
+    <Page>
+      <PageHeader
+        eyebrow="Academic archive"
+        title="Study Room"
+        description="Shared study materials and PDFs. Teachers can share PDFs; administrators retain read-only oversight."
+        actions={canShare ? (
           <Button onClick={() => setOpen(true)}>
-            <FiPlus size={16} /> Share PDF
+            <FiPlus size={16} aria-hidden="true" /> Share PDF
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
+      <section aria-label="Study resources">
       <Card>
-        <div className="mb-4">
-          <h3 className="text-lg font-bold text-ink">Study materials</h3>
-        </div>
+        <SectionHeading title="Study materials" description="Notes and PDFs arranged as a clear academic ledger." />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -144,11 +142,10 @@ export default function StudyRoom() {
           </Table>
         </div>
       </Card>
+      </section>
 
       {canShare && open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">Share PDF</h2>
+        <Modal title="Share PDF" description="Add a study material for the selected class." onClose={() => setOpen(false)} size="sm">
             <form onSubmit={handleAdd} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Title</label>
@@ -205,9 +202,8 @@ export default function StudyRoom() {
                 <Button type="submit">Share PDF</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }

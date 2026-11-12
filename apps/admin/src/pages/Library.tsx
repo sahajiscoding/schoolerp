@@ -10,7 +10,10 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  StatCard,
 } from '../components/ui';
+import { Modal } from '../components/modal';
+import { EmptyState, MetricGrid, Page, PageHeader, SectionHeading } from '../components/page';
 import { FiBookOpen, FiPlus, FiSend, FiRotateCcw, FiTrash2 } from 'react-icons/fi';
 
 export default function Library() {
@@ -65,17 +68,17 @@ export default function Library() {
   };
 
   const availableBooks = data.books.filter((b) => b.available_copies > 0);
+  const availableCopies = data.books.reduce((sum, book) => sum + book.available_copies, 0);
+  const activeIssues = data.bookIssues.filter((issue) => issue.status === 'issued').length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">My Library</h1>
-          <p className="text-muted">
-            Browse books. Teachers can add and issue books.
-          </p>
-        </div>
-        {canManage && (
+    <Page>
+      <PageHeader
+        eyebrow="Library"
+        title={canManage ? 'Library' : 'My library'}
+        description={canManage ? 'Browse the catalogue, add books and manage current issues.' : 'Browse available books and reserve a copy.'}
+        meta={`${data.books.length} titles in the catalogue`}
+        actions={canManage ? (
           <div className="flex gap-2">
             <Button onClick={() => setOpenAdd(true)}>
               <FiPlus size={16} /> Add book
@@ -84,12 +87,20 @@ export default function Library() {
               <FiSend size={16} /> Issue book
             </Button>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <MetricGrid className="xl:grid-cols-3">
+        <StatCard label="Titles" value={data.books.length} icon={FiBookOpen} />
+        <StatCard label="Available copies" value={availableCopies} icon={FiBookOpen} variant="neutral" />
+        <StatCard label="Active issues" value={activeIssues} icon={FiSend} variant="terracotta" />
+      </MetricGrid>
+
+      <section aria-labelledby="catalogue-title">
+        <SectionHeading title="Book catalogue" description="Availability and circulation actions by title." />
+      <div className="stagger-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {data.books.map((book) => (
-          <Card key={book.id} className="h-full flex flex-col">
+          <Card key={book.id} className="hover-lift flex h-full flex-col">
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h3 className="text-base font-bold text-ink">{book.title}</h3>
@@ -148,20 +159,12 @@ export default function Library() {
             </div>
           </Card>
         ))}
-        {data.books.length === 0 && (
-          <div className="grid-cols-1 col-span-full">
-            <Card className="text-center py-12">
-              <FiBookOpen size={32} className="mx-auto mb-3 text-slate-400" />
-              <div className="text-muted text-sm">No books in the library yet.</div>
-            </Card>
-          </div>
-        )}
+         {data.books.length === 0 && <EmptyState className="col-span-full" title="No books in the library yet" icon={FiBookOpen} />}
       </div>
+      </section>
 
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-ink">Issued books</h3>
-        </div>
+        <SectionHeading title="Issued books" description="Current, returned and reserved circulation records." />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -180,7 +183,7 @@ export default function Library() {
                 const student = data.people.find((p) => p.id === issue.student_id);
                 return (
                   <TableRow key={issue.id}>
-                    <TableCell>{book?.title ?? '—'}</TableCell>
+                    <TableCell className="font-bold">{book?.title ?? '—'}</TableCell>
                     <TableCell className="text-sm">{student?.full_name ?? '—'}</TableCell>
                     <TableCell className="text-sm text-muted">{issue.issued_at}</TableCell>
                     <TableCell className="text-sm text-muted">{issue.due_at}</TableCell>
@@ -222,73 +225,74 @@ export default function Library() {
       </Card>
 
       {canManage && openAdd && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">Add book</h2>
+        <Modal title="Add book" description="Create a catalogue record and set its copy count." onClose={() => setOpenAdd(false)} size="sm">
             <form onSubmit={handleAddBook} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Title</label>
+                <label htmlFor="book-title" className="field-label">Title</label>
                 <input
+                  id="book-title"
                   value={addForm.title}
                   onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Author</label>
+                <label htmlFor="book-author" className="field-label">Author</label>
                 <input
+                  id="book-author"
                   value={addForm.author}
                   onChange={(e) => setAddForm({ ...addForm, author: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Accession no.</label>
+                <label htmlFor="book-accession" className="field-label">Accession no.</label>
                 <input
+                  id="book-accession"
                   value={addForm.accession_no}
                   onChange={(e) => setAddForm({ ...addForm, accession_no: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Category</label>
+                <label htmlFor="book-category" className="field-label">Category</label>
                 <input
+                  id="book-category"
                   value={addForm.category}
                   onChange={(e) => setAddForm({ ...addForm, category: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Total copies</label>
+                <label htmlFor="book-copies" className="field-label">Total copies</label>
                 <input
+                  id="book-copies"
                   type="number"
                   value={addForm.total_copies}
                   onChange={(e) => setAddForm({ ...addForm, total_copies: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 />
               </div>
-              <div className="flex justify-end gap-2 mt-4">
+              <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
                 <Button variant="ghost" type="button" onClick={() => setOpenAdd(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Add book</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {canManage && openIssue && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">Issue book</h2>
+        <Modal title="Issue book" description="Assign an available copy to one student." onClose={() => setOpenIssue(false)} size="sm">
             <form onSubmit={handleIssueBook} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Book</label>
+                <label htmlFor="issue-book" className="field-label">Book</label>
                 <select
+                  id="issue-book"
                   value={issueForm.book_id}
                   onChange={(e) => setIssueForm({ ...issueForm, book_id: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 >
                   <option value="">Select book</option>
                   {availableBooks.map((b) => (
@@ -299,11 +303,12 @@ export default function Library() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Student</label>
+                <label htmlFor="issue-student" className="field-label">Student</label>
                 <select
+                  id="issue-student"
                   value={issueForm.student_id}
                   onChange={(e) => setIssueForm({ ...issueForm, student_id: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 >
                   <option value="">Select student</option>
                   {students.map((s) => (
@@ -314,24 +319,24 @@ export default function Library() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Due date</label>
+                <label htmlFor="issue-due" className="field-label">Due date</label>
                 <input
+                  id="issue-due"
                   type="date"
                   value={issueForm.due_at}
                   onChange={(e) => setIssueForm({ ...issueForm, due_at: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="field-control"
                 />
               </div>
-              <div className="flex justify-end gap-2 mt-4">
+              <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
                 <Button variant="ghost" type="button" onClick={() => setOpenIssue(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">Issue book</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }

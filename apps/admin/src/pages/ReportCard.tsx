@@ -29,7 +29,7 @@ const DEFAULT_SUBJECTS = [
 const TERMS = ['HALF YEARLY', 'ANNUAL', 'TERM 1', 'TERM 2'];
 
 export default function ReportCard() {
-  const { profile, isAdmin, isTeacher, isStudent } = useAuth();
+  const { profile, isTeacher, isStudent } = useAuth();
   const data = useAppDataHook();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -41,7 +41,7 @@ export default function ReportCard() {
     subjects: DEFAULT_SUBJECTS.map((s) => ({ subject: s, marks: '', max_marks: '100' })),
   });
 
-  const canGenerate = isAdmin() || isTeacher();
+  const canGenerate = isTeacher();
   const students = data.people.filter((p) => p.role === 'student');
   const myReportCards = data.reportCards.filter((rc) => rc.student_id === profile?.id);
   const visibleCards = isStudent() ? myReportCards : data.reportCards;
