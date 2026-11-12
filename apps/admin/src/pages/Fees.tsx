@@ -432,4 +432,3 @@ function MoneyCard({
     </div>
   );
 }
-

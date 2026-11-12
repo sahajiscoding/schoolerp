@@ -24,5 +24,8 @@ describe('Living Campus design contract', () => {
     expect(css).toContain(':focus-visible');
     expect(css).toContain('.page-reveal');
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');
+    expect(css).toContain('min-height: 44px');
+    expect(css).toContain('scrollbar-gutter: stable');
+    expect(css).not.toContain('transition: all');
   });
 });
