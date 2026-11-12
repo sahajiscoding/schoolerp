@@ -4,7 +4,7 @@
 **Current milestone:** Milestone 3 — Dashboard modules (admin console complete, backend schema written, mobile pending).
 **Next milestone:** Wire the admin console to Supabase (replace demo store), then Milestone 4 — Messaging.
 
-**Branch design track (`newui2`):** Living Campus full-admin redesign approved; implementation has not started. Specification: `docs/superpowers/specs/2026-11-12-living-campus-ui-design.md`. Plan: `docs/superpowers/plans/2026-11-12-living-campus-ui.md`.
+**Branch design track (`newui2`):** Living Campus full-admin redesign implemented across login, masthead/contextual shell, role dashboards, shared primitives, and all 18 authenticated routes. Specification: `docs/superpowers/specs/2026-11-12-living-campus-ui-design.md`. Plan: `docs/superpowers/plans/2026-11-12-living-campus-ui.md`. TDD evidence: `docs/superpowers/plans/2026-11-12-living-campus-ui.tdd.md`.
 
 This file is the single source of truth for project state. Every agent must read it before starting work and update it before finishing. Keep it short, factual, and linked to files. Do not record intentions as completed work.
 
@@ -88,6 +88,8 @@ This file is the single source of truth for project state. Every agent must read
 - Updated `docs/security/environment-variables.md` and the design decision log. No production environment variables, auth accounts, database policies, or deployments changed. Next: deploy this branch's changes to make the demo entry visible on the production site; keep future backend modules isolated from `/demo`.
 
 ### Verification done
+
+- **2026-11-12 (`newui2`, Living Campus):** admin tests 36/36 pass; admin typecheck passes; lint 0 errors / 3 pre-existing fast-refresh warnings; production build passes (426 modules, expected chunk-size warning); `git diff --check` clean; prohibited client-secret scan clean. Live DOM readback at 816×706 visited every authenticated route with zero page overflow and no browser console warnings; Admin/Teacher/Student role controls were checked. Screenshot capture and multi-viewport pixel comparison were unavailable in the connected browser session.
 
 - `npm run typecheck --workspace=apps/admin` — clean.
 - `npm run build --workspace=apps/admin` — passes (tsc -b + vite build).
