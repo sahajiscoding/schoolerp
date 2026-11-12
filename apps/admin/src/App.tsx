@@ -28,8 +28,17 @@ function RequireAuth({ children }: { children: ReactNode }) {
   const { loading, profile } = useAuth();
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-sand">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-olive/30 border-t-olive" />
+      <div className="flex min-h-screen items-center justify-center bg-daylight px-6 text-ink">
+        <div role="status" className="flex flex-col items-center text-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-paper p-2 shadow-card">
+            <img src="/brand/pws-logo.png" alt="" width="64" height="64" className="h-full w-full object-contain" />
+          </span>
+          <span className="mt-4 font-display text-xl font-semibold">Opening your school day</span>
+          <span className="mt-3 h-1.5 w-28 overflow-hidden rounded-full bg-leaf">
+            <span className="block h-full w-1/2 animate-pulse rounded-full bg-olive" />
+          </span>
+          <span className="sr-only">Checking your session</span>
+        </div>
       </div>
     );
   }

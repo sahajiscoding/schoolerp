@@ -30,6 +30,12 @@ it.each(['Admin', 'Teacher', 'Student'])('enters %s with configured Supabase, na
   await screen.findByText('Demo mode');
   expect(window.location.pathname).toBe('/demo/dashboard');
   expect(sessionStorage.getItem('pws.showcase.role')).toBe(role.toLowerCase());
+  expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeTruthy();
+  expect(screen.getByRole('navigation', { name: 'School areas' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Dashboard' }).getAttribute('aria-current')).toBe('page');
+  expect(screen.getByRole('banner')).toBeTruthy();
+  expect(screen.getByRole('main')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Open navigation' }).getAttribute('aria-expanded')).toBe('false');
   expect(screen.getByRole('link', { name: 'Exit demo · School sign in' }).getAttribute('href')).toBe('/login');
   expect(document.body.textContent).not.toContain('Private school person');
   expect(localStorage.getItem('pws.showcase.data.v1')).toContain('p-student-1');
