@@ -1,8 +1,8 @@
 # Project Status — Pacific World School ERP
 
 **Last updated:** 2026-11-07
-**Current milestone:** PWS clone (owner-approved re-scope beyond Milestone 3, 2026-11-07) — 28-route report parity UI + `0005` clone tables landed on the demo store; live Supabase wiring follows module by module.
-**Next milestone:** Wire clone routes to Supabase queries/RPCs (Homeworks → Library → Fees), then Milestone 4 — Messaging (live).
+**Current milestone:** Milestone C — Wire remaining admin pages to Supabase live data ✅ COMPLETE. All 23 pages wired to Supabase with demo fallback: People, Classes, Subjects, TeachingAssignments, Enrollments, Attendance, AuditLog, Polls, Circulars, CircularDetail, DeclarationForms, ReportCard, DigitalLibrary, ExaminationReportCards, FeeCollections, Gallery, MyAttendance, MyLibrary, Messages, MessageCreate, MessageDetail, StudyRoom, Dashboard. Homeworks + Approvals already wired.
+**Next milestone:** Deploy notify Edge Function, deploy admin-users Edge Function (requires Supabase CLI/dashboard — not available via MCP), run create-admin.mjs (requires service role credentials), fill docs/store placeholders (docs/store/ not present on main).
 
 This file is the single source of truth for project state. Every agent must read it before starting work and update it before finishing. Keep it short, factual, and linked to files. Do not record intentions as completed work.
 

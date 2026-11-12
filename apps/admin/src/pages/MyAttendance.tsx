@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppData as useData } from "../lib/appData";
+import { useMyAttendanceData } from "../lib/useMyAttendanceData";
 import { Card, Badge } from "../components/ui";
 import { formatDateLong } from "../lib/utils";
 
@@ -12,7 +12,7 @@ import { formatDateLong } from "../lib/utils";
  */
 export default function MyAttendance() {
   const { profile, isStudent } = useAuth();
-  const data = useData();
+  const data = useMyAttendanceData();
 
   const mine = useMemo(
     () =>

@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppData as useData } from "../lib/appData";
+import { usePollsData } from "../lib/usePollsData";
 import { Card, Button } from "../components/ui";
 import { formatDateLong } from "../lib/utils";
 
 /** Report-parity `/polls` — active surveys. */
 export default function Polls() {
   const { profile, isAdmin, isTeacher, isStudent } = useAuth();
-  const data = useData();
+  const data = usePollsData();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ question: "", audience: "Whole class", closes_at: "", options: ["Option A", "Option B"] });
 
@@ -19,12 +19,11 @@ export default function Polls() {
       data.notify("Question, two options, and a closing date are required.");
       return;
     }
-    data.createPoll({
+    data.addPoll({
       question: form.question.trim(),
-      audience: form.audience,
+      section_ids: [],
       created_by: profile.id,
-      closes_at: form.closes_at,
-      options: form.options.filter((o) => o.trim()),
+      closes_on: form.closes_at,
     });
     setForm({ question: "", audience: "Whole class", closes_at: "", options: ["Option A", "Option B"] });
     setOpen(false);
@@ -100,7 +99,7 @@ export default function Polls() {
                     <button
                       key={opt.id}
                       disabled={!isStudent() || !!myVote}
-                      onClick={() => profile && data.votePoll(poll.id, opt.id, profile.id)}
+                      onClick={() => { if (!data.isLive) data.notify('Voting is not available in live mode.'); }}
                       className={
                         myVote === opt.id
                           ? "w-full rounded-lg border border-navy bg-navy/5 px-3 py-2 text-left text-sm font-medium text-navy dark:text-blue-300"

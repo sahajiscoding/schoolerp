@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppData as useData } from "../lib/appData";
+import { useDeclarationFormsData } from "../lib/useDeclarationFormsData";
 import { Card, Button, Table, TableHeader, TableRow, TableHead, TableCell } from "../components/ui";
 
 /** Report-parity `/declaration-forms?page=1&limit=10` — undertakings + consents. */
 export default function DeclarationForms() {
   const { profile, isAdmin, isTeacher, isStudent } = useAuth();
-  const data = useData();
+  const data = useDeclarationFormsData();
   const [params] = useSearchParams();
   const page = Math.max(1, Number(params.get("page") ?? "1") || 1);
   const limit = Math.min(100, Math.max(1, Number(params.get("limit") ?? "10") || 10));
@@ -23,7 +23,7 @@ export default function DeclarationForms() {
       data.notify("Give the declaration a name before publishing.");
       return;
     }
-    data.addDeclaration({ name: form.name.trim(), description: form.description.trim() || form.name.trim(), type: form.type });
+    data.addDeclarationForm({ name: form.name.trim(), description: form.description.trim() || form.name.trim(), type: form.type });
     setForm({ name: "", description: "", type: "Transport" });
     setOpen(false);
   };

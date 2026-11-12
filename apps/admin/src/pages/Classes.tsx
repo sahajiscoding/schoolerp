@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAppData as useData } from '../lib/appData';
+import { useClassesData } from '../lib/useClassesData';
 import {
   Card,
   Button,
@@ -13,7 +13,7 @@ import {
 import { FiPlus, FiTrash2, FiUsers } from 'react-icons/fi';
 
 export default function Classes() {
-  const data = useData();
+  const data = useClassesData();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', sections: 'A' });
 
@@ -32,7 +32,7 @@ export default function Classes() {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
-    data.addClass({ name, sections });
+    data.addClass({ name, sections: sections, sortOrder: 0 });
     setForm({ name: '', sections: 'A' });
     setOpen(false);
   };

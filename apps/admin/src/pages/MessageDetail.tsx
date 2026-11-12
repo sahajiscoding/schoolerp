@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppData as useData } from "../lib/appData";
 import { Card, Button } from "../components/ui";
+import { useMessagesData } from "../lib/useMessagesData";
 
 /** Report-parity `/messages/:id` — thread detail + reply. */
 export default function MessageDetail() {
   const { id } = useParams<{ id: string }>();
   const { profile } = useAuth();
-  const data = useData();
+  const data = useMessagesData();
   const [reply, setReply] = useState("");
   const thread = data.threads.find((t) => t.id === id);
 

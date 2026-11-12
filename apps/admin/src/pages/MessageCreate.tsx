@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppData as useData } from "../lib/appData";
 import { Card, Button } from "../components/ui";
+import { useMessagesData } from "../lib/useMessagesData";
 
 /** Report-parity `/messages/create` — compose to teachers/admins (server-side targeting on live). */
 export default function MessageCreate() {
   const { profile } = useAuth();
-  const data = useData();
+  const data = useMessagesData();
   const navigate = useNavigate();
   const [form, setForm] = useState({ subject: "", body: "", recipientId: "" });
 
@@ -20,12 +20,7 @@ export default function MessageCreate() {
       data.notify("Subject, recipient, and a message are required.");
       return;
     }
-    data.createThread({
-      subject: form.subject.trim(),
-      participant_ids: [profile.id, form.recipientId],
-      sender_id: profile.id,
-      body: form.body.trim(),
-    });
+    data.createThread(profile.id, form.recipientId, form.subject.trim(), form.body.trim());
     navigate("/messages?box=sent&page=1&limit=10");
   };
 

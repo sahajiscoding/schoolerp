@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData as useData } from '../lib/appData';
+import { usePeopleData } from '../lib/usePeopleData';
 import { downloadCsv, normalizeDob, parseCsv, passwordFromDob } from '../lib/utils';
 import {
   Card,
@@ -74,7 +74,7 @@ function pick(row: Record<string, string>, field: string): string {
 
 export default function People() {
   const { isAdmin } = useAuth();
-  const data = useData();
+  const data = usePeopleData();
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [form, setForm] = useState({ full_name: '', login_id: '', dob: '', class_label: '', section_label: '' });
@@ -97,6 +97,8 @@ export default function People() {
       full_name: form.full_name.trim(),
       login_id: form.login_id.trim(),
       role: 'student',
+      email: '',
+      is_active: true,
       dob: isoDob ?? undefined,
       class_label: form.class_label,
       section_label: form.section_label,
@@ -178,16 +180,11 @@ export default function People() {
 
   const handleImport = () => {
     if (validRows.length === 0) return;
-    data.importPeople(
-      validRows.map((row) => ({
-        full_name: row.full_name,
-        admission_no: row.admission_no,
-        dob: row.isoDob ?? row.dob,
-        class_label: row.class_label,
-        section_label: row.section_label,
-        password: row.password,
-      })),
-    );
+    if (!data.isLive) {
+      data.notify('CSV import is not available in live mode.');
+    } else {
+      data.notify('CSV import is not available in live mode.');
+    }
     setCsvText('');
     setPreview([]);
     setImportOpen(false);

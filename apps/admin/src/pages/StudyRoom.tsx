@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData as useData } from '../lib/appData';
+import { useStudyRoomData } from '../lib/useStudyRoomData';
 import type { StudyMaterial } from '../lib/types';
 import { escapeHtml } from '../lib/utils';
 import {
@@ -42,7 +42,7 @@ function openMaterial(material: StudyMaterial) {
 
 export default function StudyRoom() {
   const { profile, isAdmin, isTeacher } = useAuth();
-  const data = useData();
+  const data = useStudyRoomData();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     title: '',
@@ -56,7 +56,7 @@ export default function StudyRoom() {
 
   const canShare = isAdmin() || isTeacher();
 
-  const myMaterials = data.studyMaterials;
+  const myMaterials = data.materials;
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();

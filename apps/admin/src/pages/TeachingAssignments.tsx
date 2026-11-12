@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../lib/appData';
+import { useTeachingAssignmentsData } from '../lib/useTeachingAssignmentsData';
+import { usePeopleData } from '../lib/usePeopleData';
+import { useClassesData } from '../lib/useClassesData';
+import { useSubjectsData } from '../lib/useSubjectsData';
 import {
   Card,
   Button,
@@ -16,25 +19,29 @@ const EMPTY_FORM = { teacher_id: '', section_label: '', subject: '' };
 
 export default function TeachingAssignments() {
   const { isAdmin } = useAuth();
-  const data = useAppData();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
+  const assignmentData = useTeachingAssignmentsData();
+  const peopleData = usePeopleData();
+  const classesData = useClassesData();
+  const subjectsData = useSubjectsData();
+
   const teachers = useMemo(
-    () => data.people.filter((p) => p.role === 'teacher' && p.is_active),
-    [data.people],
+    () => peopleData.people.filter((p) => p.role === 'teacher' && p.is_active),
+    [peopleData.people],
   );
   const sections = useMemo(
-    () => data.classes.flatMap((c) => c.sections.map((s) => `${c.name} - ${s}`)),
-    [data.classes],
+    () => classesData.classes.flatMap((c) => c.sections.map((s) => `${c.name} - ${s}`)),
+    [classesData.classes],
   );
-  const subjectNames = useMemo(() => data.subjects.map((s) => s.name), [data.subjects]);
+  const subjectNames = useMemo(() => subjectsData.subjects.map((s) => s.name), [subjectsData.subjects]);
 
   if (!isAdmin()) return <div className="p-4 text-terracotta">Admin only</div>;
 
   const teacherName = (id: string) =>
-    data.people.find((p) => p.id === id)?.full_name ?? 'Unknown teacher';
+    peopleData.people.find((p) => p.id === id)?.full_name ?? 'Unknown teacher';
 
   const openCreate = () => {
     setEditingId(null);
@@ -47,7 +54,7 @@ export default function TeachingAssignments() {
   };
 
   const openEdit = (id: string) => {
-    const entry = data.teachingAssignments.find((t) => t.id === id);
+    const entry = assignmentData.assignments.find((t) => t.id === id);
     if (!entry) return;
     setEditingId(id);
     setForm({ teacher_id: entry.teacher_id, section_label: entry.section_label, subject: entry.subject });
@@ -57,10 +64,10 @@ export default function TeachingAssignments() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.teacher_id || !form.section_label || !form.subject) {
-      data.notify('Pick a teacher, section and subject.');
+      assignmentData.notify('Pick a teacher, section and subject.');
       return;
     }
-    const duplicate = data.teachingAssignments.some(
+    const duplicate = assignmentData.assignments.some(
       (t) =>
         t.id !== editingId &&
         t.teacher_id === form.teacher_id &&
@@ -68,13 +75,13 @@ export default function TeachingAssignments() {
         t.subject === form.subject,
     );
     if (duplicate) {
-      data.notify('That teacher is already assigned to this section and subject.');
+      assignmentData.notify('That teacher is already assigned to this section and subject.');
       return;
     }
     if (editingId) {
-      data.updateTeachingAssignment(editingId, form);
+      assignmentData.updateTeachingAssignment({ id: editingId, ...form });
     } else {
-      data.addTeachingAssignment(form);
+      assignmentData.addTeachingAssignment(form);
     }
     setForm(EMPTY_FORM);
     setEditingId(null);
@@ -105,7 +112,7 @@ export default function TeachingAssignments() {
               </TableRow>
             </TableHeader>
             <tbody>
-              {data.teachingAssignments.map((t) => (
+              {assignmentData.assignments.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell>{teacherName(t.teacher_id)}</TableCell>
                   <TableCell>{t.section_label}</TableCell>
@@ -114,13 +121,13 @@ export default function TeachingAssignments() {
                     <Button variant="outline" size="sm" onClick={() => openEdit(t.id)} aria-label={`Edit ${t.subject}`}>
                       <FiEdit3 size={14} />
                     </Button>
-                    <Button variant="danger" size="sm" onClick={() => data.removeTeachingAssignment(t.id)} aria-label={`Remove ${t.subject}`}>
+                    <Button variant="danger" size="sm" onClick={() => assignmentData.deleteTeachingAssignment(t.id)} aria-label={`Remove ${t.subject}`}>
                       <FiTrash2 size={14} />
                     </Button>
                   </TableCell>
                 </TableRow>
               ))}
-              {data.teachingAssignments.length === 0 && (
+              {assignmentData.assignments.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted py-4">
                     No teaching assignments yet. Use “Add assignment” to create one.

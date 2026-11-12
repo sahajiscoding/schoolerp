@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppData as useData } from "../lib/appData";
+import { useMessagesData } from "../lib/useMessagesData";
 import { Card, Table, TableHeader, TableRow, TableHead, TableCell } from "../components/ui";
 
 /**
@@ -11,7 +11,7 @@ import { Card, Table, TableHeader, TableRow, TableHead, TableCell } from "../com
  */
 export default function Messages() {
   const { profile, isStudent, isAdmin } = useAuth();
-  const data = useData();
+  const data = useMessagesData();
   const [params] = useSearchParams();
   const box = params.get("box") ?? "inbox";
   const page = Math.max(1, Number(params.get("page") ?? "1") || 1);

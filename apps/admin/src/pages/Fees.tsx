@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeesData } from '../lib/useFeesData';
-import { useAppData } from '../lib/appData';
 import {
   Card,
   Button,
@@ -26,7 +25,6 @@ import { formatDateLong, inr } from '../lib/utils';
 export default function Fees() {
   const { profile } = useAuth();
   const data = useFeesData();
-  const demo = useAppData();
   const [openSibling, setOpenSibling] = useState(false);
   const [openPay, setOpenPay] = useState(false);
   const [siblingForm, setSiblingForm] = useState({
@@ -63,12 +61,12 @@ export default function Fees() {
   }, [myFees]);
 
   const studentName = (studentId: string) => {
-    const person = demo.people.find((p) => p.id === studentId);
+    const person = data.people.find((p) => p.id === studentId);
     return person?.full_name ?? studentId;
   };
 
   const studentLabel = (studentId: string) => {
-    const person = demo.people.find((p) => p.id === studentId);
+    const person = data.people.find((p) => p.id === studentId);
     return person ? `${person.class_label ?? ''} ${person.section_label ?? ''}` : '';
   };
 
@@ -286,13 +284,13 @@ export default function Fees() {
                     <TableCell>
                       <div className="font-medium">{first ?? '—'}</div>
                       <div className="text-xs text-muted">
-                        {firstLabel} · {demo.people.find((p) => p.id === link.student_id)?.admission_no ?? ''}
+                        {firstLabel} · {data.people.find((p) => p.id === link.student_id)?.admission_no ?? ''}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">{sib ?? '—'}</div>
                       <div className="text-xs text-muted">
-                        {sibLabel} · {demo.people.find((p) => p.id === link.sibling_id)?.admission_no ?? ''}
+                        {sibLabel} · {data.people.find((p) => p.id === link.sibling_id)?.admission_no ?? ''}
                       </div>
                     </TableCell>
                     <TableCell>

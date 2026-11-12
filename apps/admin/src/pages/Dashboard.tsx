@@ -12,7 +12,7 @@ import {
   FiUsers,
 } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../lib/appData';
+import { useDashboardData } from '../lib/useDashboardData';
 import { expandDashboardEvents, type DashboardEvent } from '../lib/dashboard';
 import { Badge, Card, StatCard } from '../components/ui';
 import { cn, formatDateLong, initials, inr, relativeToToday } from '../lib/utils';
@@ -26,7 +26,7 @@ function greetingAt(date: Date) {
 
 export default function Dashboard() {
   const { profile, isAdmin, isStudent } = useAuth();
-  const data = useAppData();
+  const data = useDashboardData();
   const now = useMemo(() => new Date(), []);
   const admin = isAdmin();
   const student = isStudent();

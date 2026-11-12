@@ -1,11 +1,11 @@
-import { useAppData } from '../lib/appData';
+import { useGalleryData } from '../lib/useGalleryData';
 import {
   Card,
 } from '../components/ui';
 import { FiImage, FiFolder } from 'react-icons/fi';
 
 export default function Gallery() {
-  const data = useAppData();
+  const data = useGalleryData();
 
   return (
     <div className="space-y-6">
@@ -19,7 +19,7 @@ export default function Gallery() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {data.gallery.map((album) => (
+        {data.albums.map((album) => (
           <Card key={album.id} className="h-full cursor-pointer">
             <div className="relative h-48 overflow-hidden rounded-lg bg-sand mb-3">
               <img
@@ -36,7 +36,7 @@ export default function Gallery() {
             </div>
           </Card>
         ))}
-        {data.gallery.length === 0 && (
+        {data.albums.length === 0 && (
           <div className="grid-cols-1 col-span-full">
             <Card className="text-center py-12">
               <FiImage size={32} className="mx-auto mb-3 text-slate-400" />

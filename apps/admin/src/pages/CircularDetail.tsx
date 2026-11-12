@@ -1,13 +1,13 @@
 import { Link, useParams } from "react-router-dom";
-import { useAppData as useData } from "../lib/appData";
+import { useCircularsData } from "../lib/useCircularsData";
 import { Card } from "../components/ui";
 import { formatDateLong } from "../lib/utils";
 
 /** Report-parity `/circulars/:id` — single circular + download. */
 export default function CircularDetail() {
   const { id } = useParams<{ id: string }>();
-  const data = useData();
-  const circular = data.events.find((e) => e.id === id);
+  const data = useCircularsData();
+  const circular = data.notices.find((e) => e.id === id);
 
   if (!circular) {
     return (
@@ -26,11 +26,11 @@ export default function CircularDetail() {
         ← Back to circulars
       </Link>
       <Card>
-        <h2 className="text-xl font-bold text-ink dark:text-white">{circular.title}</h2>
+        <h2 className="text-xl font-bold text-ink dark:text-white">{'title' in circular ? circular.title : circular.name}</h2>
         <p className="mt-1 text-xs text-muted">
-          {formatDateLong(circular.start_date)} · {circular.audience}
+          {formatDateLong(String((circular as any).created_at || new Date().toISOString()))} · {String(('audience' in circular ? circular.audience : 'Whole school'))}
         </p>
-        <p className="mt-4 text-sm text-ink dark:text-slate-200">{circular.description}</p>
+        <p className="mt-4 text-sm text-ink dark:text-slate-200">{'body' in circular ? circular.body : circular.description}</p>
         <button className="mt-6 rounded-lg border border-slate-300 px-3 py-1.5 text-xs dark:border-slate-700 dark:text-slate-200">
           Download PDF
         </button>

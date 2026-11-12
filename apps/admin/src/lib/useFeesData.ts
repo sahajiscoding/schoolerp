@@ -118,9 +118,12 @@ export function useFeesData() {
     [demo, liveEnabled, refresh]
   );
 
+  const people = useMemo(() => (liveEnabled ? [] : demo.people), [liveEnabled, demo.people]);
+
   return {
     fees: liveEnabled ? liveData.fees : demoFees,
     siblings: liveEnabled ? liveData.siblings : demoSiblings,
+    people,
     loading: liveEnabled ? loading : false,
     error: liveEnabled ? error : null,
     isLive: liveEnabled,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppData as useData } from "../lib/appData";
+import { useCircularsData } from "../lib/useCircularsData";
 import { Card, Table, TableHeader, TableRow, TableHead, TableCell, Button } from "../components/ui";
 import { formatDateLong } from "../lib/utils";
 
@@ -12,7 +12,7 @@ import { formatDateLong } from "../lib/utils";
  */
 export default function Circulars() {
   const { profile, isAdmin, isTeacher } = useAuth();
-  const data = useData();
+  const data = useCircularsData();
   const [params] = useSearchParams();
   const page = Math.max(1, Number(params.get("page") ?? "1") || 1);
   const limit = Math.min(100, Math.max(1, Number(params.get("limit") ?? "10") || 10));
@@ -20,7 +20,7 @@ export default function Circulars() {
   const [form, setForm] = useState({ title: "", description: "", audience: "Whole school" });
 
   const canAuthor = isAdmin() || isTeacher();
-  const paged = data.events.slice((page - 1) * limit, page * limit);
+  const paged = data.notices.slice((page - 1) * limit, page * limit);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,13 +28,9 @@ export default function Circulars() {
       data.notify("Give the circular a title before publishing.");
       return;
     }
-    data.addEvent({
+    data.addCircular({
       title: form.title.trim(),
-      description: form.description.trim() || form.title.trim(),
-      type: "event",
-      start_date: new Date().toISOString().slice(0, 10),
-      end_date: new Date().toISOString().slice(0, 10),
-      audience: form.audience,
+      body: form.description.trim() || form.title.trim(),
       created_by: profile.id,
     });
     setForm({ title: "", description: "", audience: "Whole school" });
@@ -120,7 +116,7 @@ export default function Circulars() {
       </Card>
       <div className="flex items-center gap-2 text-xs text-muted">
         <span>
-          Page {page} · showing {paged.length} of {data.events.length}
+          Page {page} · showing {paged.length} of {data.notices.length}
         </span>
         <Link className="underline" to={`/circulars?page=${page + 1}&limit=${limit}`}>
           Next →

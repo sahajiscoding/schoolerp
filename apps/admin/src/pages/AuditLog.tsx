@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useAppData as useData } from '../lib/appData';
+import { useAuditLogData } from '../lib/useAuditLogData';
 import {
   Card,
   Badge,
@@ -13,7 +13,7 @@ import { formatDateTime } from '../lib/utils';
 import { FiShield } from 'react-icons/fi';
 
 export default function AuditLog() {
-  const data = useData();
+  const data = useAuditLogData();
   const [query, setQuery] = useState('');
 
   const entries = useMemo(

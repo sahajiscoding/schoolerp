@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData as useData } from '../lib/appData';
+import { useAttendanceData } from '../lib/useAttendanceData';
 import { format, startOfWeek, eachDayOfInterval, isSunday } from 'date-fns';
 import {
   Card,
@@ -34,7 +34,7 @@ const STATUS_COLOR: Record<AttendanceStatus, string> = {
 
 export default function Attendance() {
   const { profile, isAdmin, isTeacher, isStudent } = useAuth();
-  const data = useData();
+  const data = useAttendanceData();
   const [viewDate, setViewDate] = useState(new Date().toISOString().slice(0, 10));
   const [open, setOpen] = useState(false);
 
@@ -81,8 +81,8 @@ export default function Attendance() {
     const existing = data.attendance.find((r) => r.student_id === studentId && r.date === dateStr);
     data.saveAttendance([
       existing
-        ? { ...existing, status }
-        : { student_id: studentId, date: dateStr, status, note: '' },
+        ? { student_id: existing.student_id, section_id: '', date: existing.date, status, note: existing.note ?? '' }
+        : { student_id: studentId, section_id: '', date: dateStr, status, note: '' },
     ]);
   };
 

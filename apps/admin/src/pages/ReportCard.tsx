@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData as useAppDataHook } from '../lib/appData';
+import { useReportCardData } from '../lib/useReportCardData';
 import { escapeHtml, formatDateLong, gradeFor, printHtml } from '../lib/utils';
 import {
   Card,
@@ -27,7 +27,7 @@ const TERMS = ['HALF YEARLY', 'ANNUAL', 'TERM 1', 'TERM 2'];
 
 export default function ReportCard() {
   const { profile, isAdmin, isTeacher, isStudent } = useAuth();
-  const data = useAppDataHook();
+  const data = useReportCardData();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     student_id: '',

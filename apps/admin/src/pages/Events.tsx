@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../lib/appData';
 import { useEventsData } from '../lib/useEventsData';
+import { usePeopleData } from '../lib/usePeopleData';
 import {
   Card,
   Button,
@@ -56,7 +56,6 @@ const MONTH_NAMES = [
 export default function Events() {
   const { profile, isAdmin, isTeacher, isStudent } = useAuth();
   const data = useEventsData();
-  const demoData = useAppData();
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState({ year: 2026, month: 10 });
   const [form, setForm] = useState({
@@ -70,7 +69,8 @@ export default function Events() {
 
   /** Teachers may only publish inside their own section; admins own the calendar. */
   const canManage = isAdmin() || isTeacher();
-  const people = demoData.people;
+  const peopleData = usePeopleData();
+  const people = peopleData.people;
   const teacherSection =
     people.find((p) => p.id === profile?.id)?.class_teacher_of ?? 'IX - E';
 

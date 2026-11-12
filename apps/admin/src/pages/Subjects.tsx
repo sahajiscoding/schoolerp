@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../lib/appData';
+import { useSubjectsData } from '../lib/useSubjectsData';
 import {
   Card,
   Button,
@@ -17,7 +17,7 @@ const EMPTY_FORM = { name: '', code: '', color: DEFAULT_COLOR };
 
 export default function Subjects() {
   const { isAdmin } = useAuth();
-  const data = useAppData();
+  const data = useSubjectsData();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -54,7 +54,7 @@ export default function Subjects() {
       return;
     }
     if (editingId) {
-      data.updateSubject(editingId, { name, code, color: form.color });
+      data.updateSubject({ id: editingId, name, code, color: form.color });
     } else {
       data.addSubject({ name, code, color: form.color });
     }
@@ -104,7 +104,7 @@ export default function Subjects() {
                       <Button variant="outline" size="sm" onClick={() => openEdit(s.id)} aria-label={`Edit ${s.name}`}>
                         <FiEdit3 size={14} />
                       </Button>
-                      <Button variant="danger" size="sm" onClick={() => data.removeSubject(s.id)} aria-label={`Remove ${s.name}`}>
+                      <Button variant="danger" size="sm" onClick={() => data.deleteSubject(s.id)} aria-label={`Remove ${s.name}`}>
                         <FiTrash2 size={14} />
                       </Button>
                     </div>
