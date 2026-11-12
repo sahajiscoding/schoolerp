@@ -4,7 +4,7 @@
 **Current milestone:** Milestone 3 — Dashboard modules (admin console complete, backend schema written, mobile pending).
 **Next milestone:** Wire the admin console to Supabase (replace demo store), then Milestone 4 — Messaging.
 
-**Branch design track (`newui2`):** Living Campus full-admin redesign approved in visual review; implementation has not started. Written specification: `docs/superpowers/specs/2026-11-12-living-campus-ui-design.md`.
+**Branch design track (`newui2`):** Living Campus full-admin redesign approved; implementation has not started. Specification: `docs/superpowers/specs/2026-11-12-living-campus-ui-design.md`. Plan: `docs/superpowers/plans/2026-11-12-living-campus-ui.md`.
 
 This file is the single source of truth for project state. Every agent must read it before starting work and update it before finishing. Keep it short, factual, and linked to files. Do not record intentions as completed work.
 
