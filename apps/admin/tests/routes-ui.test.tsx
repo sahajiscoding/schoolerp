@@ -70,3 +70,19 @@ it('keeps academic publishing and review read-only for administrators', async ()
   expect(screen.queryByRole('button', { name: /Add assignment/i })).toBeNull();
   expect(screen.queryByRole('button', { name: /Mark reviewed/i })).toBeNull();
 });
+
+const communityRoutes = [
+  ['/communications', /Communications/i, 'Communication centre'],
+  ['/events', /Events & calendars/i, 'School calendar'],
+  ['/study-room', /Study room/i, 'Study resources'],
+  ['/library', /Library/i, 'Library workspace'],
+  ['/fees', /Fee collection/i, 'Fee records'],
+  ['/gallery', /School gallery/i, 'School memories'],
+] as const;
+
+it.each(communityRoutes)('renders the community route %s as a labelled workspace', async (path, heading, region) => {
+  window.history.replaceState(null, '', `/demo${path}?role=admin`);
+  render(<App />);
+  expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeTruthy();
+  expect(screen.getByRole('region', { name: region })).toBeTruthy();
+});

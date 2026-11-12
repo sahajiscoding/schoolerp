@@ -11,6 +11,8 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
+import { Page, PageHeader } from '../components/page';
+import { Modal } from '../components/modal';
 import { FiCheckCircle, FiPlus, FiSend, FiUsers } from 'react-icons/fi';
 import { cn, formatDateLong } from '../lib/utils';
 
@@ -113,31 +115,27 @@ export default function Communications() {
   ).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Communications</h1>
-          <p className="text-muted">
-            Declaration forms, messages, and polls.
-            {isStudent() && ' Sign your pending forms and reply to your class teacher.'}
-            {isTeacher() && ` You send to ${mySection}.`}
-          </p>
-        </div>
-        {canAuthor && (
+    <Page>
+      <PageHeader
+        eyebrow="Campus connection"
+        title="Communications"
+        description={`Declaration forms, messages, and polls.${isStudent() ? ' Sign your pending forms and reply to your class teacher.' : ''}${isTeacher() ? ` You send to ${mySection}.` : ''}`}
+        actions={canAuthor ? (
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setOpenDeclaration(true)}>
-              <FiPlus size={16} /> Declaration form
+              <FiPlus size={16} aria-hidden="true" /> Declaration form
             </Button>
             <Button variant="outline" onClick={() => setOpenMessage(true)}>
-              <FiSend size={16} /> Send message
+              <FiSend size={16} aria-hidden="true" /> Send message
             </Button>
             <Button onClick={() => setOpenPoll(true)}>
-              <FiPlus size={16} /> Create poll
+              <FiPlus size={16} aria-hidden="true" /> Create poll
             </Button>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
 
+      <section aria-label="Communication centre" className="space-y-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <div className="mb-4 flex items-center justify-between gap-2">
@@ -246,7 +244,7 @@ export default function Communications() {
                         </div>
                         <div className="h-2 w-full rounded-full bg-slate-200">
                           <div
-                            className={cn('h-2 rounded-full transition-all duration-300', voted ? 'bg-olive' : 'bg-slate-300')}
+                            className={cn('h-2 rounded-full', voted ? 'bg-olive' : 'bg-slate-300')}
                             style={{ width: `${share}%` }}
                           />
                         </div>
@@ -311,6 +309,8 @@ export default function Communications() {
           </div>
         </Card>
       )}
+
+      </section>
 
       {openDeclaration && (
         <Modal title="Publish declaration form" onClose={() => setOpenDeclaration(false)}>
@@ -462,7 +462,7 @@ export default function Communications() {
           </form>
         </Modal>
       )}
-    </div>
+    </Page>
   );
 }
 
@@ -474,30 +474,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="mb-1 block text-xs font-medium text-muted">{label}</label>
       {children}
-    </div>
-  );
-}
-
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-ink" aria-label="Close">
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
     </div>
   );
 }

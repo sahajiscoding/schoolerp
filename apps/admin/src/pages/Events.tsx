@@ -11,6 +11,8 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
+import { Page, PageHeader, SectionHeading } from '../components/page';
+import { Modal } from '../components/modal';
 import { FiAlertCircle, FiCalendar, FiChevronLeft, FiChevronRight, FiPlus } from 'react-icons/fi';
 import { cn, formatRange } from '../lib/utils';
 
@@ -147,24 +149,23 @@ export default function Events() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Events &amp; Calendars</h1>
-          <p className="text-muted">
-            {isAdmin()
-              ? 'School-wide holidays, exams and meetings. Only admins publish to the whole school.'
-              : isTeacher()
-                ? `Class events for ${teacherSection}. School-wide events come from the admin.`
-                : 'Holidays, exams and school events for the year.'}
-          </p>
-        </div>
-        {canManage && (
+    <Page>
+      <PageHeader
+        eyebrow="The school day"
+        title="Events & Calendars"
+        description={isAdmin()
+          ? 'School-wide holidays, exams and meetings. Only admins publish to the whole school.'
+          : isTeacher()
+            ? `Class events for ${teacherSection}. School-wide events come from the admin.`
+            : 'Holidays, exams and school events for the year.'}
+        actions={canManage ? (
           <Button onClick={() => setOpen(true)}>
-            <FiPlus size={16} /> {isAdmin() ? 'Add event' : 'Add class event'}
+            <FiPlus size={16} aria-hidden="true" /> {isAdmin() ? 'Add event' : 'Add class event'}
           </Button>
-        )}
-      </div>
+        ) : undefined}
+      />
+
+      <section aria-label="School calendar" className="space-y-6">
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
@@ -298,10 +299,7 @@ export default function Events() {
       </div>
 
       <Card>
-        <div className="mb-4">
-          <h3 className="text-lg font-bold text-ink">All events</h3>
-          <p className="text-sm text-muted">{events.length} entries on the calendar</p>
-        </div>
+        <SectionHeading title="All events" description={`${events.length} entries on the calendar`} />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -342,18 +340,15 @@ export default function Events() {
           </Table>
         </div>
       </Card>
+      </section>
 
       {canManage && open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-1 text-lg font-bold text-ink">
-              {isAdmin() ? 'Add event' : 'Add class event'}
-            </h2>
-            <p className="mb-4 text-xs text-muted">
-              {isAdmin()
-                ? 'Only admins can publish school-wide holidays and exams.'
-                : `Teachers can publish for ${teacherSection} only.`}
-            </p>
+        <Modal
+          title={isAdmin() ? 'Add event' : 'Add class event'}
+          description={isAdmin() ? 'Only admins can publish school-wide holidays and exams.' : `Teachers can publish for ${teacherSection} only.`}
+          onClose={() => setOpen(false)}
+          size="sm"
+        >
             <form onSubmit={handleAdd} className="space-y-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">Title</label>
@@ -437,9 +432,8 @@ export default function Events() {
                 <Button type="submit">Add to calendar</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }

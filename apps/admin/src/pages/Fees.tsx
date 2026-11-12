@@ -11,6 +11,8 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
+import { Page, PageHeader, SectionHeading } from '../components/page';
+import { Modal } from '../components/modal';
 import { FiCreditCard, FiLink, FiSend, FiUsers, FiX } from 'react-icons/fi';
 import { cn, formatDateLong, inr } from '../lib/utils';
 
@@ -92,27 +94,26 @@ export default function Fees() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">{isStudent() ? 'My Fee' : 'Fee Collection'}</h1>
-          <p className="text-muted">
-            {canManage
-              ? 'Link siblings so the 50% discount lands on the second child, then record payments.'
-              : 'Your instalments, discounts and payment status.'}
-          </p>
-        </div>
-        {canManage && (
+    <Page>
+      <PageHeader
+        eyebrow="School finance"
+        title={isStudent() ? 'My Fee' : 'Fee Collection'}
+        description={canManage
+          ? 'Link siblings so the 50% discount lands on the second child, then record payments.'
+          : 'Your instalments, discounts and payment status.'}
+        actions={canManage ? (
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setOpenSibling(true)}>
-              <FiLink size={16} /> Link sibling
+              <FiLink size={16} aria-hidden="true" /> Link sibling
             </Button>
             <Button onClick={() => setOpenPay(true)}>
-              <FiSend size={16} /> Record payment
+              <FiSend size={16} aria-hidden="true" /> Record payment
             </Button>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
+
+      <section aria-label="Fee records" className="space-y-6">
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MoneyCard label="Billed (after discount)" value={inr(totals.billed)} />
@@ -122,12 +123,7 @@ export default function Fees() {
       </div>
 
       <Card>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-bold text-ink">
-            {isStudent() ? 'My fee invoices' : 'Fee invoices'}
-          </h3>
-          <Badge variant="olive">{myFees.length} invoices</Badge>
-        </div>
+        <SectionHeading title={isStudent() ? 'My fee invoices' : 'Fee invoices'} action={<Badge variant="olive">{myFees.length} invoices</Badge>} />
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -304,6 +300,8 @@ export default function Fees() {
         </div>
       </Card>
 
+      </section>
+
       {canManage && openSibling && (
         <Modal title="Link siblings" onClose={() => setOpenSibling(false)}>
           <p className="mb-3 text-sm text-muted">
@@ -410,10 +408,9 @@ export default function Fees() {
           </form>
         </Modal>
       )}
-    </div>
+    </Page>
   );
 }
-
 function MoneyCard({
   label,
   value,
@@ -436,26 +433,3 @@ function MoneyCard({
   );
 }
 
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-ink" aria-label="Close">
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}

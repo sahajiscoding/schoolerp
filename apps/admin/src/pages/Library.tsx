@@ -11,6 +11,8 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
+import { Page, PageHeader } from '../components/page';
+import { Modal } from '../components/modal';
 import { FiBookOpen, FiPlus, FiSend, FiRotateCcw, FiTrash2 } from 'react-icons/fi';
 
 export default function Library() {
@@ -67,27 +69,25 @@ export default function Library() {
   const availableBooks = data.books.filter((b) => b.available_copies > 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">My Library</h1>
-          <p className="text-muted">
-            Browse books. Teachers can add and issue books.
-          </p>
-        </div>
-        {canManage && (
+    <Page>
+      <PageHeader
+        eyebrow="Books & discovery"
+        title="Library"
+        description="Browse books. Teachers can add and issue books."
+        actions={canManage ? (
           <div className="flex gap-2">
             <Button onClick={() => setOpenAdd(true)}>
-              <FiPlus size={16} /> Add book
+              <FiPlus size={16} aria-hidden="true" /> Add book
             </Button>
             <Button onClick={() => setOpenIssue(true)}>
-              <FiSend size={16} /> Issue book
+              <FiSend size={16} aria-hidden="true" /> Issue book
             </Button>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <section aria-label="Library workspace" className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {data.books.map((book) => (
           <Card key={book.id} className="h-full flex flex-col">
             <div className="flex items-start justify-between mb-3">
@@ -220,11 +220,10 @@ export default function Library() {
           </Table>
         </div>
       </Card>
+      </section>
 
       {canManage && openAdd && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">Add book</h2>
+        <Modal title="Add book" description="Add a title and its available copies to the school library." onClose={() => setOpenAdd(false)} size="sm">
             <form onSubmit={handleAddBook} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Title</label>
@@ -274,14 +273,11 @@ export default function Library() {
                 <Button type="submit">Add book</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {canManage && openIssue && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl">
-            <h2 className="text-lg font-bold text-ink mb-4">Issue book</h2>
+        <Modal title="Issue book" description="Choose the book, student, and return date." onClose={() => setOpenIssue(false)} size="sm">
             <form onSubmit={handleIssueBook} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Book</label>
@@ -329,9 +325,8 @@ export default function Library() {
                 <Button type="submit">Issue book</Button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Page>
   );
 }
