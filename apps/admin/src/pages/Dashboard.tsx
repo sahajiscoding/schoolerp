@@ -12,7 +12,7 @@ import {
   FiUsers,
 } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../lib/appData';
+import { useDashboardData } from '../lib/useDashboardData';
 import { expandDashboardEvents, type DashboardEvent } from '../lib/dashboard';
 import { Badge, Card, StatCard } from '../components/ui';
 import { cn, formatDateLong, initials, inr, relativeToToday } from '../lib/utils';
@@ -26,7 +26,7 @@ function greetingAt(date: Date) {
 
 export default function Dashboard() {
   const { profile, isAdmin, isStudent } = useAuth();
-  const data = useAppData();
+  const data = useDashboardData();
   const now = useMemo(() => new Date(), []);
   const admin = isAdmin();
   const student = isStudent();
@@ -49,8 +49,10 @@ export default function Dashboard() {
     const pendingLeaves = data.leaves.filter((leave) => leave.status === 'pending');
     const collected = data.fees.reduce((sum, fee) => sum + fee.paid, 0);
     const billed = data.fees.reduce((sum, fee) => sum + fee.amount - fee.discount, 0);
-    return { students: students.length, teachers: teachers.length, pendingLeaves, collected, billed };
+    return { students: students.length, teachers: teachers.length, pendingLeaves: pendingLeaves.length, collected, billed };
   }, [data]);
+
+  const pendingCount = stats.pendingLeaves as number;
 
   const recentLeaves = useMemo(() => {
     const scoped = admin
@@ -86,8 +88,8 @@ export default function Dashboard() {
             </h1>
             <p className="mt-1 max-w-xl text-sm text-white/70">
               {admin
-                ? `${stats.students} students, ${stats.teachers} teachers. ${stats.pendingLeaves.length} leave approvals pending across the school.`
-                : `${stats.pendingLeaves.length} leave request${stats.pendingLeaves.length === 1 ? '' : 's'} waiting on you. ${upcoming.length} events this month.`}
+                ? `${stats.students} students, ${stats.teachers} teachers. ${pendingCount} leave approvals pending across the school.`
+                : `${pendingCount} leave request${pendingCount === 1 ? '' : 's'} waiting on you. ${upcoming.length} events this month.`}
             </p>
           </div>
           <div className="rounded-xl bg-white/10 px-4 py-3 text-right backdrop-blur">
@@ -103,7 +105,7 @@ export default function Dashboard() {
         {admin && <StatCard label="Teaching staff" value={stats.teachers} icon={FiBookOpen} variant="terracotta" />}
         <StatCard
           label="Leave approvals pending"
-          value={stats.pendingLeaves.length}
+          value={pendingCount}
           icon={FiAlertCircle}
           variant="warning"
         />
