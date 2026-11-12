@@ -30,6 +30,9 @@ it('offers isolated demo links with Supabase configured, including during sessio
   expect(readDemoRole()).toBeNull(); // Demo storage cannot authenticate the school app.
   expect(supabase).not.toBeNull();
   render(<App />);
+  expect(screen.getByRole('main', { name: 'Pacific World School sign in' })).toBeTruthy();
+  expect(screen.getByRole('heading', { level: 1, name: /Welcome back/i })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Try a demo' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Checking session...' })).toHaveProperty('disabled', true);
   const user = userEvent.setup();
   await user.type(screen.getByLabelText('Your Email/ UserId'), 'staff1');
